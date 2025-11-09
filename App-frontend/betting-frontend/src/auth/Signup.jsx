@@ -1,0 +1,72 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext.jsx';
+
+const page = {
+  position: 'fixed', inset: 0,
+  display: 'grid', placeItems: 'center',
+  padding: 16,
+  background: 'linear-gradient(to bottom, #0b0b0f, #0f0f14, #000)'
+};
+const card = {
+  width: '100%', maxWidth: 440,
+  background: 'rgba(17,17,17,0.92)',
+  border: '1px solid #FFD700',
+  borderRadius: 16,
+  boxShadow: '0 10px 30px rgba(0,0,0,.4)',
+  padding: 24, color: '#fff'
+};
+const input = {
+  width: '100%', padding: '12px 14px',
+  borderRadius: 12, border: '1px solid #333',
+  background: '#1a1a1f', color: '#fff', outline: 'none'
+};
+const button = {
+  width: '100%', height: 48,
+  borderRadius: 12, border: '1px solid #FFD700',
+  background: '#FFD700', color: '#000', fontWeight: 700, cursor: 'pointer'
+};
+
+export default function Signup() {
+  const nav = useNavigate();
+  const { signup } = useAuth();
+  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault(); setError(''); setLoading(true);
+    try { await signup(form.username.trim(), form.email.trim() || null, form.password); nav('/dashboard'); }
+    catch (err) { setError(err.message || 'Signup failed'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={page}>
+      <div style={card}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>Create your account</h1>
+          <p style={{ color: '#bbb', marginTop: 6 }}>Start playing — responsibly</p>
+        </div>
+
+        <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
+          <input style={input} placeholder="Username"
+                 value={form.username}
+                 onChange={e=>setForm({...form, username: e.target.value})}/>
+          <input style={input} placeholder="Email (optional)"
+                 value={form.email}
+                 onChange={e=>setForm({...form, email: e.target.value})}/>
+          <input style={input} type="password" placeholder="Password"
+                 value={form.password}
+                 onChange={e=>setForm({...form, password: e.target.value})}/>
+          {error && <div style={{ color: '#ff6b6b', fontSize: 14 }}>{error}</div>}
+          <button style={button} disabled={loading}>{loading ? 'Creating…' : 'Sign up'}</button>
+        </form>
+
+        <div style={{ marginTop: 12, textAlign: 'center', fontSize: 14 }}>
+          Already have an account? <Link to="/login" style={{ color: '#FFD700' }}>Log in</Link>
+        </div>
+      </div>
+    </div>
+  );
+}
