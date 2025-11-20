@@ -6,6 +6,7 @@ import com.betting.backend.wallet.model.FundRequestStatus;
 
 public class FundRequestResponse {
     private Long id;
+    private Long Walletid;
     private Long amountCents;
     private String reason;
     private FundRequestStatus status;
@@ -15,7 +16,12 @@ public class FundRequestResponse {
     public Long getId() {
         return id;
     }
-
+    public Long getWalletId(){
+        return Walletid;
+    }
+    public void setWalletID(Long WalletId){
+        this.Walletid=WalletId;
+    }
     public void setId(Long id) {
         this.id = id;
     }
