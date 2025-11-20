@@ -1,8 +1,10 @@
 package com.betting.backend.wallet.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 
 //import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Sort;
 import org.springframework.data.domain.Sort;
@@ -18,13 +20,16 @@ public class FundRequestServiceImpl implements FundRequestService{
     private final FundRequestRepository fundRequestRepository;
     private final WalletRepository walletRepository;
     private final EmailService emailService;
+    private final WalletService walletService;
     public FundRequestServiceImpl(FundRequestRepository fundRequestRepository,
                                   WalletRepository walletRepository,
-                                  EmailService emailService) {
+                                  EmailService emailService, WalletService walletService) {
         this.fundRequestRepository = fundRequestRepository;
         this.walletRepository = walletRepository;
         this.emailService = emailService;
+        this.walletService=walletService;
     }
+
     @Override
     public FundRequestResponse createFundRequest(
         Long userId, FundRequestCreateRequest request){
@@ -115,9 +120,50 @@ public class FundRequestServiceImpl implements FundRequestService{
                     .toList();
     }
     @Override
-    public FundRequestResponse approveRequest(Long requestId, Long adminUserId){}
+    public FundRequestResponse approveRequest(Long requestId, Long adminUserId){
+        if (adminUserId==null){
+            throw new IllegalArgumentException("adminUserId cannot be null");
+
+        }
+        FundRequest request = fundRequestRepository.findById(requestId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Fund request not found for id " + requestId
+        ));
+        if (request.getStatus() != FundRequestStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING requests can be approved.");
+        }
+        request.setStatus(FundRequestStatus.APPROVED);
+        request.setProcessedAt(Instant.now());
+        Long userId = request.getWallet().getUser().getId();
+        Long amountCents = request.getAmountCents();
+
+        String idempotencyKey = UUID.randomUUID().toString();
+        String refId = "FUND_REQUEST:" + requestId;
+        walletService.credit(amountCents, userId, idempotencyKey, refId);
+        FundRequest saved = fundRequestRepository.save(request);
+        return toResponse(saved);
+
+
+
+    }
     @Override
-    public FundRequestResponse denyRequest(Long requestId, Long adminUserId){}
+    public FundRequestResponse denyRequest(Long requestId, Long adminUserId){
+        if (adminUserId==null){
+            throw new IllegalArgumentException("adminUserId cannot be null");
+
+        }
+        FundRequest request = fundRequestRepository.findById(requestId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Fund request not found for id " + requestId
+        ));
+        if (request.getStatus() != FundRequestStatus.PENDING) {
+            throw new IllegalStateException("denyed...");
+        }
+        request.setStatus(FundRequestStatus.APPROVED);
+        request.setProcessedAt(Instant.now());
+        FundRequest saved = fundRequestRepository.save(request);
+        return toResponse(saved);
+    }
 
 
 

@@ -2,6 +2,7 @@ package com.betting.backend.wallet.Service;
 import com.betting.backend.wallet.dto.FundRequestCreateRequest;
 import com.betting.backend.wallet.dto.FundRequestResponse;
 import com.betting.backend.user.User;
+import com.betting.backend.wallet.model.FundRequest;
 import com.betting.backend.wallet.model.FundRequestStatus;
 import com.betting.backend.wallet.model.Wallet;
 
