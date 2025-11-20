@@ -69,8 +69,6 @@ public class WalletController {
         .body(tx);
     }
     public ResponseEntity<TransactionResponse[]>Transfer(
-        @PathVariable("userId") long withdrawuser,
-        @PathVariable("userId") long deposituser,
         @Valid @RequestBody TransferRequest body,
         @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
 
