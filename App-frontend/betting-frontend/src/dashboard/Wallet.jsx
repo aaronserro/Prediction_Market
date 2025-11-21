@@ -52,6 +52,14 @@ const centsToCAD = (cents) => fmtCAD.format((Number(cents) || 0) / 100);
 // ===== API (consistent, all under /api/v1) =====
 const api = {
   getWallet: (userId) => http(`/api/v1/users/${userId}/wallet`),
+  listFundRequests: (userId) =>
+    http(`/api/v1/users/${userId}/wallet/fund-requests`),
+
+  createFundRequest: (userId, amountCents, reason) =>
+    http(`/api/v1/users/${userId}/wallet/fund-requests`, {
+      method: "POST",
+      body: JSON.stringify({ amountCents, reason }),
+    }),
 
   // Adjust these if your backend uses different paths:
   //listFundRequests: (userId) => http(`/api/v1/users/${userId}/wallet/fund-requests`),
@@ -96,28 +104,28 @@ export default function Wallet() {
       setLoadingWallet(false);
     }
   }, [userId]);
-  /*
-  const refreshRequests = useCallback(async () => {
-    try {
-      setLoadingRequests(true);
-      setError(null);
-      const list = await api.listFundRequests(userId);
-      setRequests(Array.isArray(list) ? list : []);
-    } catch (e) {
-      setError(e.message || String(e));
-    } finally {
-      setLoadingRequests(false);
-    }
-  }, [userId]);
-  */
+
+const refreshRequests = useCallback(async () => {
+  try {
+    setLoadingRequests(true);
+    setError(null);
+    const list = await api.listFundRequests(userId);
+    setRequests(Array.isArray(list) ? list : []);
+  } catch (e) {
+    setError(e.message || String(e));
+  } finally {
+    setLoadingRequests(false);
+  }
+}, [userId]);
+
   useEffect(() => {
     refreshWallet();
   }, [refreshWallet]);
-  /*
+
   useEffect(() => {
     refreshRequests();
   }, [refreshRequests]);
-*/
+
   const balancePretty = useMemo(
     () => centsToCAD(wallet?.balanceCents || 0),
     [wallet]
