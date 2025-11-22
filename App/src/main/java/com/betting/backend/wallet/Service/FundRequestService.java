@@ -7,11 +7,14 @@ import com.betting.backend.wallet.model.FundRequestStatus;
 import com.betting.backend.wallet.model.Wallet;
 
 import java.util.List;
+
+import org.springframework.stereotype.Service;
 /**
  * Service layer responsible for the Fund Request lifecycle:
  * - Users can create requests and view their own history
  * - Admins can list all requests, approve them, or reject them
  */
+@Service
 public interface FundRequestService {
 
     /**

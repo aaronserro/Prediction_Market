@@ -39,7 +39,7 @@ public class FundRequestAdminController{
     public FundRequestAdminController(FundRequestServiceImpl fundrequestservice, FundRequestRepository repo)
     {
         this.fundrequestservice=fundrequestservice;
-        this.repo=repo;
+
     }
 @GetMapping("admin/fund-requests")
 public ResponseEntity<List<FundRequestResponse>> listFundRequests(

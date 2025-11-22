@@ -8,6 +8,7 @@ import java.util.UUID;
 
 //import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Sort;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
 
 import com.betting.backend.wallet.dto.FundRequestCreateRequest;
 import com.betting.backend.wallet.dto.FundRequestResponse;
@@ -16,6 +17,7 @@ import com.betting.backend.wallet.model.FundRequestStatus;
 import com.betting.backend.wallet.model.Wallet;
 import com.betting.backend.wallet.Repository.FundRequestRepository;
 import com.betting.backend.wallet.Repository.WalletRepository;
+@Service
 public class FundRequestServiceImpl implements FundRequestService{
     private final FundRequestRepository fundRequestRepository;
     private final WalletRepository walletRepository;
