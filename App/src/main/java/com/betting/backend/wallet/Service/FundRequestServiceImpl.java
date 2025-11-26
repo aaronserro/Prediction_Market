@@ -134,14 +134,23 @@ public class FundRequestServiceImpl implements FundRequestService{
         if (request.getStatus() != FundRequestStatus.PENDING) {
             throw new IllegalStateException("Only PENDING requests can be approved.");
         }
-        request.setStatus(FundRequestStatus.APPROVED);
-        request.setProcessedAt(Instant.now());
-        Long userId = request.getWallet().getUser().getId();
+
+        // Get wallet ID and verify it still exists
+        Long walletId = request.getWallet().getId();
+        Wallet wallet = walletRepository.findById(walletId)
+            .orElseThrow(() -> new IllegalStateException(
+                "Cannot approve: wallet " + walletId + " no longer exists"
+            ));
+
+        Long userId = wallet.getUser().getId();
         Long amountCents = request.getAmountCents();
 
         String idempotencyKey = UUID.randomUUID().toString();
         String refId = "FUND_REQUEST:" + requestId;
         walletService.credit(amountCents, userId, idempotencyKey, refId);
+
+        request.setStatus(FundRequestStatus.APPROVED);
+        request.setProcessedAt(Instant.now());
         FundRequest saved = fundRequestRepository.save(request);
         return toResponse(saved);
 
@@ -161,7 +170,7 @@ public class FundRequestServiceImpl implements FundRequestService{
         if (request.getStatus() != FundRequestStatus.PENDING) {
             throw new IllegalStateException("denyed...");
         }
-        request.setStatus(FundRequestStatus.APPROVED);
+        request.setStatus(FundRequestStatus.REJECTED);
         request.setProcessedAt(Instant.now());
         FundRequest saved = fundRequestRepository.save(request);
         return toResponse(saved);

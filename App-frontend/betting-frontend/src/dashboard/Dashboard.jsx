@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useAuth } from '../auth/AuthContext.jsx';
 
 /**
  * Betting App: Fixed Dashboard
@@ -346,11 +347,7 @@ const games = [
   },
 ];
 
-const userStats = {
-  username: "PlayerOne",
-  balance: 1234.56,
-  rank: "Gold II",
-};
+// Removed hardcoded userStats - now fetched from API
 
 // --- Reusable Components -------------------------------------------------------
 
@@ -437,11 +434,11 @@ function GameCard({ game, icon: Icon }) {
 
 // --- Page Sections -------------------------------------------------------------
 
-function HeaderDashboard() {
+function HeaderDashboard({ username, balance, rank, loading }) {
   const formattedBalance = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(userStats.balance);
+  }).format(balance);
 
   return (
     <section>
@@ -452,7 +449,7 @@ function HeaderDashboard() {
         <div>
           <h1 className="text-2xl font-semibold text-white sm:text-3xl">
             Welcome back,{" "}
-            <span className="text-amber-400">{userStats.username}</span>
+            <span className="text-amber-400">{loading ? "..." : username}</span>
           </h1>
           <p className="text-sm text-zinc-400 sm:text-base">
             Ready to play? Here's your status.
@@ -464,10 +461,10 @@ function HeaderDashboard() {
         <StatCard
           icon={ICONS.wallet}
           title="Balance"
-          value={formattedBalance.replace("$", "")}
+          value={loading ? "..." : formattedBalance.replace("$", "")}
           unit="$"
         />
-        <StatCard icon={ICONS.trophy} title="Rank" value={userStats.rank} />
+        <StatCard icon={ICONS.trophy} title="Rank" value={loading ? "..." : rank} />
       </div>
     </section>
   );
@@ -527,6 +524,70 @@ function GamesSection() {
 // --- Main Page Component -------------------------------------------------------
 
 export default function Home() {
+  const { user, loading: authLoading } = useAuth();
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchWallet() {
+      console.log('[Dashboard] user object:', user);
+      console.log('[Dashboard] authLoading:', authLoading);
+
+      if (authLoading) {
+        console.log('[Dashboard] Still loading auth, waiting...');
+        return;
+      }
+
+      if (!user) {
+        console.log('[Dashboard] No user, setting loading to false');
+        setLoading(false);
+        return;
+      }
+
+      // Try to get user ID from different possible fields
+      const userId = user.id || user.userId || user.username;
+      console.log('[Dashboard] Using userId:', userId);
+
+      if (!userId) {
+        console.error('[Dashboard] No user ID found in user object');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+        const url = `${API_BASE}/api/v1/users/${userId}/wallet`;
+        console.log('[Dashboard] Fetching wallet from:', url);
+
+        const res = await fetch(url, {
+          credentials: "include",
+        });
+
+        console.log('[Dashboard] Wallet response status:', res.status);
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[Dashboard] Wallet data:', data);
+          setWallet(data);
+        } else {
+          const text = await res.text();
+          console.error('[Dashboard] Failed to fetch wallet:', res.status, text);
+        }
+      } catch (err) {
+        console.error('[Dashboard] Error fetching wallet:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchWallet();
+  }, [user, authLoading]);
+
+  const balance = wallet?.balanceCents ? wallet.balanceCents / 100 : 0;
+  const username = user?.username || "User";
+  const rank = "Gold II"; // TODO: fetch from backend if available
+
   return (
     <div className="min-h-dvh flex flex-col bg-[#0f0f14] text-zinc-100">
       <div
@@ -539,7 +600,7 @@ export default function Home() {
 
       <main className="flex-1 w-full pt-[60px]">
         <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:space-y-12">
-          <HeaderDashboard />
+          <HeaderDashboard username={username} balance={balance} rank={rank} loading={loading} />
           <AnnouncementsSection />
           <GamesSection />
         </div>

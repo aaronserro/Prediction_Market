@@ -13,8 +13,10 @@ const [loading, setLoading] = useState(true)
 const refresh = useCallback(async () => {
 try {
 const me = await api.me()
+console.log('[AuthContext] /auth/me response:', me)
 setUser(me?.username ? me : null)
-} catch {
+} catch (err) {
+console.error('[AuthContext] Failed to fetch /auth/me:', err)
 setUser(null)
 } finally {
 setLoading(false)

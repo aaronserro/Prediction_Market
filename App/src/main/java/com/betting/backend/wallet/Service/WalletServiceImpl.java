@@ -104,7 +104,7 @@ public TransferResponse transfer(
 
     @Override
     @Transactional
-    public TransactionResponse credit( Long userid, Long amountCents, String IDEkey, String refid){
+    public TransactionResponse credit(Long amountCents, Long userid, String IDEkey, String refid){
 
         Wallet wallet_added;
         if (userid == null) {
@@ -116,8 +116,8 @@ public TransferResponse transfer(
         if(IDEkey==null||IDEkey.isBlank()){
             throw new BusinessValidationException(IDEkey);
         }
+        // Check idempotency first before loading wallet
         Optional<TransactionResponse> responce = walletTransactionService.findByIdempotencyKey(IDEkey);
-        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
         if(responce.isPresent()){
             TransactionResponse tx = responce.get();
             Wallet callerWallet = walletRepository.findByUser_Id(userid)
@@ -125,41 +125,32 @@ public TransferResponse transfer(
             boolean sameWallet = tx.getWalletId() != null && tx.getWalletId().equals(callerWallet.getId());
             boolean sameAmount = tx.getAmountCents() == amountCents;
             boolean isCredit   = tx.getType() != null && tx.getType().equalsIgnoreCase("CREDIT");
-            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED"); // optional policy
+            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED");
 
-            if (sameWallet && sameAmount && isCredit&&succeeded) {
+            if (sameWallet && sameAmount && isCredit && succeeded) {
                 return tx; // idempotent repeat of the exact same request
-    }
-
-    // same key but different intent → reject
-    throw new DuplicateOperationException(
-        "Idempotency key already used for a different operation (wallet=" +
-        tx.getWalletId() + ", type=" + tx.getType() + ", amountCents=" + tx.getAmountCents() + ")"
-    );
-
-
-
-        }
-        else{
-            //I am now wondering how to credit the wallet
-            if(wallet.isEmpty()){
-                throw new WalletNotFoundException(userid);
             }
-            wallet_added = wallet.get();
-            Long oldBalance = wallet_added.getBalanceCents();
-            Long newBalance = oldBalance +amountCents;
-            wallet_added.setBalanceCents(newBalance);
-            walletRepository.saveAndFlush(wallet_added);
 
-
-            return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
-
-
-
+            // same key but different intent → reject
+            throw new DuplicateOperationException(
+                "Idempotency key already used for a different operation (wallet=" +
+                tx.getWalletId() + ", type=" + tx.getType() + ", amountCents=" + tx.getAmountCents() + ")"
+            );
         }
 
+        // Load wallet for new transaction
+        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
+        if(wallet.isEmpty()){
+            throw new WalletNotFoundException(userid);
+        }
 
+        wallet_added = wallet.get();
+        Long oldBalance = wallet_added.getBalanceCents();
+        Long newBalance = oldBalance + amountCents;
+        wallet_added.setBalanceCents(newBalance);
+        walletRepository.saveAndFlush(wallet_added);
 
+        return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
     }
 
     @Override
@@ -175,56 +166,44 @@ public TransferResponse transfer(
         if(IDEkey==null||IDEkey.isBlank()){
             throw new BusinessValidationException(IDEkey);
         }
+        // Check idempotency first
         Optional<TransactionResponse> responce = walletTransactionService.findByIdempotencyKey(IDEkey);
-        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
-        if (wallet.isEmpty()) {
-        throw new WalletNotFoundException(userid);
-    }
-        wallet_added = wallet.get();
         if(responce.isPresent()){
             TransactionResponse tx = responce.get();
             Wallet callerWallet = walletRepository.findByUser_Id(userid)
             .orElseThrow(()-> new WalletNotFoundException(userid));
             boolean sameWallet = tx.getWalletId() != null && tx.getWalletId().equals(callerWallet.getId());
             boolean sameAmount = tx.getAmountCents() == amountCents;
-            boolean isCredit   = tx.getType() != null && tx.getType().equalsIgnoreCase("CREDIT");
-            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED"); // optional policy
+            boolean isDebit    = tx.getType() != null && tx.getType().equalsIgnoreCase("DEBIT");
+            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED");
 
-            if (sameWallet && sameAmount && isCredit&&succeeded) {
+            if (sameWallet && sameAmount && isDebit && succeeded) {
                 return tx; // idempotent repeat of the exact same request
-    }
+            }
 
             // same key but different intent → reject
             throw new DuplicateOperationException(
                 "Idempotency key already used for a different operation (wallet=" +
                 tx.getWalletId() + ", type=" + tx.getType() + ", amountCents=" + tx.getAmountCents() + ")"
             );
-
-
-
-        }
-        else{
-
-            if(wallet.isEmpty()){
-                throw new WalletNotFoundException(userid);
-            }
-            wallet_added = wallet.get();
-            Long oldBalance = wallet_added.getBalanceCents();
-            if (oldBalance < amountCents.longValue()) {
-                throw new InsufficientFundsException(userid, amountCents, oldBalance);
-            }
-            Long newBalance = oldBalance -amountCents;
-            wallet_added.setBalanceCents(newBalance);
-            walletRepository.saveAndFlush(wallet_added);
-
-
-            return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
-
-
-
         }
 
+        // Load wallet for new transaction
+        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
+        if(wallet.isEmpty()){
+            throw new WalletNotFoundException(userid);
+        }
 
+        wallet_added = wallet.get();
+        Long oldBalance = wallet_added.getBalanceCents();
+        if (oldBalance < amountCents.longValue()) {
+            throw new InsufficientFundsException(userid, amountCents, oldBalance);
+        }
+        Long newBalance = oldBalance - amountCents;
+        wallet_added.setBalanceCents(newBalance);
+        walletRepository.saveAndFlush(wallet_added);
+
+        return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
     }
 
 

@@ -14,14 +14,17 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 
+import com.betting.backend.user.User;
 import com.betting.backend.wallet.Repository.FundRequestRepository;
 import com.betting.backend.wallet.Repository.WalletRepository;
 import com.betting.backend.wallet.Service.FundRequestServiceImpl;
@@ -41,9 +44,9 @@ public class FundRequestAdminController{
         this.fundrequestservice=fundrequestservice;
 
     }
-@GetMapping("admin/fund-requests")
+@GetMapping("/admin/fund-requests")
 public ResponseEntity<List<FundRequestResponse>> listFundRequests(
-    @PathVariable("status") FundRequestStatus status
+    @RequestParam(value = "status", required = false) FundRequestStatus status
 ){
     List<FundRequestResponse> response = fundrequestservice.adminList(status);
     return ResponseEntity.status(HttpStatus.ACCEPTED)
@@ -51,7 +54,7 @@ public ResponseEntity<List<FundRequestResponse>> listFundRequests(
 
 
 }
-@GetMapping("admin/users/{userId}/fund-requests/")
+@GetMapping("/admin/users/{userId}/fund-requests/")
 public ResponseEntity<List<FundRequestResponse>> listFundRequestsByUser(
 @PathVariable("userId") Long pathUserId
 
@@ -74,28 +77,29 @@ public ResponseEntity<FundRequestResponse>findFundRequestsById(
     }
 
 */
-@PostMapping("admin/find-requests/{requestId}/approve")
+@PutMapping("/admin/fund-requests/{requestId}/approve")
 public ResponseEntity <FundRequestResponse> approveRequest(
-    @PathVariable("requestId") Long requestId, Principal principal
+    @PathVariable("requestId") Long requestId,
+    @AuthenticationPrincipal User admin
 ){
     if (requestId==null){
         throw new IllegalArgumentException("requestId cannot be null");
     }
-     Long adminUserId = null; // If you have admin id in Principal, derive it here.
+    Long adminUserId = admin.getId();
 
     FundRequestResponse response = fundrequestservice.approveRequest(requestId, adminUserId);
     return ResponseEntity.ok(response);
 }
 
-@PostMapping("/fund-requests/{requestid}/deny")
-public ResponseEntity<FundRequestResponse> denyRequest(
-            @PathVariable("requestid") Long requestId,
-            Principal principal
+@PutMapping("/admin/fund-requests/{requestId}/reject")
+public ResponseEntity<FundRequestResponse> rejectRequest(
+            @PathVariable("requestId") Long requestId,
+            @AuthenticationPrincipal User admin
     ) {
         if (requestId == null) {
             throw new IllegalArgumentException("requestId cannot be null");
         }
-        Long adminUserId = null; // derive from principal if needed
+        Long adminUserId = admin.getId();
 
         FundRequestResponse response = fundrequestservice.denyRequest(requestId, adminUserId);
         return ResponseEntity.ok(response);

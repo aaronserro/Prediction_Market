@@ -1,6 +1,6 @@
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
-
 const headerStyle = {
   position: 'fixed',
   top: 0,
@@ -74,6 +74,15 @@ export default function Navbar() {
   const nav = useNavigate();
   const { pathname } = useLocation();
 
+  // Extract roles from user object
+  const roles = user?.roles ?? [];
+  const isAdmin = roles.includes('ROLE_ADMIN') || roles.includes('ADMIN');
+
+  // Debug logging
+  console.log('[Navbar] user:', user);
+  console.log('[Navbar] roles:', roles);
+  console.log('[Navbar] isAdmin:', isAdmin);
+
   // Hide navbar on auth pages
   if (pathname === '/login' || pathname === '/signup') return null;
 
@@ -87,13 +96,20 @@ export default function Navbar() {
       <nav style={navStyle}>
         {/* Left: Brand + Primary Nav (when logged in) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link to={user ? '/dashboard' : '/login'} style={brandStyle}>Betting App</Link>
+          <Link to={user ? '/dashboard' : '/login'} style={brandStyle}>
+            Betting App
+          </Link>
           {user && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <NavItem to="/dashboard" label="Dashboard" pathname={pathname} />
               <NavItem to="/games" label="Games" pathname={pathname} />
               <NavItem to="/partys" label="Partys" pathname={pathname} />
-              <NavItem to="settings" label="User Settings" pathname={pathname} />
+              <NavItem to="/settings" label="User Settings" pathname={pathname} />
+
+              {/* ✅ Admin-only link */}
+              {isAdmin && (
+                <NavItem to="/admin" label="Admin Dashboard" pathname={pathname} />
+              )}
             </div>
           )}
         </div>
@@ -102,13 +118,21 @@ export default function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {user ? (
             <>
-              <span style={{ color: '#ddd', fontSize: 14 }}>Hi, {user.username}</span>
-              <button onClick={onLogout} style={btnStyle}>Logout</button>
+              <span style={{ color: '#ddd', fontSize: 14 }}>
+                Hi, {user.username}
+              </span>
+              <button onClick={onLogout} style={btnStyle}>
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <Link to="/login" style={{ ...linkInactive, marginLeft: 0 }}>Login</Link>
-              <Link to="/signup" style={btnStyle}>Sign up</Link>
+              <Link to="/login" style={{ ...linkInactive, marginLeft: 0 }}>
+                Login
+              </Link>
+              <Link to="/signup" style={btnStyle}>
+                Sign up
+              </Link>
             </>
           )}
         </div>
