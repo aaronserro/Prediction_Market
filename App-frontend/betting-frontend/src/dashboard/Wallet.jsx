@@ -130,7 +130,7 @@ const refreshRequests = useCallback(async () => {
     () => centsToCAD(wallet?.balanceCents || 0),
     [wallet]
   );
-/*
+
   async function onRequestFunds() {
     try {
       setSubmitting(true);
@@ -153,7 +153,7 @@ const refreshRequests = useCallback(async () => {
     } finally {
       setSubmitting(false);
     }
-  }*/
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -302,7 +302,7 @@ const refreshRequests = useCallback(async () => {
               </div>
 
               <button
-                //onClick={onRequestFunds}
+                onClick={onRequestFunds}
                 disabled={submitting}
                 className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 py-3 font-semibold text-white transition-all hover:from-indigo-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >

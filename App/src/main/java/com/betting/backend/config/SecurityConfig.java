@@ -43,14 +43,7 @@ public class SecurityConfig {
   @Bean
   UserDetailsService userDetailsService(UserRepository repo) {
     return username -> repo.findByUsername(username)
-      .map(u -> org.springframework.security.core.userdetails.User // avoid clash with your entity
-        .withUsername(u.getUsername())
-        .password(u.getPasswordHash())
-        // Map Set<String> roles to String[] for authorities(...)
-        .authorities(u.getRoles() == null
-            ? new String[] {}
-            : u.getRoles().toArray(new String[0]))
-        .build())
+      .map(u -> (UserDetails) u) // User now implements UserDetails
       .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
   }
 
