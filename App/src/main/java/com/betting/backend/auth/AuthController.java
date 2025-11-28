@@ -61,7 +61,7 @@ public class AuthController {
     // Auto-login after signup (optional)
     String token = jwt.generate(u.getUsername());
     return ResponseEntity.ok()
-      .header("Set-Cookie", authCookie(token, false).toString())
+      .header("Set-Cookie", authCookie(token).toString())
       .body(new AuthResponse(u.getUsername()));
   }
 
@@ -70,28 +70,54 @@ public class AuthController {
     authMgr.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
     String token = jwt.generate(req.username());
     return ResponseEntity.ok()
-      .header("Set-Cookie", authCookie(token, false).toString())
+      .header("Set-Cookie", authCookie(token).toString())
       .body(new AuthResponse(req.username()));
   }
 
   @PostMapping("/logout")
   public ResponseEntity<?> logout() {
-    // Clear cookie
+    boolean isProd = System.getenv("SPRING_PROFILES_ACTIVE") != null
+                     && System.getenv("SPRING_PROFILES_ACTIVE").contains("prod");
+
+    ResponseCookie.ResponseCookieBuilder clearCookie = ResponseCookie.from(AUTH_COOKIE, "")
+        .httpOnly(true)
+        .path("/")
+        .maxAge(0);
+
+    if (isProd) {
+      clearCookie.secure(true).sameSite("None").domain(".pryzm.ca");
+    } else {
+      clearCookie.secure(false).sameSite("Lax");
+    }
+
     return ResponseEntity.ok()
-      .header("Set-Cookie", ResponseCookie.from(AUTH_COOKIE, "")
-        .httpOnly(true).secure(false).sameSite("Lax").path("/").maxAge(0).build().toString())
+      .header("Set-Cookie", clearCookie.build().toString())
       .build();
   }
 
 
 
-  private ResponseCookie authCookie(String token, boolean prod) {
-    return ResponseCookie.from(AUTH_COOKIE, token)
+  private ResponseCookie authCookie(String token) {
+    // Detect production by checking if running on HTTPS (api.pryzm.ca)
+    boolean isProd = System.getenv("SPRING_PROFILES_ACTIVE") != null
+                     && System.getenv("SPRING_PROFILES_ACTIVE").contains("prod");
+
+    ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(AUTH_COOKIE, token)
       .httpOnly(true)
-      .secure(false)              // set true with HTTPS
-      .sameSite("Lax")            // for dev; use "None" + secure(true) if cross-site
       .path("/")
-      .maxAge(60 * 60 * 12)
-      .build();
+      .maxAge(60 * 60 * 12);
+
+    if (isProd) {
+      // Production: secure cookie with cross-site support and domain set
+      builder.secure(true)
+             .sameSite("None")
+             .domain(".pryzm.ca");  // Share cookie across subdomains
+    } else {
+      // Development: non-secure cookie for localhost
+      builder.secure(false)
+             .sameSite("Lax");
+    }
+
+    return builder.build();
   }
 }
