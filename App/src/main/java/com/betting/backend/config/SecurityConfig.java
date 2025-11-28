@@ -38,7 +38,9 @@ public class SecurityConfig {
   private static final String AUTH_COOKIE = "betauth";
 
   @Bean
-  PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+  PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
   @Bean
   UserDetailsService userDetailsService(UserRepository repo) {
@@ -59,10 +61,20 @@ public class SecurityConfig {
       .cors(cors -> cors.configurationSource(corsConfig()))
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
+        // 🔑 Allow preflight requests
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+        // Public auth endpoints
         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login").permitAll()
-        .requestMatchers("/api/v1/admin/**" ).hasAuthority("ROLE_ADMIN")
+
+        // Admin endpoints
+        .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
+
+        // Public GETs
         .requestMatchers(HttpMethod.GET, "/auth/me").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
+
+        // Everything else requires auth
         .anyRequest().authenticated()
       )
       .formLogin(form -> form.disable())
@@ -71,33 +83,36 @@ public class SecurityConfig {
     return http.build();
   }
 
-CorsConfigurationSource corsConfig() {
-  var cfg = new CorsConfiguration();
+  // CORS configuration for allowing frontend origins
+  CorsConfigurationSource corsConfig() {
+    var cfg = new CorsConfiguration();
 
-  // Frontend origins allowed to call your API
-  cfg.setAllowedOrigins(List.of(
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:3000",
-      "https://app.pryzm.ca"        // 👈 production frontend
-  ));
+    // ✅ Frontend origins allowed to call your API
+    cfg.setAllowedOrigins(List.of(
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "https://app.pryzm.ca",     // existing prod frontend
+        "https://www.pryzm.ca",     // 👈 your live site (causing the current error)
+        "https://pryzm.ca"          // optional bare domain, useful if you ever use it
+    ));
 
-  cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-  // Be a bit more permissive here to avoid preflight issues
-  cfg.setAllowedHeaders(List.of(
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept"
-  ));
+    cfg.setAllowedHeaders(List.of(
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Accept"
+    ));
 
-  cfg.setAllowCredentials(true);
+    // You’re using a JWT cookie -> must allow credentials
+    cfg.setAllowCredentials(true);
 
-  var source = new UrlBasedCorsConfigurationSource();
-  source.registerCorsConfiguration("/**", cfg);
-  return source;
-}
+    var source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", cfg);
+    return source;
+  }
 
   // --- Reads JWT from HTTP-only cookie and authenticates the request ---
   static class JwtCookieFilter extends OncePerRequestFilter {
@@ -105,7 +120,8 @@ CorsConfigurationSource corsConfig() {
     private final UserDetailsService uds;
 
     JwtCookieFilter(JwtUtil jwt, UserDetailsService uds) {
-      this.jwt = jwt; this.uds = uds;
+      this.jwt = jwt;
+      this.uds = uds;
     }
 
     @Override
