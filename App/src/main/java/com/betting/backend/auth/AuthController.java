@@ -83,33 +83,7 @@ public class AuthController {
       .build();
   }
 
-  // TEMPORARY: Add ADMIN role to current user (for development only)
-  @PostMapping("/make-admin")
-  public ResponseEntity<?> makeAdmin(Authentication auth) {
-    if (auth == null || !auth.isAuthenticated()) {
-      return ResponseEntity.status(401).body("Not authenticated");
-    }
-    
-    String username = auth.getName();
-    User user = users.findByUsername(username).orElseThrow();
-    
-    // Add ROLE_ADMIN to existing roles
-    Set<String> roles = user.getRoles();
-    if (roles == null) {
-      roles = Set.of("ROLE_USER", "ROLE_ADMIN");
-    } else {
-      roles = new java.util.HashSet<>(roles);
-      roles.add("ROLE_ADMIN");
-    }
-    user.setRoles(roles);
-    users.save(user);
-    
-    // Generate new token with updated roles
-    String token = jwt.generate(user.getUsername());
-    return ResponseEntity.ok()
-      .header("Set-Cookie", authCookie(token, false).toString())
-      .body("Admin role added. Please refresh.");
-  }
+
 
   private ResponseCookie authCookie(String token, boolean prod) {
     return ResponseCookie.from(AUTH_COOKIE, token)

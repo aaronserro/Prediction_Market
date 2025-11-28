@@ -71,16 +71,33 @@ public class SecurityConfig {
     return http.build();
   }
 
-  CorsConfigurationSource corsConfig() {
-    var cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"));
-    cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-    cfg.setAllowedHeaders(List.of("Content-Type","Authorization"));
-    cfg.setAllowCredentials(true);
-    var source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", cfg);
-    return source;
-  }
+CorsConfigurationSource corsConfig() {
+  var cfg = new CorsConfiguration();
+
+  // Frontend origins allowed to call your API
+  cfg.setAllowedOrigins(List.of(
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:3000",
+      "https://app.pryzm.ca"        // 👈 production frontend
+  ));
+
+  cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+
+  // Be a bit more permissive here to avoid preflight issues
+  cfg.setAllowedHeaders(List.of(
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept"
+  ));
+
+  cfg.setAllowCredentials(true);
+
+  var source = new UrlBasedCorsConfigurationSource();
+  source.registerCorsConfiguration("/**", cfg);
+  return source;
+}
 
   // --- Reads JWT from HTTP-only cookie and authenticates the request ---
   static class JwtCookieFilter extends OncePerRequestFilter {
