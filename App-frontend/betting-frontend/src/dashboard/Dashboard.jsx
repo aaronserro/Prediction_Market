@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from '../auth/AuthContext.jsx';
+import { Link } from 'react-router-dom';
 
 /**
  * Betting App: Fixed Dashboard
@@ -351,24 +352,57 @@ const games = [
 
 // --- Reusable Components -------------------------------------------------------
 
-function StatCard({ icon: Icon, title, value, unit }) {
+function StatCard({ icon: Icon, title, value, unit, color = "amber", trend }) {
+  const colorClasses = {
+    amber: "from-amber-500/20 to-amber-600/20 border-amber-500/30 shadow-amber-500/20",
+    green: "from-emerald-500/20 to-emerald-600/20 border-emerald-500/30 shadow-emerald-500/20",
+    purple: "from-purple-500/20 to-purple-600/20 border-purple-500/30 shadow-purple-500/20",
+    blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 shadow-blue-500/20"
+  };
+
+  const iconColorClasses = {
+    amber: "from-amber-400 to-amber-600",
+    green: "from-emerald-400 to-emerald-600",
+    purple: "from-purple-400 to-purple-600",
+    blue: "from-blue-400 to-blue-600"
+  };
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-zinc-800/70 bg-black/30 p-5 shadow-xl backdrop-blur-sm">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
-          <Icon className="h-6 w-6" />
+    <motion.div
+      whileHover={{ scale: 1.02, y: -4 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br backdrop-blur-xl p-6 shadow-2xl ${colorClasses[color]}`}
+    >
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 opacity-20">
+        <div className={`absolute inset-0 bg-gradient-to-r ${iconColorClasses[color]} blur-3xl`} />
+      </div>
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${iconColorClasses[color]} flex items-center justify-center shadow-lg`}>
+            <Icon className="w-7 h-7 text-slate-900" />
+          </div>
+          {trend && (
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${
+              trend > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+            }`}>
+              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+            </div>
+          )}
         </div>
-        <div>
-          <div className="text-sm font-medium uppercase tracking-wider text-zinc-400">
-            {title}
-          </div>
-          <div className="text-2xl font-semibold text-white">
-            {unit}
-            {value}
-          </div>
+
+        <div className="text-sm font-medium uppercase tracking-wider text-slate-400 mb-2">
+          {title}
+        </div>
+        <div className="text-3xl font-bold text-white flex items-baseline gap-1">
+          {unit}<span className="tabular-nums">{value}</span>
         </div>
       </div>
-    </div>
+
+      {/* Decorative corner accent */}
+      <div className={`absolute -bottom-8 -right-8 w-32 h-32 bg-gradient-to-br ${iconColorClasses[color]} opacity-10 rounded-full blur-2xl`} />
+    </motion.div>
   );
 }
 
@@ -395,39 +429,98 @@ function AnnouncementCard({ item, isClone = false }) {
     <motion.a
       key={isClone ? `clone-${item.id}` : item.id}
       href={item.href}
-      className="group relative min-w-[24rem] max-w-[36rem] overflow-hidden rounded-xl border border-zinc-800/80 bg-black/30 p-4 backdrop-blur-md transition-all duration-300 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 sm:min-w-[28rem] lg:min-w-[34rem]"
+      whileHover={{ y: -2 }}
+      className="group relative min-w-[24rem] max-w-[36rem] overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-5 backdrop-blur-xl transition-all duration-300 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/20 sm:min-w-[28rem] lg:min-w-[34rem]"
     >
-      <div className="flex items-center gap-2.5">
-        <ICONS.megaphone className="h-4 w-4 text-amber-400" />
-        <div className="text-[0.7rem] font-medium uppercase tracking-wider text-amber-400">
-          Announcement
+      {/* Gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+            <ICONS.megaphone className="h-5 w-5 text-slate-900" />
+          </div>
+          <div className="flex flex-col">
+            <div className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              Announcement
+            </div>
+            <div className="text-xs text-slate-500">Just now</div>
+          </div>
+        </div>
+
+        <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-amber-300 transition-colors">
+          {item.title}
+        </h3>
+        <p className="text-sm text-slate-400 line-clamp-2 mb-3">
+          {item.body}
+        </p>
+
+        <div className="flex items-center gap-2 text-sm font-semibold text-amber-400 group-hover:gap-3 transition-all">
+          Read More
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
         </div>
       </div>
-      <div className="mt-2 text-base font-medium text-white line-clamp-1">
-        {item.title}
-      </div>
-      <div className="text-sm text-zinc-300/90 line-clamp-2">{item.body}</div>
     </motion.a>
   );
 }
 
 function GameCard({ game, icon: Icon }) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-      className="group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-2xl border border-zinc-800/70 bg-black/30 p-5 text-left shadow-xl backdrop-blur-sm transition-all duration-300 hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-6 text-left shadow-2xl backdrop-blur-xl hover:border-indigo-500/50 hover:shadow-indigo-500/20"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 transition-all duration-300 group-hover:scale-105 group-hover:text-indigo-300">
-        <Icon className="h-7 w-7" />
+      {/* Animated background gradient */}
+      <motion.div
+        animate={{ opacity: isHovered ? 0.3 : 0 }}
+        className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20"
+      />
+
+      {/* Icon with glow effect */}
+      <div className="relative z-10">
+        <motion.div
+          animate={{ rotate: isHovered ? [0, -10, 10, -10, 0] : 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-2xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity" />
+          <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl">
+            <Icon className="w-8 h-8 text-white" />
+          </div>
+        </motion.div>
       </div>
 
-      <h3 className="mt-4 text-lg font-semibold text-white">{game.name}</h3>
-      <p className="mt-1 text-sm text-zinc-300/90">{game.description}</p>
+      <div className="relative z-10 w-full mt-5">
+        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-300 transition-colors">
+          {game.name}
+        </h3>
+        <p className="text-sm text-slate-400 mb-4 line-clamp-2">
+          {game.description}
+        </p>
 
-      <div className="mt-4 w-full flex-1 text-xs font-medium tracking-wide uppercase text-indigo-400 transition-all duration-300 group-hover:text-indigo-300">
-        Play now →
+        <motion.div
+          animate={{ x: isHovered ? 5 : 0 }}
+          className="flex items-center gap-2 text-sm font-semibold text-indigo-400 group-hover:text-indigo-300"
+        >
+          Play Now
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </motion.div>
       </div>
+
+      {/* Corner decoration */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
     </motion.div>
   );
 }
@@ -441,31 +534,121 @@ function HeaderDashboard({ username, balance, rank, loading }) {
   }).format(balance);
 
   return (
-    <section>
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800/50">
-          <ICONS.user className="h-6 w-6 text-zinc-400" />
+    <section className="space-y-8">
+      {/* Welcome Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative overflow-hidden rounded-3xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50 p-8 backdrop-blur-xl shadow-2xl"
+      >
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-white sm:text-3xl">
-            Welcome back,{" "}
-            <span className="text-amber-400">{loading ? "..." : username}</span>
-          </h1>
-          <p className="text-sm text-zinc-400 sm:text-base">
-            Ready to play? Here's your status.
-          </p>
-        </div>
-      </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          {/* Avatar */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-600 rounded-2xl blur-xl opacity-50 animate-pulse" />
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl">
+              <span className="text-3xl font-bold text-slate-900">
+                {loading ? "..." : username.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            {/* Online indicator */}
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-lg border-4 border-slate-900 shadow-lg">
+              <div className="w-full h-full bg-emerald-400 rounded animate-ping" />
+            </div>
+          </motion.div>
+
+          {/* Welcome Text */}
+          <div className="flex-1">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                Welcome back,{" "}
+                <span className="bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
+                  {loading ? "..." : username}
+                </span>
+                <motion.span
+                  animate={{ rotate: [0, 14, -8, 14, 0] }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="inline-block ml-2"
+                >
+                  👋
+                </motion.span>
+              </h1>
+              <p className="text-slate-400 text-lg">
+                Ready to make your predictions? Let's dive in!
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex gap-3"
+          >
+            <Link
+              to="/wallet"
+              className="px-4 py-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-400 font-medium transition-all flex items-center gap-2"
+            >
+              <span>💰</span>
+              <span className="hidden sm:inline">Add Funds</span>
+            </Link>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Stats Grid */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+      >
         <StatCard
           icon={ICONS.wallet}
           title="Balance"
           value={loading ? "..." : formattedBalance.replace("$", "")}
           unit="$"
+          color="amber"
+          trend={5.2}
         />
-        <StatCard icon={ICONS.trophy} title="Rank" value={loading ? "..." : rank} />
-      </div>
+        <StatCard
+          icon={ICONS.trophy}
+          title="Rank"
+          value={loading ? "..." : rank}
+          color="purple"
+        />
+        <StatCard
+          icon={ICONS.user}
+          title="Active Bets"
+          value={loading ? "..." : "12"}
+          color="blue"
+          trend={8.5}
+        />
+        <StatCard
+          icon={() => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+          title="Win Rate"
+          value={loading ? "..." : "68"}
+          unit="%"
+          color="green"
+          trend={3.1}
+        />
+      </motion.div>
     </section>
   );
 }
@@ -474,23 +657,32 @@ function AnnouncementsSection({ items = defaultAnnouncements }) {
   const marquee = useMemo(() => [...items, ...items], [items]);
 
   return (
-    <section className="relative">
-      <div className="pb-5 sm:pb-6">
-        <SectionHeader
-          title="Announcements"
-          subtitle="News, status, and new drops"
-        />
+    <motion.section
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.45, duration: 0.6 }}
+      className="relative"
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+            📢 Latest Updates
+          </h2>
+          <p className="mt-2 text-slate-400 text-lg">
+            Stay informed with the latest news
+          </p>
+        </div>
       </div>
 
       {/* Container with controlled overflow */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-2xl">
         {/* Gradient fade-out masks */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-[#0f0f14] via-[#0f0f14] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-[#0f0f14] via-[#0f0f14] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#0f0f14] via-[#0f0f14] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#0f0f14] via-[#0f0f14] to-transparent" />
 
         {/* Marquee Track */}
-        <div className="group py-1">
-          <div className="flex animate-[marquee_30s_linear_infinite] gap-6 will-change-transform group-hover:[animation-play-state:paused]">
+        <div className="group py-2">
+          <div className="flex animate-[marquee_40s_linear_infinite] gap-6 will-change-transform group-hover:[animation-play-state:paused]">
             {marquee.map((a, idx) => (
               <AnnouncementCard
                 key={`${a.id}-${idx}`}
@@ -501,23 +693,56 @@ function AnnouncementsSection({ items = defaultAnnouncements }) {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
 function GamesSection() {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-zinc-800/80 bg-gradient-to-b from-black/20 via-black/30 to-black/50 shadow-2xl backdrop-blur-xl">
-      <div className="p-5 sm:p-6">
-        <SectionHeader title="Game Lobby" subtitle="Pick a mode to start playing" />
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-5">
-          {games.map((g) => {
-            const Icon = GAME_ICONS[g.key] || ICONS.poker;
-            return <GameCard key={g.key} game={g} icon={Icon} />;
-          })}
+    <motion.section
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.5, duration: 0.6 }}
+      className="relative"
+    >
+      <div className="mb-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              🎮 Game Lobby
+            </h2>
+            <p className="mt-2 text-slate-400 text-lg">
+              Choose your game and start winning
+            </p>
+          </div>
+          <Link
+            to="/games"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2"
+          >
+            View All
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </Link>
         </div>
       </div>
-    </section>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {games.map((g, idx) => {
+          const Icon = GAME_ICONS[g.key] || ICONS.poker;
+          return (
+            <motion.div
+              key={g.key}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 + idx * 0.05 }}
+            >
+              <GameCard game={g} icon={Icon} />
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.section>
   );
 }
 
@@ -589,25 +814,62 @@ export default function Home() {
   const rank = "Gold II"; // TODO: fetch from backend if available
 
   return (
-    <div className="min-h-dvh flex flex-col bg-[#0f0f14] text-zinc-100">
-      <div
-        className="fixed inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.2), transparent 80%), radial-gradient(1000px 500px at 90% -20%, rgba(217, 70, 239, 0.15), transparent 80%), #0f0f14",
-        }}
-      />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-x-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        {/* Base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/50 via-slate-900 to-purple-950/50" />
 
-      <main className="flex-1 w-full pt-[60px]">
-        <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:space-y-12">
+        {/* Animated orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000" />
+
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }} />
+      </div>
+
+      <main className="flex-1 w-full pt-24 pb-12">
+        <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
           <HeaderDashboard username={username} balance={balance} rank={rank} loading={loading} />
           <AnnouncementsSection />
           <GamesSection />
         </div>
       </main>
 
+      {/* Footer */}
+      <motion.footer
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="relative border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-xl py-8"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-slate-400 text-sm">
+              © 2025 Pryzm. All rights reserved.
+            </p>
+            <div className="flex items-center gap-6">
+              <Link to="/terms" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
+                Terms
+              </Link>
+              <Link to="/privacy" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
+                Privacy
+              </Link>
+              <Link to="/support" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
+                Support
+              </Link>
+            </div>
+          </div>
+        </div>
+      </motion.footer>
+
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
         body {
           font-family: 'Inter', sans-serif;
@@ -616,6 +878,43 @@ export default function Home() {
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.1; }
+          50% { opacity: 0.2; }
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+
+        /* Smooth scrolling */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+          background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+          background: #334155;
+          border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+          background: #475569;
         }
       `}</style>
     </div>
