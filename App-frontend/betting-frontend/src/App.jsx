@@ -8,12 +8,15 @@ import Navbar from './components/Navbar.jsx';
 import Settings from './dashboard/Settings.jsx';
 import Wallet from './dashboard/Wallet.jsx';
 import AdminDashboard from './dashboard/admin/AdminDashboard.jsx';
+import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
+import RootRedirect from './components/RootRedirect.jsx';
 export default function App() {
   return (
     <AuthProvider>
       <div style={{ minHeight: '100vh', width: '100%' }}>
         <Navbar />
         <Routes>
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route
@@ -27,6 +30,7 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

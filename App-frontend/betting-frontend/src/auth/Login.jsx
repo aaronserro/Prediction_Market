@@ -36,7 +36,20 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
-    try { await login(form.username.trim(), form.password); nav('/dashboard'); }
+    try {
+      const result = await login(form.username.trim(), form.password);
+
+      // Check if user is admin and redirect accordingly
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const meRes = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+      if (meRes.ok) {
+        const userData = await meRes.json();
+        const isAdmin = userData?.roles?.includes('ROLE_ADMIN') || userData?.roles?.includes('ADMIN');
+        nav(isAdmin ? '/admin' : '/dashboard');
+      } else {
+        nav('/dashboard');
+      }
+    }
     catch (err) { setError(err.message || 'Invalid credentials'); }
     finally { setLoading(false); }
   };

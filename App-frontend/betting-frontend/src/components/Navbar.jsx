@@ -83,8 +83,9 @@ export default function Navbar() {
   console.log('[Navbar] roles:', roles);
   console.log('[Navbar] isAdmin:', isAdmin);
 
-  // Hide navbar on auth pages
+  // Hide navbar on auth pages and admin pages
   if (pathname === '/login' || pathname === '/signup') return null;
+  if (pathname.startsWith('/admin')) return null;
 
   const onLogout = async () => {
     await logout();
