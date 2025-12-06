@@ -263,17 +263,6 @@ const ICONS = {
   ),
 };
 
-const GAME_ICONS = {
-  blackjack: ICONS.blackjack,
-  roulette: ICONS.roulette,
-  poker: ICONS.poker,
-  sudoku: ICONS.sudoku,
-  battleship: ICONS.battleship,
-  twenty48: ICONS.twenty48,
-  wordsearch: ICONS.wordsearch,
-  chess: ICONS.chess,
-};
-
 // --- Mock Data -----------------------------------------------------------------
 
 const defaultAnnouncements = [
@@ -297,54 +286,78 @@ const defaultAnnouncements = [
   },
 ];
 
-const games = [
+const markets = [
   {
-    key: "blackjack",
-    name: "Blackjack",
-    path: "/games/blackjack",
-    description: "Beat the dealer. Smart hints on.",
+    id: 1,
+    title: "2024 US Presidential Election",
+    activeUsers: 12534,
+    volume: 2847650,
+    closeDate: "2024-11-05T20:00:00Z",
+    category: "Politics",
+    currentLeader: "YES - 67%",
   },
   {
-    key: "roulette",
-    name: "Roulette",
-    path: "/games/roulette",
-    description: "Inside/outside bets with history.",
+    id: 2,
+    title: "Bitcoin Price Above $100K by EOY 2025?",
+    activeUsers: 8921,
+    volume: 1456320,
+    closeDate: "2025-12-31T23:59:00Z",
+    category: "Crypto",
+    currentLeader: "YES - 58%",
   },
   {
-    key: "poker",
-    name: "Poker",
-    path: "/games/poker",
-    description: "Texas Hold'em vs CPU (beta).",
+    id: 3,
+    title: "Super Bowl LIX Winner",
+    activeUsers: 15678,
+    volume: 3245890,
+    closeDate: "2025-02-09T18:30:00Z",
+    category: "Sports",
+    currentLeader: "Chiefs - 34%",
   },
   {
-    key: "sudoku",
-    name: "Sudoku",
-    path: "/games/sudoku",
-    description: "Generator, solver, and validator.",
+    id: 4,
+    title: "Fed Interest Rate Decision - March 2025",
+    activeUsers: 5432,
+    volume: 987450,
+    closeDate: "2025-03-20T14:00:00Z",
+    category: "Economics",
+    currentLeader: "Hold - 52%",
   },
   {
-    key: "battleship",
-    name: "Battleship",
-    path: "/games/battleship",
-    description: "Three AI levels, fog of war.",
+    id: 5,
+    title: "Next iPhone Release Features AI?",
+    activeUsers: 6789,
+    volume: 1234560,
+    closeDate: "2025-09-15T17:00:00Z",
+    category: "Technology",
+    currentLeader: "YES - 81%",
   },
   {
-    key: "twenty48",
-    name: "2048",
-    path: "/games/2048",
-    description: "Smooth swipes, combo tracker.",
+    id: 6,
+    title: "Tesla Stock Above $300 by Q2 2025?",
+    activeUsers: 9876,
+    volume: 2134890,
+    closeDate: "2025-06-30T16:00:00Z",
+    category: "Stocks",
+    currentLeader: "NO - 54%",
   },
   {
-    key: "wordsearch",
-    name: "Word Search",
-    path: "/games/word-search",
-    description: "Daily boards, ranked mode.",
+    id: 7,
+    title: "Will Ethereum Merge 2.0 Launch This Year?",
+    activeUsers: 4532,
+    volume: 876540,
+    closeDate: "2025-12-31T23:59:00Z",
+    category: "Crypto",
+    currentLeader: "NO - 61%",
   },
   {
-    key: "chess",
-    name: "Chess",
-    path: "/games/chess",
-    description: "PvP only — spectate coming soon.",
+    id: 8,
+    title: "NBA MVP 2024-2025 Season",
+    activeUsers: 11234,
+    volume: 1987650,
+    closeDate: "2025-06-15T20:00:00Z",
+    category: "Sports",
+    currentLeader: "Jokić - 42%",
   },
 ];
 
@@ -466,8 +479,43 @@ function AnnouncementCard({ item, isClone = false }) {
   );
 }
 
-function GameCard({ game, icon: Icon }) {
+function MarketCard({ market }) {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Format volume as currency
+  const formattedVolume = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(market.volume);
+
+  // Format active users with commas
+  const formattedUsers = new Intl.NumberFormat("en-US").format(market.activeUsers);
+
+  // Format close date
+  const closeDate = new Date(market.closeDate);
+  const formattedDate = closeDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const formattedTime = closeDate.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  // Category color mapping
+  const categoryColors = {
+    Politics: "from-blue-500 to-blue-600",
+    Crypto: "from-amber-500 to-amber-600",
+    Sports: "from-green-500 to-green-600",
+    Economics: "from-purple-500 to-purple-600",
+    Technology: "from-cyan-500 to-cyan-600",
+    Stocks: "from-pink-500 to-pink-600",
+  };
+
+  const categoryColor = categoryColors[market.category] || "from-indigo-500 to-indigo-600";
 
   return (
     <motion.div
@@ -478,41 +526,77 @@ function GameCard({ game, icon: Icon }) {
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-6 text-left shadow-2xl backdrop-blur-xl hover:border-indigo-500/50 hover:shadow-indigo-500/20"
+      className="group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-6 text-left shadow-2xl backdrop-blur-xl hover:border-amber-500/50 hover:shadow-amber-500/20"
     >
       {/* Animated background gradient */}
       <motion.div
         animate={{ opacity: isHovered ? 0.3 : 0 }}
-        className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20"
+        className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-amber-600/20"
       />
 
-      {/* Icon with glow effect */}
-      <div className="relative z-10">
-        <motion.div
-          animate={{ rotate: isHovered ? [0, -10, 10, -10, 0] : 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-2xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity" />
-          <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl">
-            <Icon className="w-8 h-8 text-white" />
-          </div>
-        </motion.div>
+      {/* Category badge */}
+      <div className="relative z-10 mb-3">
+        <div className={`px-3 py-1 rounded-lg bg-gradient-to-r ${categoryColor} text-white text-xs font-bold shadow-lg`}>
+          {market.category}
+        </div>
       </div>
 
-      <div className="relative z-10 w-full mt-5">
-        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-300 transition-colors">
-          {game.name}
+      <div className="relative z-10 w-full">
+        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-amber-300 transition-colors line-clamp-2 min-h-[3.5rem]">
+          {market.title}
         </h3>
-        <p className="text-sm text-slate-400 mb-4 line-clamp-2">
-          {game.description}
-        </p>
+
+        {/* Current Leader - Compact Display */}
+        <div className="mb-4 flex justify-center">
+          <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30">
+            <span className="text-sm font-bold text-amber-400">{market.currentLeader}</span>
+          </div>
+        </div>
+
+        {/* Market stats */}
+        <div className="space-y-3 mb-4">
+          {/* Active Users */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <span className="text-sm">Active Users</span>
+            </div>
+            <span className="text-sm font-semibold text-white">{formattedUsers}</span>
+          </div>
+
+          {/* Volume */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm">Volume</span>
+            </div>
+            <span className="text-sm font-semibold text-emerald-400">{formattedVolume}</span>
+          </div>
+
+          {/* Close Date */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm">Closes</span>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-semibold text-white">{formattedDate}</div>
+              <div className="text-xs text-slate-400">{formattedTime}</div>
+            </div>
+          </div>
+        </div>
 
         <motion.div
           animate={{ x: isHovered ? 5 : 0 }}
-          className="flex items-center gap-2 text-sm font-semibold text-indigo-400 group-hover:text-indigo-300"
+          className="flex items-center gap-2 text-sm font-semibold text-amber-400 group-hover:text-amber-300 pt-2 border-t border-slate-700/50"
         >
-          Play Now
+          View Market
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
@@ -520,7 +604,7 @@ function GameCard({ game, icon: Icon }) {
       </div>
 
       {/* Corner decoration */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-amber-600/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
     </motion.div>
   );
 }
@@ -697,7 +781,7 @@ function AnnouncementsSection({ items = defaultAnnouncements }) {
   );
 }
 
-function GamesSection() {
+function ActiveMarketsSection() {
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -709,15 +793,15 @@ function GamesSection() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              🎮 Game Lobby
+              📈 Active Markets
             </h2>
             <p className="mt-2 text-slate-400 text-lg">
-              Choose your game and start winning
+              Trade on the outcomes of real-world events
             </p>
           </div>
           <Link
-            to="/games"
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2"
+            to="/markets"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-lg shadow-amber-500/30 transition-all flex items-center gap-2"
           >
             View All
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -728,19 +812,16 @@ function GamesSection() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {games.map((g, idx) => {
-          const Icon = GAME_ICONS[g.key] || ICONS.poker;
-          return (
-            <motion.div
-              key={g.key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + idx * 0.05 }}
-            >
-              <GameCard game={g} icon={Icon} />
-            </motion.div>
-          );
-        })}
+        {markets.map((market, idx) => (
+          <motion.div
+            key={market.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 + idx * 0.05 }}
+          >
+            <MarketCard market={market} />
+          </motion.div>
+        ))}
       </div>
     </motion.section>
   );
@@ -837,7 +918,7 @@ export default function Home() {
         <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
           <HeaderDashboard username={username} balance={balance} rank={rank} loading={loading} />
           <AnnouncementsSection />
-          <GamesSection />
+          <ActiveMarketsSection />
         </div>
       </main>
 
