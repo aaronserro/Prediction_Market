@@ -10,13 +10,29 @@ import Wallet from './dashboard/Wallet.jsx';
 import AdminDashboard from './dashboard/admin/AdminDashboard.jsx';
 import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
 import RootRedirect from './components/RootRedirect.jsx';
+import LandingPage from './components/LandingPage.jsx';
+import { useAuth } from './auth/AuthContext.jsx';
+
+function HomeRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (user) {
+    return <RootRedirect />;
+  }
+
+  return <LandingPage />;
+}
 export default function App() {
   return (
     <AuthProvider>
       <div style={{ minHeight: '100vh', width: '100%' }}>
         <Navbar />
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/" element={<HomeRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route
