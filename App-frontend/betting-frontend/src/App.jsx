@@ -9,6 +9,8 @@ import Settings from './dashboard/Settings.jsx';
 import Wallet from './dashboard/Wallet.jsx';
 import AdminDashboard from './dashboard/admin/AdminDashboard.jsx';
 import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
+import MarketsEvents from './dashboard/admin/MarketsEvents.jsx';
+import Markets from './pages/Markets.jsx';
 import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
@@ -45,8 +47,10 @@ export default function App() {
           />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+          <Route path="/markets" element={<ProtectedRoute><Markets /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
+          <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

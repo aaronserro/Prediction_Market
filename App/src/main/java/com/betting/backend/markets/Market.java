@@ -43,7 +43,7 @@ public class Market {
             mappedBy = "market",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.LAZY
+            fetch = FetchType.EAGER
     )
     private List<Outcome> outcomes = new ArrayList<>();
 

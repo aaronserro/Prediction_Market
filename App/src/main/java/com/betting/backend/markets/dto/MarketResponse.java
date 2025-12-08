@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.betting.backend.markets.MarketCategory;
+import com.betting.backend.markets.MarketStatus;
+
 public class MarketResponse {
 
     private UUID id;
@@ -12,7 +15,7 @@ public class MarketResponse {
 
     private String description;
 
-    private String category;
+    private MarketCategory category;
 
     private List<OutcomeResponse> outcomes;
 
@@ -22,7 +25,7 @@ public class MarketResponse {
 
     private String resolutionSource;
 
-    private String status; // "UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"
+    private MarketStatus status; // "UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"
 
     private LocalDateTime createdAt;
 
@@ -50,11 +53,11 @@ public class MarketResponse {
         this.description = description;
     }
 
-    public String getCategory() {
+    public MarketCategory getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
+    public void setCategory(MarketCategory category) {
         this.category = category;
     }
 
@@ -90,11 +93,11 @@ public class MarketResponse {
         this.resolutionSource = resolutionSource;
     }
 
-    public String getStatus() {
+    public MarketStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(MarketStatus status) {
         this.status = status;
     }
 

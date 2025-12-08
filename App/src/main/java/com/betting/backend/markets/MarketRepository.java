@@ -21,4 +21,5 @@ public interface MarketRepository extends JpaRepository<Market, UUID> {
 
     // Optional: find markets by status + category
     List<Market> findByStatusAndCategory(MarketStatus status, MarketCategory category);
+    <Optional>Market findByTitle(String Title);
 }
