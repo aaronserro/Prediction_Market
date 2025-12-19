@@ -7,6 +7,5 @@ import java.util.UUID;
 
 public interface OutcomeRepository extends JpaRepository<Outcome, UUID> {
 
-    // Return all outcomes for a specific market
     List<Outcome> findByMarketId(UUID marketId);
 }
