@@ -12,7 +12,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 // ===== Config =====
 // Keep empty and use a Vite proxy for '/api' -> 'http://localhost:8080'.
 // If you prefer direct calls, set e.g. const API_BASE = "http://localhost:8080";
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 // ===== Small fetch helper (robust JSON + good error messages) =====
 async function http(path, opts = {}) {
