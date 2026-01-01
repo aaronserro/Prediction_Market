@@ -29,6 +29,12 @@ export default function MarketDetail() {
   const [market, setMarket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tradeQuantity, setTradeQuantity] = useState(20);
+  const [tradeLoading, setTradeLoading] = useState(false);
+  const [tradeError, setTradeError] = useState("");
+  const [tradeSuccess, setTradeSuccess] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingTrade, setPendingTrade] = useState(null);
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -60,6 +66,123 @@ export default function MarketDetail() {
 
     fetchMarket();
   }, [marketId]);
+
+  const openTradeConfirmation = (outcome, tradeType) => {
+    setPendingTrade({ outcome, tradeType });
+    setShowConfirmModal(true);
+  };
+
+  const closeTradeConfirmation = () => {
+    setShowConfirmModal(false);
+    setPendingTrade(null);
+  };
+
+  const confirmTrade = () => {
+    if (pendingTrade) {
+      if (pendingTrade.tradeType === 'YES') {
+        handleBuy(pendingTrade.outcome.id);
+      } else {
+        handleSell(pendingTrade.outcome.id);
+      }
+    }
+    closeTradeConfirmation();
+  };
+
+  const handleBuy = async (outcomeId) => {
+    if (!tradeQuantity || tradeQuantity <= 0) return;
+
+    console.log('[MarketDetail] handleBuy called with outcomeId:', outcomeId);
+    console.log('[MarketDetail] Sending trade request:', { outcomeId, quantity: tradeQuantity });
+
+    setTradeLoading(true);
+    setTradeError("");
+    setTradeSuccess("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/trades/buy`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          marketId: market.id,
+          outcomeId: outcomeId,
+          quantity: tradeQuantity,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('[MarketDetail] Trade failed:', res.status, text);
+        throw new Error(text || `Trade failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("[MarketDetail] Trade response:", data);
+
+      setTradeSuccess(
+        `Bought ${data.filledQuantity ?? tradeQuantity} shares at ${
+          data.pricePerShareCents ?? "?"
+        }¢`
+      );
+
+      // OPTIONAL: refresh market data after successful trade
+    } catch (err) {
+      console.error(err);
+      setTradeError(err.message || "Trade failed");
+    } finally {
+      setTradeLoading(false);
+    }
+  };
+
+  const handleSell = async (outcomeId) => {
+    if (!tradeQuantity || tradeQuantity <= 0) return;
+
+    console.log('[MarketDetail] handleSell called with outcomeId:', outcomeId);
+    console.log('[MarketDetail] Sending sell request:', { outcomeId, quantity: tradeQuantity });
+
+    setTradeLoading(true);
+    setTradeError("");
+    setTradeSuccess("");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/trades/sell`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          marketId: market.id,
+          outcomeId: outcomeId,
+          quantity: tradeQuantity,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('[MarketDetail] Sell failed:', res.status, text);
+        throw new Error(text || `Sell failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("[MarketDetail] Sell response:", data);
+
+      setTradeSuccess(
+        `Sold ${data.filledQuantity ?? tradeQuantity} shares at ${
+          data.pricePerShareCents ?? "?"
+        }¢`
+      );
+
+      // OPTIONAL: refresh market data after successful trade
+    } catch (err) {
+      console.error(err);
+      setTradeError(err.message || "Sell failed");
+    } finally {
+      setTradeLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -171,6 +294,7 @@ export default function MarketDetail() {
               </div>
             </motion.div>
 
+
             {/* Outcomes Trading Section */}
             {Array.isArray(market.outcomes) && market.outcomes.length > 0 && (
               <motion.div
@@ -179,7 +303,21 @@ export default function MarketDetail() {
                 transition={{ delay: 0.2 }}
                 className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
               >
-                <h2 className="text-lg font-bold text-white mb-4">Trade</h2>
+                <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">Trade</h2>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Quantity</span>
+                    <input
+                    type="number"
+                    min={1}
+                    value={tradeQuantity}
+                    onChange={(e) =>
+                        setTradeQuantity(parseInt(e.target.value || "1", 20))
+                    }
+                    className="w-20 px-2 py-1 rounded-md bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                </div>
+                </div>
                 <div className="space-y-3">
                   {market.outcomes.map((outcome, idx) => (
                     <div
@@ -211,25 +349,38 @@ export default function MarketDetail() {
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
+                        <button
+                        disabled={market.status !== "ACTIVE" || tradeLoading}
+                        onClick={() => openTradeConfirmation(outcome, 'YES')}
+                        className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                            market.status === "ACTIVE"
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                            : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
+                        >
+                        {tradeLoading ? "Processing..." : "Yes"}
+                        </button>
+                        {tradeError && (
+                        <p className="mt-4 text-xs text-red-400">
+                            {tradeError}
+                        </p>
+                        )}
+                        {tradeSuccess && (
+                        <p className="mt-4 text-xs text-emerald-400">
+                            {tradeSuccess}
+                        </p>
+                        )}
+
                           <button
-                            disabled={market.status !== "ACTIVE"}
-                            className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                              market.status === "ACTIVE"
-                                ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-                                : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                            }`}
-                          >
-                            Yes
-                          </button>
-                          <button
-                            disabled={market.status !== "ACTIVE"}
+                            disabled={market.status !== "ACTIVE" || tradeLoading}
+                            onClick={() => openTradeConfirmation(outcome, 'NO')}
                             className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
                               market.status === "ACTIVE"
                                 ? "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
                                 : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                            }`}
+                            } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
                           >
-                            No
+                            {tradeLoading ? "Processing..." : "No"}
                           </button>
                         </div>
                       </div>
@@ -320,6 +471,81 @@ export default function MarketDetail() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && pendingTrade && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+          >
+            <h3 className="text-xl font-bold text-white mb-3">
+              Confirm Trade
+            </h3>
+
+            <div className="bg-slate-950 rounded-lg p-4 mb-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Outcome:</span>
+                <span className="text-white font-medium">
+                  {pendingTrade.outcome.label || pendingTrade.outcome.description}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Trade Type:</span>
+                <span className={`font-semibold ${
+                  pendingTrade.tradeType === 'YES' ? 'text-emerald-400' : 'text-red-400'
+                }`}>
+                  {pendingTrade.tradeType === 'YES' ? 'Buy Yes' : 'Sell No'}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Quantity:</span>
+                <span className="text-white font-medium">{tradeQuantity} shares</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Price:</span>
+                <span className="text-white font-medium">
+                  {pendingTrade.outcome.currentPrice
+                    ? `${(pendingTrade.outcome.currentPrice * 100).toFixed(0)}¢ per share`
+                    : '—'}
+                </span>
+              </div>
+              {pendingTrade.outcome.currentPrice && (
+                <div className="flex justify-between text-sm pt-2 border-t border-slate-800">
+                  <span className="text-slate-400">Total Cost:</span>
+                  <span className="text-amber-400 font-bold">
+                    ${(pendingTrade.outcome.currentPrice * tradeQuantity).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-slate-400 mb-6">
+              Are you sure you want to proceed with this trade?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeTradeConfirmation}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmTrade}
+                className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-colors ${
+                  pendingTrade.tradeType === 'YES'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20'
+                }`}
+              >
+                Confirm Trade
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
