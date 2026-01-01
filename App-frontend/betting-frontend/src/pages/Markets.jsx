@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { useNavigate } from "react-router-dom";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 const CATEGORY_OPTIONS = ["ALL", "SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
@@ -24,6 +24,7 @@ const CATEGORY_ICONS = {
 };
 
 export default function Markets() {
+  const navigate = useNavigate();
   const [markets, setMarkets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -264,6 +265,7 @@ export default function Markets() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate(`/markets/${market.id}`)}
                         className="w-full mt-4 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-900 font-semibold text-sm shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all"
                       >
                         Trade Now

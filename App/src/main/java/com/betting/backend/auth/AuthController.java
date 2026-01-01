@@ -8,6 +8,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -67,6 +68,9 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    // Clear existing authentication before logging in new user
+    SecurityContextHolder.clearContext();
+
     authMgr.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
     String token = jwt.generate(req.username());
     return ResponseEntity.ok()

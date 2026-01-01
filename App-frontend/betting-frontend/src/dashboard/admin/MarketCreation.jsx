@@ -87,7 +87,7 @@ export default function MarketCreation({ onMarketCreated }) {
     try {
       setIsSubmitting(true);
 
-      const res = await fetch(`${API_BASE_URL}/api/admin/markets`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/markets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

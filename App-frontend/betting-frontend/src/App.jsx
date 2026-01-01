@@ -14,6 +14,7 @@ import Markets from './pages/Markets.jsx';
 import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
+import MarketDetail from './pages/MarketDetail.jsx';
 
 function HomeRoute() {
   const { user, loading } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
           <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/markets/:marketId" element={<MarketDetail />} />
         </Routes>
       </div>
     </AuthProvider>

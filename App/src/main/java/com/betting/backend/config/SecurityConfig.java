@@ -64,8 +64,8 @@ public class SecurityConfig {
         // 🔑 Allow preflight requests
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-        // Public auth endpoints
-        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login").permitAll()
+        // Public auth endpoints - allow both authenticated and unauthenticated
+        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/logout").permitAll()
 
         // Admin endpoints
         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
