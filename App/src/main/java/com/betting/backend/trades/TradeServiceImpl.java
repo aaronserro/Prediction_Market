@@ -40,7 +40,7 @@ public class TradeServiceImpl implements TradeService {
     }
 
     @Override
-    public List<Trade> getTradesForUserInMarket(UUID userId, UUID marketId) {
+    public List<Trade> getTradesForUserInMarket(Long userId, UUID marketId) {
         // delegate directly to the repository
         return tradeRepo.findByUserIdAndMarketId(userId, marketId);
     }
@@ -122,7 +122,7 @@ public class TradeServiceImpl implements TradeService {
     trade.setPricePerShare(pricePerShare);
     trade.setTotalAmount(totalAmount);
     // createdAt is set automatically via @PrePersist in the entity
-
+    trade.setside(TradeSide.BUY);
     Trade savedTrade = tradeRepo.save(trade);
 
     // 7) Map to TradeResponse DTO
