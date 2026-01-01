@@ -2,6 +2,7 @@ package com.betting.backend.markets;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,4 +23,10 @@ public interface MarketRepository extends JpaRepository<Market, UUID> {
     // Optional: find markets by status + category
     List<Market> findByStatusAndCategory(MarketStatus status, MarketCategory category);
     <Optional>Market findByTitle(String Title);
+
+    // Find markets by status where end date is before the specified date
+    List<Market> findByStatusAndEndDateBefore(
+        MarketStatus status,
+        LocalDateTime now
+    );
 }

@@ -65,15 +65,19 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
         // Public auth endpoints
-        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login").permitAll()
+        .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/logout").permitAll()
+        .requestMatchers(HttpMethod.GET, "/auth/me").permitAll()
 
-        .requestMatchers(HttpMethod.POST, "/api/v1/trades/**").authenticated()
-        // Admin endpoints
+        // Admin endpoints (must come before other /api/v1/** rules)
         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
-        // Public GETs
-        .requestMatchers(HttpMethod.GET, "/auth/me").permitAll()
+        // Public market GET endpoints - anyone can view markets
+        .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
+
+        // Authenticated endpoints - must be logged in
+        .requestMatchers(HttpMethod.POST, "/api/v1/trades/**").authenticated()
+        .requestMatchers(HttpMethod.GET, "/api/v1/trades/**").authenticated()
 
         // Everything else requires auth
         .anyRequest().authenticated()

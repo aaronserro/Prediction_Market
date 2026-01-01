@@ -10,6 +10,7 @@ import Wallet from './dashboard/Wallet.jsx';
 import AdminDashboard from './dashboard/admin/AdminDashboard.jsx';
 import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
 import MarketsEvents from './dashboard/admin/MarketsEvents.jsx';
+import AdminMarketEdit from './dashboard/admin/AdminMarketEdit.jsx';
 import Markets from './pages/Markets.jsx';
 import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
           <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />
+          <Route path="/admin/markets/:marketId" element={<ProtectedRoute><AdminMarketEdit /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
           <Route path="/markets/:marketId" element={<MarketDetail />} />
         </Routes>

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.betting.backend.markets.dto.MarketCreateRequest;
 import com.betting.backend.markets.dto.MarketResponse;
+import com.betting.backend.markets.dto.UpdateMarketRequest;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -24,15 +25,27 @@ public class MarketController {
 
     /**
      * Create a new market (ADMIN ONLY).
-     * Example URL: POST /api/admin/markets
+     * Example URL: POST /api/v1/admin/markets
      */
     @PostMapping("/admin/markets")
     public ResponseEntity<MarketResponse> createMarket(
             @RequestBody MarketCreateRequest request
     ) {
-        // TODO: enforce admin role via Spring Security
         MarketResponse response = marketService.createMarket(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update an existing market (ADMIN ONLY).
+     * Example URL: PUT /api/v1/admin/markets/{marketId}
+     */
+    @PutMapping("/admin/markets/{marketId}")
+    public ResponseEntity<MarketResponse> updateMarket(
+        @PathVariable UUID marketId,
+        @RequestBody UpdateMarketRequest request
+    ) {
+        MarketResponse updated = marketService.updateMarket(marketId, request);
+        return ResponseEntity.ok(updated);
     }
 
 

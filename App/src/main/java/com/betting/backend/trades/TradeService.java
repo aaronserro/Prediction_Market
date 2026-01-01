@@ -9,10 +9,10 @@ public interface TradeService {
     TradeResponse createBuyTrade(CreateTradeRequest request, User currentUser);
 
     // 2) Read operations (history / stats inputs)
-    List<Trade> getTradesForUser(Long userId);
-    List<Trade> getTradesForUserInMarket(Long userId, UUID marketId);
-    List<Trade> getTradesForMarket(UUID marketId);
-    List<Trade> getTradesForOutcomeInMarket(UUID marketId, UUID outcomeId);
+    List<TradeResponse> getTradesForUser(Long userId);
+    List<TradeResponse> getTradesForUserInMarket(Long userId, UUID marketId);
+    List<TradeResponse> getTradesForMarket(UUID marketId);
+    List<TradeResponse> getTradesForOutcomeInMarket(UUID marketId, UUID outcomeId);
 
     // 3) SELL side: plan now, implement later
     //TradeResponse createSellTrade(CreateSellTradeRequest request, User currentUser); // TODO: implement later

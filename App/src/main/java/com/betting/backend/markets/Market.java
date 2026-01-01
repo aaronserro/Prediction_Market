@@ -48,8 +48,11 @@ public class Market {
             fetch = FetchType.EAGER
     )
     private List<Outcome> outcomes = new ArrayList<>();
-
-
+    @Transient
+    public boolean isActive() {
+    return this.status == MarketStatus.ACTIVE
+           && this.endDate.isAfter(LocalDateTime.now());
+}
 
     public UUID getId() {
         return id;

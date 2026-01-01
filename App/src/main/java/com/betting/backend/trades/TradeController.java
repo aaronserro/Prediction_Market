@@ -45,6 +45,13 @@ public class TradeController {
         TradeResponse response = tradeService.createBuyTrade(request, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+    @GetMapping("/{marketId}")
+    public List<TradeResponse> getTradesByMarketId(
+        @PathVariable("marketId") UUID marketid
+
+    ){
+        return tradeService.getTradesForMarket(marketid);
+    }
 
 
 

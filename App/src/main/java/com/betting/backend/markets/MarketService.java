@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.betting.backend.markets.dto.MarketCreateRequest;
 import com.betting.backend.markets.dto.MarketResponse;
+import com.betting.backend.markets.dto.UpdateMarketRequest;
 @Service
 public interface MarketService {
 
@@ -19,5 +20,8 @@ public interface MarketService {
     List<MarketResponse> getAllMarkets(); // later: make this paginated
 
     List<MarketResponse> getMarketsByCategory(MarketCategory category);
+
+    MarketResponse updateMarket(UUID marketId, UpdateMarketRequest request);
+
 
 }

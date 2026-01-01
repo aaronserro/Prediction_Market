@@ -3,6 +3,9 @@ package com.betting.backend.trades.dto;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.betting.backend.trades.TradeSide;
+import com.betting.backend.user.User;
+
 public class TradeResponse {
 
     private Long id;
@@ -12,18 +15,31 @@ public class TradeResponse {
 
     private UUID outcomeId;
     private String outcomeName;
-
+    private String user;
     private int quantity;
     private int pricePerShare; // whatever unit/value you're using
     private int totalAmount;
+    private TradeSide side;
+
 
     private LocalDateTime createdAt;
 
     // optional: updated wallet balance after this trade
     private int walletBalanceAfterTrade;
-
+    public TradeSide getSide(){
+        return side;
+    }
+    public void setSide(TradeSide side){
+        this.side = side;
+    }
     public Long getId() {
         return id;
+    }
+    public void setUser(String user){
+        this.user=user;
+    }
+    public String getUser(){
+        return user;
     }
 
     public void setId(Long id) {

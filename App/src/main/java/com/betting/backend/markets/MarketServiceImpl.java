@@ -4,11 +4,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.betting.backend.markets.dto.MarketCreateRequest;
 import com.betting.backend.markets.dto.MarketResponse;
 import com.betting.backend.markets.dto.OutcomeResponse;
+import com.betting.backend.markets.dto.UpdateMarketRequest;
 
 import org.springframework.transaction.annotation.Transactional;
 @Service
@@ -121,6 +123,10 @@ public class MarketServiceImpl implements MarketService{
         }
         Market market  = marketRepository.findById(marketId)
         .orElseThrow(()-> new IllegalStateException("cannot find market"));
+
+        // Check and update status if needed
+        updateMarketStatus(market);
+
         return toResponse(market);
     }
 
@@ -160,5 +166,94 @@ public class MarketServiceImpl implements MarketService{
             .toList();
     }
 
+    /**
+     * Scheduled task that runs every hour to update market statuses.
+     * - UPCOMING markets that have reached their start date become ACTIVE
+     * - ACTIVE markets that have passed their end date become CLOSED
+     */
+    @Scheduled(fixedRate = 3600000) // Run every hour (3600000 ms)
+    @Transactional
+    public void updateExpiredMarkets() {
+        LocalDateTime now = LocalDateTime.now();
 
+        // Find all UPCOMING markets that should now be ACTIVE
+        List<Market> upcomingMarkets = marketRepository.findByStatus(MarketStatus.UPCOMING);
+        for (Market market : upcomingMarkets) {
+            if (!now.isBefore(market.getStartDate())) {
+                market.setStatus(MarketStatus.ACTIVE);
+                marketRepository.save(market);
+            }
+        }
+
+        // Find all ACTIVE markets that should now be CLOSED
+        List<Market> activeMarkets = marketRepository.findByStatus(MarketStatus.ACTIVE);
+        for (Market market : activeMarkets) {
+            if (now.isAfter(market.getEndDate())) {
+                market.setStatus(MarketStatus.CLOSED);
+                marketRepository.save(market);
+            }
+        }
+    }
+
+    /**
+     * Helper method to check and update a single market's status based on current time.
+     * This ensures real-time accuracy when fetching individual markets.
+     */
+    private void updateMarketStatus(Market market) {
+        LocalDateTime now = LocalDateTime.now();
+        MarketStatus currentStatus = market.getStatus();
+        MarketStatus newStatus = null;
+
+        // UPCOMING -> ACTIVE when start date is reached
+        if (currentStatus == MarketStatus.UPCOMING && !now.isBefore(market.getStartDate())) {
+            newStatus = MarketStatus.ACTIVE;
+        }
+
+        // ACTIVE -> CLOSED when end date has passed
+        if (currentStatus == MarketStatus.ACTIVE && now.isAfter(market.getEndDate())) {
+            newStatus = MarketStatus.CLOSED;
+        }
+
+        // Save if status changed
+        if (newStatus != null && newStatus != currentStatus) {
+            market.setStatus(newStatus);
+            marketRepository.save(market);
+        }
+    }
+    @Override
+    @Transactional
+    public MarketResponse updateMarket(UUID marketId, UpdateMarketRequest request) {
+
+        Market market = marketRepository.findById(marketId)
+                .orElseThrow(() -> new IllegalArgumentException("Market not found with id: " + marketId));
+
+        // Only update fields that are not null (partial update / PATCH-style)
+        if (request.getTitle() != null) {
+            market.setTitle(request.getTitle());
+        }
+
+        if (request.getDescription() != null) {
+            market.setDescription(request.getDescription());
+        }
+
+        if (request.getCategory() != null) {
+            market.setCategory(request.getCategory());
+        }
+
+        if (request.getStatus() != null) {
+            market.setStatus(request.getStatus());
+        }
+
+        if (request.getEndDate() != null) {
+            market.setEndDate(request.getEndDate());
+        }
+
+        if (request.getResolutionSource() != null) {
+            market.setResolutionSource(request.getResolutionSource());
+        }
+
+        Market saved = marketRepository.save(market);
+
+        return toResponse(saved);
+    }
 }

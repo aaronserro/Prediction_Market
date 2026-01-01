@@ -1,42 +1,23 @@
 package com.betting.backend.markets.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 import com.betting.backend.markets.MarketCategory;
 import com.betting.backend.markets.MarketStatus;
 
-public class MarketResponse {
-
-    private UUID id;
+public class UpdateMarketRequest {
 
     private String title;
-
     private String description;
-
     private MarketCategory category;
-
-    private List<OutcomeResponse> outcomes;
-
-    private LocalDateTime startDate;
-
+    private MarketStatus status;
     private LocalDateTime endDate;
-
     private String resolutionSource;
 
-    private MarketStatus status; // "UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"
-
-    private LocalDateTime createdAt;
-    private boolean active;
-
-    public UUID getId() {
-        return id;
+    public UpdateMarketRequest() {
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+    // ---- Getters & Setters ----
 
     public String getTitle() {
         return title;
@@ -62,20 +43,12 @@ public class MarketResponse {
         this.category = category;
     }
 
-    public List<OutcomeResponse> getOutcomes() {
-        return outcomes;
+    public MarketStatus getStatus() {
+        return status;
     }
 
-    public void setOutcomes(List<OutcomeResponse> outcomes) {
-        this.outcomes = outcomes;
-    }
-
-    public LocalDateTime getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDateTime startDate) {
-        this.startDate = startDate;
+    public void setStatus(MarketStatus status) {
+        this.status = status;
     }
 
     public LocalDateTime getEndDate() {
@@ -92,21 +65,5 @@ public class MarketResponse {
 
     public void setResolutionSource(String resolutionSource) {
         this.resolutionSource = resolutionSource;
-    }
-
-    public MarketStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(MarketStatus status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

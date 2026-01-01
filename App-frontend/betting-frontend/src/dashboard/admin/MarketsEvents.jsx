@@ -1,5 +1,6 @@
 // src/dashboard/admin/MarketsEvents.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import MarketCreation from "./MarketCreation";
 
@@ -9,6 +10,7 @@ const CATEGORY_OPTIONS = ["ALL", "SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT
 const STATUS_OPTIONS = ["ALL", "ACTIVE", "PENDING", "CLOSED", "RESOLVED"];
 
 export default function MarketsEvents() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("create"); // "create" or "manage"
 
   // Manage Markets state
@@ -244,7 +246,8 @@ export default function MarketsEvents() {
                       {filteredMarkets.map((market) => (
                         <tr
                           key={market.id}
-                          className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                          onClick={() => navigate(`/admin/markets/${market.id}`)}
+                          className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors cursor-pointer"
                         >
                           <td className="py-3 px-4 text-slate-100 font-medium">
                             {market.title}

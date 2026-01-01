@@ -1,6 +1,6 @@
 package com.betting.backend.trades;
-import java.util.*;
 
+import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,141 +8,155 @@ import com.betting.backend.markets.MarketStatus;
 import com.betting.backend.trades.dto.CreateTradeRequest;
 import com.betting.backend.trades.dto.TradeResponse;
 import com.betting.backend.user.User;
-import com.betting.backend.trades.TradeRepo;
 import com.betting.backend.markets.Market;
 import com.betting.backend.markets.MarketRepository;
 import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
-import com.betting.backend.trades.Trade;
 import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
 import com.betting.backend.wallet.Repository.WalletRepository;
 import com.betting.backend.wallet.model.Wallet;
+
 @Service
 public class TradeServiceImpl implements TradeService {
+
     private final TradeRepo tradeRepo;
     private final OutcomeRepository outcomerepo;
     private final MarketRepository marketRepo;
     private final WalletRepository walletRepository;
+
     public TradeServiceImpl(TradeRepo tradeRepo,
-        OutcomeRepository outcomeRepository,
-        MarketRepository marketRepository,
-        WalletRepository walletRepository) {
+                            OutcomeRepository outcomeRepository,
+                            MarketRepository marketRepository,
+                            WalletRepository walletRepository) {
         this.tradeRepo = tradeRepo;
-        this.outcomerepo=outcomeRepository;
-        this.marketRepo=marketRepository;
+        this.outcomerepo = outcomeRepository;
+        this.marketRepo = marketRepository;
         this.walletRepository = walletRepository;
     }
 
+    // ---- Mapping helper ----
+    private TradeResponse toResponse(Trade trade) {
+        TradeResponse response = new TradeResponse();
+        response.setId(trade.getId());
+        response.setCreatedAt(trade.getCreatedAt());
+
+        response.setMarketId(trade.getMarket().getId());
+        response.setMarketTitle(trade.getMarket().getTitle());
+
+        response.setOutcomeId(trade.getOutcome().getId());
+        response.setOutcomeName(trade.getOutcome().getLabel());
+
+        response.setQuantity(trade.getQuantity());
+        response.setPricePerShare(trade.getPricePerShare());
+        response.setTotalAmount(trade.getTotalAmount());
+        response.setUser(trade.getUser().getUsername());
+
+        response.setSide(trade.getside());
+        // If TradeResponse has a side field:
+        // response.setSide(trade.getSide());
+
+        // If you later add walletBalanceAfterTrade:
+        // response.setWalletBalanceAfterTrade(...);
+
+        return response;
+    }
+
+    // ---- Query methods now return DTOs ----
+
     @Override
-    public List<Trade> getTradesForUser(Long userId) {
-        // delegate directly to the repository
-        return tradeRepo.findByUserId(userId);
+    public List<TradeResponse> getTradesForUser(Long userId) {
+        return tradeRepo.findByUserId(userId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
-    public List<Trade> getTradesForUserInMarket(Long userId, UUID marketId) {
-        // delegate directly to the repository
-        return tradeRepo.findByUserIdAndMarketId(userId, marketId);
+    public List<TradeResponse> getTradesForUserInMarket(Long userId, UUID marketId) {
+        return tradeRepo.findByUserIdAndMarketId(userId, marketId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
-    public List<Trade> getTradesForMarket(UUID marketId) {
-        // delegate directly to the repository
-        return tradeRepo.findByMarketId(marketId);
+    public List<TradeResponse> getTradesForMarket(UUID marketId) {
+        return tradeRepo.findByMarketId(marketId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
-    public List<Trade> getTradesForOutcomeInMarket(UUID marketId, UUID outcomeId) {
-        // delegate directly to the repository
-        return tradeRepo.findByMarketIdAndOutcomeId(marketId, outcomeId);
+    public List<TradeResponse> getTradesForOutcomeInMarket(UUID marketId, UUID outcomeId) {
+        return tradeRepo.findByMarketIdAndOutcomeId(marketId, outcomeId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
+
+    // ---- Command method (create buy trade) ----
+
     @Transactional
-    public TradeResponse createBuyTrade(CreateTradeRequest request, User currentUser){
+    public TradeResponse createBuyTrade(CreateTradeRequest request, User currentUser) {
         if (request == null) {
             throw new IllegalArgumentException("Trade request cannot be null");
         }
-    // 1) Basic validation on   quantity
-    if (request.getQuantity() <= 0) {
-        throw new IllegalArgumentException("Quantity must be greater than zero");
-    }
 
-    // 2) Load Market
-    Market market = marketRepo.findById(request.getMarketId())
-            .orElseThrow(() -> new IllegalArgumentException("Market not found with id: " + request.getMarketId()));
+        // 1) Basic validation on quantity
+        if (request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
 
-    // (Optional, but recommended) ensure market is ACTIVE
+        // 2) Load Market
+        Market market = marketRepo.findById(request.getMarketId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Market not found with id: " + request.getMarketId()));
+
+        // 2b) Ensure market is ACTIVE
         if (!MarketStatus.ACTIVE.equals(market.getStatus())) {
             throw new IllegalStateException("Market is not active for trading");
         }
 
-    // 3) Load Outcome and ensure it belongs to the same market
-    Outcome outcome = outcomerepo.findById(request.getOutcomeId())
-            .orElseThrow(() -> new IllegalArgumentException("Outcome not found with id: " + request.getOutcomeId()));
+        // 3) Load Outcome and ensure it belongs to the same market
+        Outcome outcome = outcomerepo.findById(request.getOutcomeId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Outcome not found with id: " + request.getOutcomeId()));
 
-    if (!outcome.getMarket().getId().equals(market.getId())) {
-        throw new IllegalArgumentException("Outcome does not belong to the specified market");
-    }
+        if (!outcome.getMarket().getId().equals(market.getId())) {
+            throw new IllegalArgumentException("Outcome does not belong to the specified market");
+        }
 
-    int quantity = request.getQuantity();
+        int quantity = request.getQuantity();
 
-    // 4) Get price and compute total amount
-    // TODO: Replace this with a real AMM/pricing call later, e.g.:
-    // PriceQuote quote = pricingService.getBuyQuote(market, outcome, quantity);
-    // int pricePerShare = quote.getPricePerShare();
-    // int totalAmount = quote.getTotalCost();
-
+        // 4) Get price and compute total amount (temporary fixed price)
         int pricePerShare = 10; // TEMPORARY placeholder price
         int totalAmount = pricePerShare * quantity;
-        Optional<Wallet> wallet = walletRepository.findByUser_Id(currentUser.getId());
-        if(wallet.isEmpty()){
-            throw new WalletNotFoundException(currentUser.getId());
-        }
-        if (wallet.get().getBalanceCents()<totalAmount){
+
+        // 5) Wallet / balance check
+        Wallet wallet = walletRepository.findByUser_Id(currentUser.getId())
+                .orElseThrow(() -> new WalletNotFoundException(currentUser.getId()));
+
+        if (wallet.getBalanceCents() < totalAmount) {
             throw new IllegalStateException("Insufficient funds to execute trade");
-
         }
-        wallet.get().setBalanceCents(wallet.get().getBalanceCents()-totalAmount);
-        walletRepository.save(wallet.get());
 
-    // 5) Wallet / balance check (TODO: hook into your real wallet system)
-    // Example if you later have something like currentUser.getBalance():
-    //
-    // if (currentUser.getBalance() < totalAmount) {
-    //     throw new IllegalStateException("Insufficient funds to execute trade");
-    // }
-    // currentUser.setBalance(currentUser.getBalance() - totalAmount);
-    // userRepo.save(currentUser);
+        wallet.setBalanceCents(wallet.getBalanceCents() - totalAmount);
+        walletRepository.save(wallet);
 
-    // 6) Create Trade entity
-    Trade trade = new Trade();
-    trade.setUser(currentUser);
-    trade.setMarket(market);
-    trade.setOutcome(outcome);
-    trade.setQuantity(quantity);
-    trade.setPricePerShare(pricePerShare);
-    trade.setTotalAmount(totalAmount);
-    // createdAt is set automatically via @PrePersist in the entity
-    trade.setside(TradeSide.BUY);
-    Trade savedTrade = tradeRepo.save(trade);
+        // 6) Create Trade entity
+        Trade trade = new Trade();
+        trade.setUser(currentUser);
+        trade.setMarket(market);
+        trade.setOutcome(outcome);
+        trade.setQuantity(quantity);
+        trade.setPricePerShare(pricePerShare);
+        trade.setTotalAmount(totalAmount);
+        trade.setside(TradeSide.BUY);  // enum side
+        trade.setUser(currentUser);
+        Trade savedTrade = tradeRepo.save(trade);
 
-    // 7) Map to TradeResponse DTO
-    TradeResponse response = new TradeResponse();
-    response.setId(savedTrade.getId());
-    response.setMarketId(market.getId());
-    response.setMarketTitle(market.getTitle());        // adjust if your field is named differently
-    response.setOutcomeId(outcome.getId());
-    response.setOutcomeName(outcome.getLabel());        // adjust if your field is named differently
-    response.setQuantity(savedTrade.getQuantity());
-    response.setPricePerShare(savedTrade.getPricePerShare());
-    response.setTotalAmount(savedTrade.getTotalAmount());
-    response.setCreatedAt(savedTrade.getCreatedAt());
-
-    return response;
-}
-
-
-
-
-
-
+        // 7) Use the common mapper
+        return toResponse(savedTrade);
+    }
 }
