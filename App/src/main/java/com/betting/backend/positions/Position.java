@@ -1,45 +1,79 @@
 package com.betting.backend.positions;
 
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
-import java.util.*;
-
+import java.util.UUID;
 import com.betting.backend.user.User;
+import com.betting.backend.markets.Outcome;
 
-import jakarta.persistence.Entity;
 @Entity
+@Table(name = "positions")
 public class Position {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    private UUID outcomeId;
+
+    @ManyToOne
+    @JoinColumn(name = "outcome_id", nullable = false)
+    private Outcome outcome;
+
+    @Column(name = "quantity", nullable = false)
     private int quantity;
-    private long CostBasisCents;
+
+    @Column(name = "cost_basis_cents", nullable = false)
+    private long costBasisCents;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "realized_pnl")
     private Long realizedPnl;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     // Getters and Setters
 
-    public User getUser() {
-        return user;
-    }
-    public Long getId(){
+    public Long getId() {
         return id;
     }
-    public void setId(Long id){
-        this.id=id;
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public void setUser(User user) {
         this.user = user;
     }
 
-    public UUID getOutcomeId() {
-        return outcomeId;
+    public Outcome getOutcome() {
+        return outcome;
     }
 
-    public void setOutcomeId(UUID outcomeId) {
-        this.outcomeId = outcomeId;
+    public void setOutcome(Outcome outcome) {
+        this.outcome = outcome;
     }
 
     public int getQuantity() {
@@ -50,12 +84,12 @@ public class Position {
         this.quantity = quantity;
     }
 
-    public Long getCostBasisCents() {
-        return CostBasisCents;
+    public long getCostBasisCents() {
+        return costBasisCents;
     }
 
-    public void setCostBasisCents(Long costBasisCents) {
-        CostBasisCents = costBasisCents;
+    public void setCostBasisCents(long costBasisCents) {
+        this.costBasisCents = costBasisCents;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -66,12 +100,12 @@ public class Position {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdateAt() {
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdateAt(LocalDateTime updateAt) {
-        this.updatedAt = updateAt;
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public Long getRealizedPnl() {
