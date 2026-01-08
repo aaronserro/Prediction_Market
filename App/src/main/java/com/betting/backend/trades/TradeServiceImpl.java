@@ -12,6 +12,7 @@ import com.betting.backend.markets.Market;
 import com.betting.backend.markets.MarketRepository;
 import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
+import com.betting.backend.positions.PositionService;
 import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
 import com.betting.backend.wallet.Repository.WalletRepository;
 import com.betting.backend.wallet.model.Wallet;
@@ -23,15 +24,18 @@ public class TradeServiceImpl implements TradeService {
     private final OutcomeRepository outcomerepo;
     private final MarketRepository marketRepo;
     private final WalletRepository walletRepository;
+    private final PositionService positionService;
 
     public TradeServiceImpl(TradeRepo tradeRepo,
                             OutcomeRepository outcomeRepository,
                             MarketRepository marketRepository,
-                            WalletRepository walletRepository) {
+                            WalletRepository walletRepository,
+                        PositionService positionService) {
         this.tradeRepo = tradeRepo;
         this.outcomerepo = outcomeRepository;
         this.marketRepo = marketRepository;
         this.walletRepository = walletRepository;
+        this.positionService=positionService;
     }
 
     // ---- Mapping helper ----
@@ -144,7 +148,7 @@ public class TradeServiceImpl implements TradeService {
         wallet.setBalanceCents(wallet.getBalanceCents() - totalAmount);
         walletRepository.save(wallet);
 
-        // 6) Create Trade entity
+         // 6) Create Trade entity
         Trade trade = new Trade();
         trade.setUser(currentUser);
         trade.setMarket(market);
@@ -155,6 +159,9 @@ public class TradeServiceImpl implements TradeService {
         trade.setside(TradeSide.BUY);  // enum side
         trade.setUser(currentUser);
         Trade savedTrade = tradeRepo.save(trade);
+        positionService.applyBuy(currentUser, outcome.getId(), quantity, pricePerShare);
+
+
 
         // 7) Use the common mapper
         return toResponse(savedTrade);
