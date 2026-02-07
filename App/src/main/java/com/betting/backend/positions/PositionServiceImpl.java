@@ -83,7 +83,7 @@ public class PositionServiceImpl implements PositionService {
         long avgBuyPriceCents = costBasis / heldQty;
 
         long proceeds = safeMultiplyToLong(qty, currentMarketprice);
-        long costRemoved = avgBuyPriceCents * (long) qty;
+        long costRemoved = (costBasis * (long) qty) /heldQty;
         long realizedDelta = proceeds - costRemoved;
 
         // Update position state
@@ -101,10 +101,6 @@ public class PositionServiceImpl implements PositionService {
             positionRepository.save(position);
         }
     }
-
-    // -----------------------
-    // Helpers / validations
-    // -----------------------
 
     private static void validatePositiveQty(int qty) {
         if (qty <= 0) throw new IllegalArgumentException("qty must be > 0");

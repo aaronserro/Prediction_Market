@@ -12,6 +12,9 @@ import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
 import MarketsEvents from './dashboard/admin/MarketsEvents.jsx';
 import AdminMarketEdit from './dashboard/admin/AdminMarketEdit.jsx';
 import Markets from './pages/Markets.jsx';
+import PortfolioPage from './pages/PortfolioPage.jsx';
+import NewsPage from './pages/NewsPage.jsx';
+import TournamentsPage from './pages/TournamentsPage.jsx';
 import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
@@ -50,6 +53,9 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
           <Route path="/markets" element={<ProtectedRoute><Markets /></ProtectedRoute>} />
+          <Route path="/portfolio" element={<ProtectedRoute><PortfolioPage /></ProtectedRoute>} />
+          <Route path="/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
+          <Route path="/tournaments" element={<ProtectedRoute><TournamentsPage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
           <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />

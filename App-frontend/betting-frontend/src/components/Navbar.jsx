@@ -87,6 +87,7 @@ export default function Navbar() {
               <div className="hidden md:flex items-center gap-2">
                 <NavItem to="/dashboard" label="Dashboard" pathname={pathname} icon="📊" />
                 <NavItem to="/markets" label="Markets" pathname={pathname} icon="📈" />
+                <NavItem to="/portfolio" label="Portfolio" pathname={pathname} icon="💼" />
                 <NavItem to="/news" label="News" pathname={pathname} icon="📰" />
                 <NavItem to="/tournaments" label="Tournaments" pathname={pathname} icon="🏆" />
                 {isAdmin && (

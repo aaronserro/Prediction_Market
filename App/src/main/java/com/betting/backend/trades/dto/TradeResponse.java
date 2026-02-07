@@ -18,7 +18,7 @@ public class TradeResponse {
     private String user;
     private int quantity;
     private int pricePerShare; // whatever unit/value you're using
-    private int totalAmount;
+    private long totalAmount;
     private TradeSide side;
 
 
@@ -94,11 +94,11 @@ public class TradeResponse {
         this.pricePerShare = pricePerShare;
     }
 
-    public int getTotalAmount() {
+    public long getTotalAmount() {
         return totalAmount;
     }
 
-    public void setTotalAmount(int totalAmount) {
+    public void setTotalAmount(long totalAmount) {
         this.totalAmount = totalAmount;
     }
 

@@ -21,7 +21,7 @@ public class Trade {
     private LocalDateTime createdAt;
 
     @Column(name = "amount", nullable = false, updatable = false)
-    private int totalAmount;
+    private long totalAmount;
 
     @Column(name = "quantity", nullable = false, updatable = false)
     private int quantity;
@@ -62,7 +62,7 @@ public class Trade {
         return createdAt;
     }
 
-    public int getTotalAmount() {
+    public long getTotalAmount() {
         return totalAmount;
     }
 
@@ -94,7 +94,7 @@ public class Trade {
         this.createdAt = createdAt;
     }
 
-    public void setTotalAmount(int totalAmount) {
+    public void setTotalAmount(long totalAmount) {
         this.totalAmount = totalAmount;
     }
 

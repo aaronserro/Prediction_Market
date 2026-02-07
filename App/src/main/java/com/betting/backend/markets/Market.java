@@ -1,6 +1,8 @@
 package com.betting.backend.markets;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,28 @@ public class Market {
             fetch = FetchType.EAGER
     )
     private List<Outcome> outcomes = new ArrayList<>();
+    /**
+     * LMSR Liquididity Paramater
+     * A higher b means prices move quicker and prices move slower
+     * Must be >=1
+     *
+     *
+     * @return
+     */
+    @Column(name = "liquidity_b", nullable = false)
+    @Min(1)
+    private int liquidityB = 100; // sensible default for MVP; tune later
+    public int getLiquidityB() {
+        return liquidityB;
+    }
+
+    public void setLiquidityB(int liquidityB) {
+        if (liquidityB < 1) {
+            throw new IllegalArgumentException("liquidityB must be >= 1");
+        }
+        this.liquidityB = liquidityB;
+
+    }
     @Transient
     public boolean isActive() {
     return this.status == MarketStatus.ACTIVE

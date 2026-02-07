@@ -63,10 +63,12 @@ public class SecurityConfig {
       .authorizeHttpRequests(auth -> auth
         // 🔑 Allow preflight requests
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
+        .requestMatchers("/auth/**", "/api/v1/auth/**").permitAll()
         // Public auth endpoints
         .requestMatchers(HttpMethod.POST, "/auth/signup", "/auth/login", "/auth/logout").permitAll()
         .requestMatchers(HttpMethod.GET, "/auth/me").permitAll()
+        .requestMatchers("/auth/**").permitAll()
+        .requestMatchers("/api/v1/auth/**").permitAll()
 
         // Admin endpoints (must come before other /api/v1/** rules)
         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")

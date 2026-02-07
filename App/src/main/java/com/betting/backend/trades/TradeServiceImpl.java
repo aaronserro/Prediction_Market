@@ -12,6 +12,7 @@ import com.betting.backend.markets.Market;
 import com.betting.backend.markets.MarketRepository;
 import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
+import com.betting.backend.markets.PricingService;
 import com.betting.backend.positions.PositionService;
 import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
 import com.betting.backend.wallet.Repository.WalletRepository;
@@ -25,17 +26,19 @@ public class TradeServiceImpl implements TradeService {
     private final MarketRepository marketRepo;
     private final WalletRepository walletRepository;
     private final PositionService positionService;
-
+    private final PricingService pricingService;
     public TradeServiceImpl(TradeRepo tradeRepo,
                             OutcomeRepository outcomeRepository,
                             MarketRepository marketRepository,
                             WalletRepository walletRepository,
-                        PositionService positionService) {
+                            PositionService positionService,
+                            PricingService pricingService) {
         this.tradeRepo = tradeRepo;
         this.outcomerepo = outcomeRepository;
         this.marketRepo = marketRepository;
         this.walletRepository = walletRepository;
         this.positionService=positionService;
+        this.pricingService=pricingService;
     }
 
     // ---- Mapping helper ----
@@ -134,8 +137,10 @@ public class TradeServiceImpl implements TradeService {
         int quantity = request.getQuantity();
 
         // 4) Get price and compute total amount (temporary fixed price)
-        int pricePerShare = 10; // TEMPORARY placeholder price
-        int totalAmount = pricePerShare * quantity;
+        //int pricePerShare = 10; // TEMPORARY placeholder price
+        //int totalAmount = pricePerShare * quantity;
+        long totalAmount = pricingService.quoteBuyCost(market.getId(), outcome.getId(), quantity);
+        int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
 
         // 5) Wallet / balance check
         Wallet wallet = walletRepository.findByUser_Id(currentUser.getId())
@@ -160,6 +165,8 @@ public class TradeServiceImpl implements TradeService {
         trade.setUser(currentUser);
         Trade savedTrade = tradeRepo.save(trade);
         positionService.applyBuy(currentUser, outcome.getId(), quantity, pricePerShare);
+        outcome.incremementOutstanding(quantity);
+        outcomerepo.save(outcome);
 
 
 

@@ -18,6 +18,16 @@ public class Outcome {
     @Column(nullable = false)
     private String label;   // "Yes", "No", "Trump", "Harris", etc.
 
+    @Column(name = "total_outstanding", nullable = false)
+    private int total_outstanding = 0;
+
+    public void incremementOutstanding(int quantity){
+        total_outstanding+=quantity;
+    }
+    public int getOutstanding()
+    {
+        return total_outstanding;
+    }
 
 
     public UUID getId() {
