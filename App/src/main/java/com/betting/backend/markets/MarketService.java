@@ -23,5 +23,7 @@ public interface MarketService {
 
     MarketResponse updateMarket(UUID marketId, UpdateMarketRequest request);
 
+    void resolveMarket(UUID marketId, UUID winningOutcomeId);
+
 
 }

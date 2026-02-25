@@ -29,12 +29,17 @@ export default function MarketDetail() {
   const [market, setMarket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tradeQuantity, setTradeQuantity] = useState(20);
+  const [tradeQuantity, setTradeQuantity] = useState(1);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingTrade, setPendingTrade] = useState(null);
+
+  const [outcomePrices, setOutcomePrices] = useState({});
+
+  // Safely get the price for the pending trade
+  const p = pendingTrade ? outcomePrices[pendingTrade.outcome.id] : undefined;
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -52,10 +57,59 @@ export default function MarketDetail() {
         }
 
         const data = await res.json();
-        console.log('[MarketDetail] Fetched market:', data);
-        console.log('[MarketDetail] Outcomes count:', data.outcomes?.length);
-        console.log('[MarketDetail] Outcomes:', data.outcomes);
         setMarket(data);
+
+        // Fetch prices for all outcomes
+        if (data.outcomes && data.outcomes.length > 0) {
+          const pricePromises = data.outcomes.map(async (outcome) => {
+            try {
+              const priceRes = await fetch(
+                `${API_BASE_URL}/api/v1/markets/${marketId}/outcomes/${outcome.id}/price`,
+                {
+                  method: "GET",
+                  credentials: "include",
+                }
+              );
+
+              if (!priceRes.ok) {
+                console.warn(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}: ${priceRes.status} ${priceRes.statusText}`);
+                return { outcomeId: outcome.id, price: null };
+              }
+
+              if (priceRes.ok) {
+                const priceData = await priceRes.json();
+                return { outcomeId: outcome.id, price: priceData };
+              }
+            } catch (err) {
+              console.error(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}:`, err);
+            }
+            return { outcomeId: outcome.id, price: null };
+          });
+
+          const prices = await Promise.all(pricePromises);
+          const pricesMap = {};
+          prices.forEach(({ outcomeId, price }) => {
+            let raw = price;
+
+            if (raw === null || raw === undefined) return;
+
+            if (raw && typeof raw === "object") {
+              raw = raw.price ?? raw.currentPrice ?? raw.value ?? raw.pricePerShare;
+            }
+
+            if (raw === null || raw === undefined) return;
+
+            const n = Number(raw);
+            if (!Number.isFinite(n)) return;
+
+            const finalPrice = n > 1 ? n / 100 : n;
+            pricesMap[outcomeId] = finalPrice;
+          });
+          console.log('[MarketDetail] Prices map:', pricesMap);
+          console.log("pricesMap keys:", Object.keys(pricesMap));
+          console.log("first outcome id:", data.outcomes[0]?.id);
+          setOutcomePrices(pricesMap);
+        }
       } catch (err) {
         console.error(err);
         setError(err.message || "Failed to load market");
@@ -67,8 +121,8 @@ export default function MarketDetail() {
     fetchMarket();
   }, [marketId]);
 
-  const openTradeConfirmation = (outcome, tradeType) => {
-    setPendingTrade({ outcome, tradeType });
+  const openTradeConfirmation = (outcome, action) => {
+    setPendingTrade({ outcome, action });
     setShowConfirmModal(true);
   };
 
@@ -79,7 +133,7 @@ export default function MarketDetail() {
 
   const confirmTrade = () => {
     if (pendingTrade) {
-      if (pendingTrade.tradeType === 'YES') {
+      if (pendingTrade.action === 'BUY') {
         handleBuy(pendingTrade.outcome.id);
       } else {
         handleSell(pendingTrade.outcome.id);
@@ -87,6 +141,50 @@ export default function MarketDetail() {
     }
     closeTradeConfirmation();
   };
+  const fetchOutcomePrices = async (marketData) => {
+  if (!marketData?.outcomes?.length) return;
+
+  const pricePromises = marketData.outcomes.map(async (outcome) => {
+    try {
+      const priceRes = await fetch(
+        `${API_BASE_URL}/api/v1/markets/${marketId}/outcomes/${outcome.id}/price`,
+        { method: "GET", credentials: "include" }
+      );
+
+      if (!priceRes.ok) return { outcomeId: outcome.id, price: null };
+
+      const priceData = await priceRes.json();
+      return { outcomeId: outcome.id, price: priceData };
+    } catch (err) {
+      console.error(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}:`, err);
+      return { outcomeId: outcome.id, price: null };
+    }
+  });
+
+  const prices = await Promise.all(pricePromises);
+
+  const pricesMap = {};
+  prices.forEach(({ outcomeId, price }) => {
+    let raw = price;
+
+    if (raw === null || raw === undefined) return;
+
+    if (raw && typeof raw === "object") {
+      raw = raw.price ?? raw.currentPrice ?? raw.value ?? raw.pricePerShare;
+    }
+
+    if (raw === null || raw === undefined) return;
+
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+
+    const finalPrice = n > 1 ? n / 100 : n; // cents -> decimal
+    pricesMap[outcomeId] = finalPrice;
+  });
+
+  setOutcomePrices(pricesMap);
+};
+
 
   const handleBuy = async (outcomeId) => {
     if (!tradeQuantity || tradeQuantity <= 0) return;
@@ -97,6 +195,7 @@ export default function MarketDetail() {
     setTradeLoading(true);
     setTradeError("");
     setTradeSuccess("");
+
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/trades/buy`, {
@@ -115,6 +214,12 @@ export default function MarketDetail() {
       if (!res.ok) {
         const text = await res.text();
         console.error('[MarketDetail] Trade failed:', res.status, text);
+
+        // Handle specific error cases
+        if (text.includes("Insufficient balance") || text.includes("insufficient funds")) {
+          throw new Error("Insufficient balance. Please add funds to your wallet.");
+        }
+
         throw new Error(text || `Trade failed with status ${res.status}`);
       }
 
@@ -122,10 +227,11 @@ export default function MarketDetail() {
       console.log("[MarketDetail] Trade response:", data);
 
       setTradeSuccess(
-        `Bought ${data.filledQuantity ?? tradeQuantity} shares at ${
-          data.pricePerShareCents ?? "?"
+        `Bought ${data.quantity ?? tradeQuantity} shares at ${
+          data.pricePerShare ?? "?"
         }¢`
       );
+      await fetchOutcomePrices(market);
 
       // OPTIONAL: refresh market data after successful trade
     } catch (err) {
@@ -135,6 +241,7 @@ export default function MarketDetail() {
       setTradeLoading(false);
     }
   };
+
 
   const handleSell = async (outcomeId) => {
     if (!tradeQuantity || tradeQuantity <= 0) return;
@@ -163,6 +270,14 @@ export default function MarketDetail() {
       if (!res.ok) {
         const text = await res.text();
         console.error('[MarketDetail] Sell failed:', res.status, text);
+
+        // Handle specific error cases
+        if (text.includes("Cannot sell more than outstanding")) {
+          throw new Error("You don't have enough shares to sell. Please check your portfolio.");
+        } else if (text.includes("outstanding=0")) {
+          throw new Error("You don't own any shares of this outcome to sell.");
+        }
+
         throw new Error(text || `Sell failed with status ${res.status}`);
       }
 
@@ -339,50 +454,80 @@ export default function MarketDetail() {
                               )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-white">
-                              {outcome.currentPrice ? `${(outcome.currentPrice * 100).toFixed(0)}¢` : "—"}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {outcome.currentPrice ? `${(outcome.currentPrice * 100).toFixed(1)}%` : ""}
-                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {/* Price Display */}
+                          <div className="flex-1 rounded-lg border border-slate-700 bg-slate-900 p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-400">Current Price</span>
+                              <div className="text-right">
+                                {outcomePrices[outcome.id] !== undefined ? (
+                                  <>
+                                    <span className="text-xl font-bold text-white">
+                                      {(outcomePrices[outcome.id] * 100).toFixed(0)}¢
+                                    </span>
+                                    <span className="text-xs text-slate-400 ml-2">
+                                      ({(outcomePrices[outcome.id] * 100).toFixed(1)}%)
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-lg text-slate-500">—</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Price bar indicator */}
+                            {outcomePrices[outcome.id] !== undefined && (
+                              <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-300"
+                                  style={{ width: `${(outcomePrices[outcome.id] * 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Buy/Sell Buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              disabled={market.status !== "ACTIVE" || tradeLoading}
+                              onClick={() => openTradeConfirmation(outcome, 'BUY')}
+                              className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
+                                market.status === "ACTIVE"
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                              } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
+                            >
+                              Buy
+                            </button>
+                            <button
+                              disabled={market.status !== "ACTIVE" || tradeLoading}
+                              onClick={() => openTradeConfirmation(outcome, 'SELL')}
+                              className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
+                                market.status === "ACTIVE"
+                                  ? "bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 border border-orange-500"
+                                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                              } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
+                            >
+                              Sell
+                            </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                        <button
-                        disabled={market.status !== "ACTIVE" || tradeLoading}
-                        onClick={() => openTradeConfirmation(outcome, 'YES')}
-                        className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                            market.status === "ACTIVE"
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-                            : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                        } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
-                        >
-                        {tradeLoading ? "Processing..." : "Yes"}
-                        </button>
                         {tradeError && (
-                        <p className="mt-4 text-xs text-red-400">
-                            {tradeError}
-                        </p>
+                          <div className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 flex items-start gap-2">
+                            <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p className="text-sm text-red-200">{tradeError}</p>
+                          </div>
                         )}
                         {tradeSuccess && (
-                        <p className="mt-4 text-xs text-emerald-400">
-                            {tradeSuccess}
-                        </p>
+                          <div className="mt-4 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 flex items-start gap-2">
+                            <svg className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <p className="text-sm text-emerald-200">{tradeSuccess}</p>
+                          </div>
                         )}
-
-                          <button
-                            disabled={market.status !== "ACTIVE" || tradeLoading}
-                            onClick={() => openTradeConfirmation(outcome, 'NO')}
-                            className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                              market.status === "ACTIVE"
-                                ? "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
-                                : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                            } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
-                          >
-                            {tradeLoading ? "Processing..." : "No"}
-                          </button>
-                        </div>
                       </div>
                     </div>
                   ))}
@@ -486,17 +631,17 @@ export default function MarketDetail() {
 
             <div className="bg-slate-950 rounded-lg p-4 mb-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Outcome:</span>
-                <span className="text-white font-medium">
-                  {pendingTrade.outcome.label || pendingTrade.outcome.description}
+                <span className="text-slate-400">Action:</span>
+                <span className={`font-semibold ${
+                  pendingTrade.action === 'BUY' ? 'text-emerald-400' : 'text-orange-400'
+                }`}>
+                  {pendingTrade.action}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Trade Type:</span>
-                <span className={`font-semibold ${
-                  pendingTrade.tradeType === 'YES' ? 'text-emerald-400' : 'text-red-400'
-                }`}>
-                  {pendingTrade.tradeType === 'YES' ? 'Buy Yes' : 'Sell No'}
+                <span className="text-slate-400">Outcome:</span>
+                <span className="text-white font-medium">
+                  {pendingTrade.outcome.label || pendingTrade.outcome.description}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
@@ -506,16 +651,17 @@ export default function MarketDetail() {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Price:</span>
                 <span className="text-white font-medium">
-                  {pendingTrade.outcome.currentPrice
-                    ? `${(pendingTrade.outcome.currentPrice * 100).toFixed(0)}¢ per share`
+
+                  {p !== undefined
+                    ? `${(p * 100).toFixed(0)}¢ per share`
                     : '—'}
                 </span>
               </div>
-              {pendingTrade.outcome.currentPrice && (
+              {p !== undefined && (
                 <div className="flex justify-between text-sm pt-2 border-t border-slate-800">
-                  <span className="text-slate-400">Total Cost:</span>
+                  <span className="text-slate-400">Total {pendingTrade.action === 'BUY' ? 'Cost' : 'Value'}:</span>
                   <span className="text-amber-400 font-bold">
-                    ${(pendingTrade.outcome.currentPrice * tradeQuantity).toFixed(2)}
+                    ${((p * tradeQuantity)).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -535,12 +681,12 @@ export default function MarketDetail() {
               <button
                 onClick={confirmTrade}
                 className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-colors ${
-                  pendingTrade.tradeType === 'YES'
+                  pendingTrade.action === 'BUY'
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20'
+                    : 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20'
                 }`}
               >
-                Confirm Trade
+                Confirm {pendingTrade.action}
               </button>
             </div>
           </motion.div>

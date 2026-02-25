@@ -50,6 +50,10 @@ public class Market {
             fetch = FetchType.EAGER
     )
     private List<Outcome> outcomes = new ArrayList<>();
+
+    @Column(name = "winning_outcome_id")
+    private UUID winningOutcomeId;
+
     /**
      * LMSR Liquididity Paramater
      * A higher b means prices move quicker and prices move slower
@@ -158,6 +162,13 @@ public class Market {
         this.outcomes = outcomes;
     }
 
+    public UUID getWinningOutcomeId() {
+        return winningOutcomeId;
+    }
+
+    public void setWinningOutcomeId(UUID winningOutcomeId) {
+        this.winningOutcomeId = winningOutcomeId;
+    }
 
     // ==========================
     // Helper Methods

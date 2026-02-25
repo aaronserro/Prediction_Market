@@ -71,7 +71,7 @@ public TransferResponse transfer(
     //    Your existing methods already enforce their own idempotency.
     //    Order: DEBIT sender first (will throw if insufficient funds), then CREDIT receiver.
     TransactionResponse debitTx  = this.debit(amountCents, fromUserId, debitKey,  refId);
-    TransactionResponse creditTx = this.credit(toUserId,   amountCents, creditKey, refId);
+    TransactionResponse creditTx = this.credit(amountCents, toUserId,    creditKey, refId);
 
     // 4) Build a shared transferId for audit / future lookup
     String transferId = "tr_" + UUID.randomUUID();

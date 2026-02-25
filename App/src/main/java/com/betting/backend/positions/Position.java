@@ -14,6 +14,11 @@ public class Position {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PositionStatus status = PositionStatus.OPEN;
+
+
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -37,6 +42,12 @@ public class Position {
     @Column(name = "realized_pnl")
     private Long realizedPnl;
 
+    @Column(name = "market_id")
+    private UUID marketId;
+
+    @Column(name = "market_name")
+    private String marketName;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -50,6 +61,13 @@ public class Position {
         updatedAt = LocalDateTime.now();
     }
 
+    public PositionStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PositionStatus status) {
+        this.status = status;
+    }
     // Getters and Setters
 
     public Long getId() {
@@ -114,5 +132,21 @@ public class Position {
 
     public void setRealizedPnl(Long realizedPnl) {
         this.realizedPnl = realizedPnl;
+    }
+
+    public UUID getMarketId() {
+        return marketId;
+    }
+
+    public void setMarketId(UUID marketId) {
+        this.marketId = marketId;
+    }
+
+    public String getMarketName() {
+        return marketName;
+    }
+
+    public void setMarketName(String marketName) {
+        this.marketName = marketName;
     }
 }

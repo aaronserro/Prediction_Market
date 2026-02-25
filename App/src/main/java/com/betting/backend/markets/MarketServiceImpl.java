@@ -13,14 +13,21 @@ import com.betting.backend.markets.dto.OutcomeResponse;
 import com.betting.backend.markets.dto.UpdateMarketRequest;
 
 import org.springframework.transaction.annotation.Transactional;
-@Service
 
+import com.betting.backend.positions.PositionService;
+
+@Service
 public class MarketServiceImpl implements MarketService{
     private final MarketRepository marketRepository;
     private final OutcomeRepository outcomeRepository;
-    public MarketServiceImpl(MarketRepository marketRepository, OutcomeRepository outcomeRepository){
-        this.marketRepository=marketRepository;
-        this.outcomeRepository=outcomeRepository;
+    private final PositionService positionService;
+
+    public MarketServiceImpl(MarketRepository marketRepository,
+                            OutcomeRepository outcomeRepository,
+                            PositionService positionService){
+        this.marketRepository = marketRepository;
+        this.outcomeRepository = outcomeRepository;
+        this.positionService = positionService;
     }
     @Override
     @Transactional
@@ -256,4 +263,27 @@ public class MarketServiceImpl implements MarketService{
 
         return toResponse(saved);
     }
+    @Transactional
+    public void resolveMarket(UUID marketId, UUID winningOutcomeId) {
+    Market market = marketRepository.findById(marketId)
+        .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
+
+    if (market.getStatus() != MarketStatus.CLOSED) {
+        throw new IllegalStateException("Market must be CLOSED before resolving");
+    }
+    if (market.getStatus() == MarketStatus.RESOLVED) return;
+
+    // validate outcome belongs to market
+    boolean belongs = market.getOutcomes().stream()
+        .anyMatch(o -> o.getId().equals(winningOutcomeId));
+    if (!belongs) throw new IllegalArgumentException("Winning outcome does not belong to market");
+
+    market.setStatus(MarketStatus.RESOLVED);
+    market.setWinningOutcomeId(winningOutcomeId); // you need this field on Market
+    marketRepository.save(market);
+    System.out.println("Resolving market " + marketId + " with winner " + winningOutcomeId);
+    positionService.settlePositions(marketId, winningOutcomeId);
+    System.out.println("Settlement called for market " + marketId);
+
+}
 }

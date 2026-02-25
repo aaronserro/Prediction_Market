@@ -29,6 +29,22 @@ public class TradeController {
 
 
     }
+    @PostMapping("/sell")
+    public ResponseEntity<TradeResponse> createSellTrade(
+    @RequestBody CreateTradeRequest request,
+    Principal principal
+){
+    System.out.println("SELL REQ outcome=" + request.getOutcomeId() +
+               " market=" + request.getMarketId() +
+               " qty=" + request.getQuantity());
+
+    String emailOrUsername = principal.getName();
+    User user = userRepository.findByUsername(emailOrUsername)
+            .orElseThrow(() -> new RuntimeException("User not found for: " + emailOrUsername));
+
+    TradeResponse response = tradeService.createSellTrade(request, user);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+}
     @PostMapping("/buy")
     public ResponseEntity<TradeResponse> createBuyTrade(
         @RequestBody CreateTradeRequest request,

@@ -12,6 +12,7 @@ public class PositionResponse {
     private UUID marketId;
     private UUID outcomeId;
     private String outcomeName;
+    private String marketTitle;
 
     private int quantity;
 
@@ -26,7 +27,8 @@ public class PositionResponse {
 
     public PositionResponse() {}
 
-    public PositionResponse(UUID marketId,
+    public PositionResponse(String MarketTitle,
+                            UUID marketId,
                             UUID outcomeId,
                             String outcomeName,
                             int quantity,
@@ -36,6 +38,7 @@ public class PositionResponse {
                             long marketValueCents,
                             long unrealizedPnlCents,
                             long realizedPnlCents) {
+        this.marketTitle=MarketTitle;
         this.marketId = marketId;
         this.outcomeId = outcomeId;
         this.outcomeName = outcomeName;
@@ -46,6 +49,12 @@ public class PositionResponse {
         this.marketValueCents = marketValueCents;
         this.unrealizedPnlCents = unrealizedPnlCents;
         this.realizedPnlCents = realizedPnlCents;
+    }
+    public void setMarkettitle(String title){
+        this.marketTitle=title;
+    }
+    public String getMarketTitle(){
+        return marketTitle;
     }
 
     public UUID getMarketId() { return marketId; }

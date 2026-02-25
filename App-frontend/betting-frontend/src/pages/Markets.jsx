@@ -67,10 +67,12 @@ export default function Markets() {
     fetchMarkets();
   }, [categoryFilter]);
 
-  // Filter by search query
-  const filteredMarkets = markets.filter(market =>
-    searchQuery === "" || market.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter by search query and status (only show ACTIVE or UPCOMING markets)
+  const filteredMarkets = markets.filter(market => {
+    const matchesSearch = searchQuery === "" || market.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const isActiveOrUpcoming = market.status === "ACTIVE" || market.status === "UPCOMING";
+    return matchesSearch && isActiveOrUpcoming;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 pt-24 pb-16">

@@ -19,6 +19,13 @@ export default function AdminMarketEdit() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState("");
 
+  // Resolve market state
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [resolveError, setResolveError] = useState("");
+  const [resolveSuccess, setResolveSuccess] = useState("");
+  const [selectedWinningOutcome, setSelectedWinningOutcome] = useState("");
+  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
+
   // Editable fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -139,6 +146,65 @@ export default function AdminMarketEdit() {
       setError(err.message || "Failed to update market");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  // Resolve market
+  const handleResolveMarket = async () => {
+    if (!selectedWinningOutcome) {
+      setResolveError("Please select a winning outcome");
+      return;
+    }
+
+    setResolveLoading(true);
+    setResolveError("");
+    setResolveSuccess("");
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/v1/admin/markets/${marketId}/resolve?winningOutcomeId=${selectedWinningOutcome}`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to resolve market: ${res.status}`);
+      }
+
+      // Check if response has content before parsing JSON
+      const contentType = res.headers.get("content-type");
+      let resolvedMarket = null;
+
+      if (contentType && contentType.includes("application/json")) {
+        const text = await res.text();
+        if (text) {
+          resolvedMarket = JSON.parse(text);
+        }
+      }
+
+      // Update market state if we got data, otherwise just update status
+      if (resolvedMarket) {
+        setMarket(resolvedMarket);
+        setStatus(resolvedMarket.status || "RESOLVED");
+      } else {
+        // If no response body, just update status locally
+        setMarket({ ...market, status: "RESOLVED" });
+        setStatus("RESOLVED");
+      }
+
+      setResolveSuccess("Market resolved successfully!");
+      setShowResolveConfirm(false);
+      setSelectedWinningOutcome("");
+
+      setTimeout(() => setResolveSuccess(""), 5000);
+    } catch (err) {
+      console.error(err);
+      setResolveError(err.message || "Failed to resolve market");
+    } finally {
+      setResolveLoading(false);
     }
   };
 
@@ -468,6 +534,113 @@ export default function AdminMarketEdit() {
                       )}
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Resolve Market Section */}
+            {market.status !== "RESOLVED" && market.outcomes && market.outcomes.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-2xl border border-amber-800 bg-amber-900/20 p-6"
+              >
+                <h3 className="text-sm font-semibold text-amber-300 mb-4">Resolve Market</h3>
+
+                {resolveSuccess && (
+                  <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-300">
+                    {resolveSuccess}
+                  </div>
+                )}
+
+                {resolveError && (
+                  <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
+                    {resolveError}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-amber-200 mb-2">
+                      Select Winning Outcome
+                    </label>
+                    <select
+                      value={selectedWinningOutcome}
+                      onChange={(e) => setSelectedWinningOutcome(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-amber-700 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      disabled={resolveLoading}
+                    >
+                      <option value="">-- Select Outcome --</option>
+                      {market.outcomes.map((outcome) => (
+                        <option key={outcome.id} value={outcome.id}>
+                          {outcome.label || outcome.description || `Outcome ${outcome.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {!showResolveConfirm ? (
+                    <button
+                      onClick={() => setShowResolveConfirm(true)}
+                      disabled={!selectedWinningOutcome || resolveLoading}
+                      className="w-full px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Resolve Market
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="rounded-lg bg-amber-950/50 border border-amber-700 p-3">
+                        <p className="text-xs text-amber-200 mb-2">
+                          ⚠️ Are you sure? This action cannot be undone.
+                        </p>
+                        <p className="text-xs text-amber-300">
+                          This will resolve the market and distribute payouts to winners.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleResolveMarket}
+                          disabled={resolveLoading}
+                          className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          {resolveLoading ? "Resolving..." : "Confirm"}
+                        </button>
+                        <button
+                          onClick={() => setShowResolveConfirm(false)}
+                          disabled={resolveLoading}
+                          className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-amber-400/60">
+                    Resolving will set the market status to RESOLVED and trigger payouts.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {market.status === "RESOLVED" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-2xl border border-emerald-800 bg-emerald-900/20 p-6"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <div>
+                    <h3 className="text-sm font-semibold text-emerald-300">Market Resolved</h3>
+                    <p className="text-xs text-emerald-400/80 mt-0.5">
+                      This market has been resolved and payouts have been distributed.
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             )}

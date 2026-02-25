@@ -14,9 +14,8 @@ import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
 import com.betting.backend.markets.PricingService;
 import com.betting.backend.positions.PositionService;
-import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
-import com.betting.backend.wallet.Repository.WalletRepository;
-import com.betting.backend.wallet.model.Wallet;
+import com.betting.backend.wallet.Service.WalletService;
+import com.betting.backend.wallet.dto.TransactionResponse;
 
 @Service
 public class TradeServiceImpl implements TradeService {
@@ -24,22 +23,24 @@ public class TradeServiceImpl implements TradeService {
     private final TradeRepo tradeRepo;
     private final OutcomeRepository outcomerepo;
     private final MarketRepository marketRepo;
-    private final WalletRepository walletRepository;
     private final PositionService positionService;
     private final PricingService pricingService;
+    private final WalletService walletService;
+
     public TradeServiceImpl(TradeRepo tradeRepo,
                             OutcomeRepository outcomeRepository,
                             MarketRepository marketRepository,
-                            WalletRepository walletRepository,
                             PositionService positionService,
-                            PricingService pricingService) {
+                            PricingService pricingService,
+                            WalletService walletService) {
         this.tradeRepo = tradeRepo;
         this.outcomerepo = outcomeRepository;
         this.marketRepo = marketRepository;
-        this.walletRepository = walletRepository;
-        this.positionService=positionService;
-        this.pricingService=pricingService;
+        this.positionService = positionService;
+        this.pricingService = pricingService;
+        this.walletService = walletService;
     }
+
 
     // ---- Mapping helper ----
     private TradeResponse toResponse(Trade trade) {
@@ -103,6 +104,71 @@ public class TradeServiceImpl implements TradeService {
     }
 
     // ---- Command method (create buy trade) ----
+    @Transactional
+    public TradeResponse createSellTrade(CreateTradeRequest request, User currentUser){
+        if (request == null){
+            throw new IllegalArgumentException("Trade request cannot be null");
+
+        }
+        if (request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+        Market market = marketRepo.findById(request.getMarketId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Market not found with id: " + request.getMarketId()));
+        if (!MarketStatus.ACTIVE.equals(market.getStatus())) {
+            throw new IllegalStateException("Market is not active for trading");
+        }
+        Outcome outcome = outcomerepo.findById(request.getOutcomeId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Outcome not found with id: " + request.getOutcomeId()));
+
+        if (!outcome.getMarket().getId().equals(market.getId())) {
+            throw new IllegalArgumentException("Outcome does not belong to the specified market");
+        }
+
+        int quantity = request.getQuantity();
+        long totalAmount = pricingService.quoteSellPayout(market.getId(), outcome.getId(), quantity);
+        int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
+
+        System.out.println("DEBUG - Sell Trade Details:");
+        System.out.println("  Quantity: " + quantity);
+        System.out.println("  Total Amount (cents): " + totalAmount);
+        System.out.println("  Price Per Share (cents): " + pricePerShare);
+        System.out.println("  User: " + currentUser.getUsername());
+        System.out.println("  Market: " + market.getTitle());
+        System.out.println("  Outcome: " + outcome.getLabel());
+
+        // Update position first to validate user has enough shares
+        positionService.applySel(currentUser, outcome.getId(), quantity, pricePerShare);
+
+        // Update outstanding shares
+        outcome.incremementOutstanding(-quantity);
+        outcomerepo.save(outcome);
+        outcomerepo.flush(); // Force immediate database update
+
+        // Credit wallet using WalletService
+        String idempotencyKey = "trade_sell_" + UUID.randomUUID().toString();
+        String refId = "SELL:market=" + market.getId() + ",outcome=" + outcome.getId() + ",qty=" + quantity;
+        TransactionResponse creditTx = walletService.credit(totalAmount, currentUser.getId(), idempotencyKey, refId);
+
+        // Create trade record
+        Trade trade = new Trade();
+        trade.setUser(currentUser);
+        trade.setMarket(market);
+        trade.setOutcome(outcome);
+        trade.setQuantity(quantity);
+        trade.setPricePerShare(pricePerShare);
+        trade.setTotalAmount(totalAmount);
+        trade.setside(TradeSide.SELL);  // enum side
+        trade.setUser(currentUser);
+        Trade savedTrade = tradeRepo.save(trade);
+
+        // Use the common mapper
+        return toResponse(savedTrade);
+
+
+    }
 
     @Transactional
     public TradeResponse createBuyTrade(CreateTradeRequest request, User currentUser) {
@@ -136,24 +202,34 @@ public class TradeServiceImpl implements TradeService {
 
         int quantity = request.getQuantity();
 
-        // 4) Get price and compute total amount (temporary fixed price)
-        //int pricePerShare = 10; // TEMPORARY placeholder price
-        //int totalAmount = pricePerShare * quantity;
+        // 4) Get price and compute total amount
         long totalAmount = pricingService.quoteBuyCost(market.getId(), outcome.getId(), quantity);
         int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
 
-        // 5) Wallet / balance check
-        Wallet wallet = walletRepository.findByUser_Id(currentUser.getId())
-                .orElseThrow(() -> new WalletNotFoundException(currentUser.getId()));
+        System.out.println("DEBUG - Buy Trade Details:");
+        System.out.println("  Quantity: " + quantity);
+        System.out.println("  Total Amount (cents): " + totalAmount);
+        System.out.println("  Price Per Share (cents): " + pricePerShare);
+        System.out.println("  User: " + currentUser.getUsername());
+        System.out.println("  Market: " + market.getTitle());
+        System.out.println("  Outcome: " + outcome.getLabel());
 
-        if (wallet.getBalanceCents() < totalAmount) {
-            throw new IllegalStateException("Insufficient funds to execute trade");
-        }
+        // 5) Debit wallet using WalletService (this will validate sufficient funds)
+        String idempotencyKey = "trade_buy_" + UUID.randomUUID().toString();
+        String refId = "BUY:market=" + market.getId() + ",outcome=" + outcome.getId() + ",qty=" + quantity;
+        TransactionResponse debitTx = walletService.debit(totalAmount, currentUser.getId(), idempotencyKey, refId);
 
-        wallet.setBalanceCents(wallet.getBalanceCents() - totalAmount);
-        walletRepository.save(wallet);
+        // 6) Update outstanding shares AFTER wallet is debited
+        outcome.incremementOutstanding(quantity);
+        outcomerepo.save(outcome);
+        outcomerepo.flush(); // Force immediate database update
 
-         // 6) Create Trade entity
+        Outcome reloaded = outcomerepo.findById(outcome.getId()).orElseThrow();
+        System.out.println("DEBUG outstanding reloaded: " + reloaded.getOutstanding());
+        int spotAfter = pricingService.getSpotprice(market.getId(), outcome.getId());
+        System.out.println("DEBUG spot price after increment: " + spotAfter);
+
+        // 7) Create Trade entity
         Trade trade = new Trade();
         trade.setUser(currentUser);
         trade.setMarket(market);
@@ -164,13 +240,11 @@ public class TradeServiceImpl implements TradeService {
         trade.setside(TradeSide.BUY);  // enum side
         trade.setUser(currentUser);
         Trade savedTrade = tradeRepo.save(trade);
+
+        // 8) Update user's position
         positionService.applyBuy(currentUser, outcome.getId(), quantity, pricePerShare);
-        outcome.incremementOutstanding(quantity);
-        outcomerepo.save(outcome);
 
-
-
-        // 7) Use the common mapper
+        // 9) Use the common mapper
         return toResponse(savedTrade);
     }
 }

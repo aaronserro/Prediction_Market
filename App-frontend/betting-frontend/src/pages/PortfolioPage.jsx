@@ -27,6 +27,7 @@ export default function PortfolioPage() {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [outcomePrices, setOutcomePrices] = useState({});
 
   useEffect(() => {
     const fetchPositions = async () => {
@@ -46,6 +47,57 @@ export default function PortfolioPage() {
         const data = await res.json();
         console.log("[PortfolioPage] Fetched positions:", data);
         setPositions(data);
+
+        // Fetch current prices for all positions
+        if (data && data.length > 0) {
+          const pricePromises = data.map(async (position) => {
+            try {
+              const priceRes = await fetch(
+                `${API_BASE_URL}/api/v1/markets/${position.marketId}/outcomes/${position.outcomeId}/price`,
+                {
+                  method: "GET",
+                  credentials: "include",
+                }
+              );
+
+              if (!priceRes.ok) {
+                console.warn(`[PortfolioPage] Failed to fetch price for position ${position.id}: ${priceRes.status} ${priceRes.statusText}`);
+                // Return null for failed requests, will use fallback
+                return { positionId: position.id, outcomeId: position.outcomeId, price: null };
+              }
+
+              if (priceRes.ok) {
+                const priceData = await priceRes.json();
+                let rawPrice;
+                if (typeof priceData === 'number') {
+                  rawPrice = priceData;
+                } else if (priceData && typeof priceData === 'object') {
+                  rawPrice = priceData.price ?? priceData.currentPrice ?? priceData.value ?? priceData.pricePerShare ?? 50;
+                } else {
+                  rawPrice = 50; // default 50 cents
+                }
+                // Convert cents to decimal if needed (values > 1 are assumed to be in cents)
+                const finalPrice = rawPrice > 1 ? rawPrice / 100 : rawPrice;
+                return {
+                  positionId: position.id,
+                  outcomeId: position.outcomeId,
+                  price: finalPrice
+                };
+              }
+            } catch (err) {
+              console.error(`[PortfolioPage] Failed to fetch price for position ${position.id}:`, err);
+            }
+            return { positionId: position.id, outcomeId: position.outcomeId, price: null };
+          });
+
+          const prices = await Promise.all(pricePromises);
+          const pricesMap = {};
+          prices.forEach(({ positionId, price }) => {
+            pricesMap[positionId] = price;
+          });
+          console.log('[PortfolioPage] Prices map:', pricesMap);
+          setOutcomePrices(pricesMap);
+        }
       } catch (err) {
         console.error(err);
         setError(err.message || "Failed to load positions");
@@ -59,10 +111,23 @@ export default function PortfolioPage() {
 
   // Calculate portfolio stats
   const totalPositions = positions.length;
-  const totalValue = positions.reduce((sum, pos) => {
-    const value = (pos.quantity || 0) * (pos.currentPrice || 0);
+
+  const totalAmountInvested = positions.reduce((sum, pos) => {
+    const invested = (pos.quantity || 0) * (pos.averagePrice || 0);
+    return sum + invested;
+  }, 0);
+
+  const totalCurrentValue = positions.reduce((sum, pos) => {
+    const currentPrice = outcomePrices[pos.id] !== undefined ? outcomePrices[pos.id] : (pos.currentPrice || 0);
+    const value = (pos.quantity || 0) * currentPrice;
     return sum + value;
   }, 0);
+
+  const totalProfitLoss = totalCurrentValue - totalAmountInvested;
+  const totalProfitLossPercent = totalAmountInvested > 0
+    ? ((totalCurrentValue - totalAmountInvested) / totalAmountInvested) * 100
+    : 0;
+
   const totalShares = positions.reduce((sum, pos) => sum + (pos.quantity || 0), 0);
 
   if (loading) {
@@ -99,19 +164,28 @@ export default function PortfolioPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
         >
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6">
             <p className="text-sm text-slate-400 mb-1">Total Positions</p>
             <p className="text-3xl font-bold text-white">{totalPositions}</p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6">
-            <p className="text-sm text-slate-400 mb-1">Total Shares</p>
-            <p className="text-3xl font-bold text-white">{totalShares}</p>
+            <p className="text-sm text-slate-400 mb-1">Total Invested</p>
+            <p className="text-3xl font-bold text-blue-400">${totalAmountInvested.toFixed(2)}</p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6">
-            <p className="text-sm text-slate-400 mb-1">Portfolio Value</p>
-            <p className="text-3xl font-bold text-amber-400">${totalValue.toFixed(2)}</p>
+            <p className="text-sm text-slate-400 mb-1">Current Value</p>
+            <p className="text-3xl font-bold text-amber-400">${totalCurrentValue.toFixed(2)}</p>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6">
+            <p className="text-sm text-slate-400 mb-1">Total P/L</p>
+            <p className={`text-3xl font-bold ${totalProfitLoss >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+            </p>
+            <p className={`text-xs mt-1 ${totalProfitLoss >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+              {totalProfitLoss >= 0 ? '+' : ''}{totalProfitLossPercent.toFixed(2)}%
+            </p>
           </div>
         </motion.div>
 
@@ -165,10 +239,17 @@ export default function PortfolioPage() {
             {positions.map((position, idx) => {
               const categoryColor = CATEGORY_COLORS[position.marketCategory] || CATEGORY_COLORS.OTHER;
               const categoryIcon = CATEGORY_ICONS[position.marketCategory] || CATEGORY_ICONS.OTHER;
-              const positionValue = (position.quantity || 0) * (position.currentPrice || 0);
-              const profitLoss = positionValue - ((position.quantity || 0) * (position.averagePrice || 0));
-              const profitLossPercent = position.averagePrice
-                ? ((position.currentPrice - position.averagePrice) / position.averagePrice) * 100
+
+              // Use fetched price if available, otherwise fall back to position.currentPrice
+              const currentPrice = outcomePrices[position.id] !== undefined
+                ? outcomePrices[position.id]
+                : (position.currentPrice || 0);
+
+              const positionValue = (position.quantity || 0) * currentPrice;
+              const amountInvested = (position.quantity || 0) * (position.averagePrice || 0);
+              const profitLoss = positionValue - amountInvested;
+              const profitLossPercent = position.averagePrice && currentPrice
+                ? ((currentPrice - position.averagePrice) / position.averagePrice) * 100
                 : 0;
 
               return (
@@ -218,16 +299,22 @@ export default function PortfolioPage() {
                         </span>
                         <span>•</span>
                         <span>
-                          Current: {position.currentPrice ? `${(position.currentPrice * 100).toFixed(1)}¢` : "—"}
+                          Current: {currentPrice ? `${(currentPrice * 100).toFixed(1)}¢` : "—"}
                         </span>
                       </div>
                     </div>
 
                     {/* Right: Value & P/L */}
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 mb-0.5">Amount Invested</p>
+                        <p className="text-lg font-semibold text-slate-300">
+                          ${amountInvested.toFixed(2)}
+                        </p>
+                      </div>
                       <div className="text-right">
                         <p className="text-xs text-slate-400 mb-0.5">Position Value</p>
-                        <p className="text-2xl font-bold text-white">
+                        <p className="text-xl font-bold text-white">
                           ${positionValue.toFixed(2)}
                         </p>
                       </div>

@@ -16,9 +16,11 @@ import com.betting.backend.markets.dto.UpdateMarketRequest;
 public class MarketController {
 
     private final MarketService marketService;
+    private final PricingService pricingService;
 
-    public MarketController(MarketService marketService) {
+    public MarketController(MarketService marketService, PricingService pricingService) {
         this.marketService = marketService;
+        this.pricingService = pricingService;
     }
 
     // ========= ADMIN ENDPOINTS =========
@@ -34,6 +36,14 @@ public class MarketController {
         MarketResponse response = marketService.createMarket(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+    @PostMapping("/admin/markets/{marketId}/resolve")
+    public ResponseEntity<Void> resolveMarket(
+        @PathVariable UUID marketId,
+        @RequestParam UUID winningOutcomeId
+) {
+    marketService.resolveMarket(marketId, winningOutcomeId);
+    return ResponseEntity.noContent().build();
+}
 
     /**
      * Update an existing market (ADMIN ONLY).
@@ -90,5 +100,32 @@ public class MarketController {
             @PathVariable("category") MarketCategory category
     ) {
         return marketService.getMarketsByCategory(category);
+    }
+
+    /**
+     * Get the current spot price for an outcome (0-100 cents).
+     * Example URL: GET /api/markets/{marketId}/outcomes/{outcomeId}/price
+     */
+    @GetMapping("/markets/{marketId}/outcomes/{outcomeId}/price")
+    public ResponseEntity<Integer> getOutcomePrice(
+            @PathVariable("marketId") UUID marketId,
+            @PathVariable("outcomeId") UUID outcomeId
+    ) {
+        int price = pricingService.getSpotprice(marketId, outcomeId);
+        return ResponseEntity.ok(price);
+    }
+
+    /**
+     * Get a quote for buying a specific quantity of an outcome.
+     * Example URL: GET /api/markets/{marketId}/outcomes/{outcomeId}/quote?quantity=10
+     */
+    @GetMapping("/markets/{marketId}/outcomes/{outcomeId}/quote")
+    public ResponseEntity<Long> getBuyQuote(
+            @PathVariable("marketId") UUID marketId,
+            @PathVariable("outcomeId") UUID outcomeId,
+            @RequestParam("quantity") int quantity
+    ) {
+        long totalCost = pricingService.quoteBuyCost(marketId, outcomeId, quantity);
+        return ResponseEntity.ok(totalCost);
     }
 }
