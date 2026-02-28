@@ -130,7 +130,7 @@ public class TradeServiceImpl implements TradeService {
         int quantity = request.getQuantity();
         long totalAmount = pricingService.quoteSellPayout(market.getId(), outcome.getId(), quantity);
         int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
-
+        /*
         System.out.println("DEBUG - Sell Trade Details:");
         System.out.println("  Quantity: " + quantity);
         System.out.println("  Total Amount (cents): " + totalAmount);
@@ -138,7 +138,7 @@ public class TradeServiceImpl implements TradeService {
         System.out.println("  User: " + currentUser.getUsername());
         System.out.println("  Market: " + market.getTitle());
         System.out.println("  Outcome: " + outcome.getLabel());
-
+        */
         // Update position first to validate user has enough shares
         positionService.applySel(currentUser, outcome.getId(), quantity, pricePerShare);
 
