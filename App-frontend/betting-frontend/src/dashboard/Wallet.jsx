@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { PageShell } from "./Dashboard.jsx";
 
 /**
  * Wallet.jsx — drop-in page
@@ -87,7 +88,7 @@ export default function Wallet() {
 
   // Form state
   const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Account top-up");
   const [submitting, setSubmitting] = useState(false);
 
   // UX state
@@ -146,7 +147,7 @@ const refreshRequests = useCallback(async () => {
       await api.createFundRequest(userId, cents, reason);
 
       setAmount("");
-      setReason("");
+      setReason("Account top-up");
       setSuccess("Fund request submitted! You’ll receive an email when it’s processed.");
 
       await Promise.all([refreshWallet(), refreshRequests()]);
@@ -176,110 +177,68 @@ const refreshRequests = useCallback(async () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f0f14] text-white">
-      {/* background */}
-      <div
-        className="fixed inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.2), transparent 80%), radial-gradient(1000px 500px at 90% -20%, rgba(217, 70, 239, 0.15), transparent 80%), #0f0f14",
-        }}
-      />
-
-      <div className="mx-auto max-w-5xl px-4 py-8 pt-24">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-amber-400">Fund Wallet</h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Request funds to add to your account balance
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-zinc-400">User ID</span>
-            <input
-              type="number"
-              min={1}
-              value={userId}
-              onChange={(e) => setUserId(parseInt(e.target.value || "1", 10))}
-              className="w-20 rounded-lg border border-zinc-800 bg-black/30 px-3 py-2 text-sm text-white backdrop-blur-sm focus:border-amber-500 focus:outline-none"
-            />
-            <button
-              onClick={() => {
-                refreshWallet();
-                //refreshRequests();
-              }}
-              className="rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 px-4 py-2 text-sm font-medium text-white transition-all hover:from-indigo-500 hover:to-blue-500"
-            >
-              Refresh
-            </button>
-          </div>
+    <PageShell>
+      <div className="mx-auto max-w-5xl px-4 pt-24 pb-16">
+        <div className="mb-8">
+          <h1 className="text-3xl font-black tracking-tight text-white">Wallet</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Request funds to add to your account balance
+          </p>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/50 bg-red-950/30 p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-red-300">Error</span>
-            </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-red-200">{error}</p>
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] p-4">
+            <p className="text-sm font-semibold text-red-400 mb-1">Error</p>
+            <p className="whitespace-pre-wrap text-sm text-red-300/80">{error}</p>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-xl border border-green-500/50 bg-green-950/30 p-4 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-green-300">Success</span>
-            </div>
-            <p className="mt-2 text-sm text-green-200">{success}</p>
+          <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
+            <p className="text-sm font-semibold text-emerald-400 mb-1">Success</p>
+            <p className="text-sm text-emerald-300/80">{success}</p>
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           {/* Balance card */}
-          <div className="rounded-2xl border border-zinc-800/70 bg-black/30 p-6 shadow-xl backdrop-blur-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-500/10">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
                 <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M21 12V7H5a2 2 0 010-4h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2v-1a2 2 0 012-2h16" />
                 </svg>
               </div>
               <div>
-                <div className="text-sm uppercase tracking-wider text-zinc-400">Current Balance</div>
-                <div className="text-3xl font-bold text-white">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Current Balance</p>
+                <p className="text-3xl font-black text-white mt-0.5 tracking-tight">
                   {loadingWallet ? "…" : balancePretty}
-                </div>
+                </p>
               </div>
             </div>
             {wallet?.updatedAt && (
-              <div className="text-xs text-zinc-500">
+              <p className="text-xs text-slate-600">
                 Last updated: {new Date(wallet.updatedAt).toLocaleString()}
-              </div>
+              </p>
             )}
           </div>
 
           {/* Request funds card */}
-          <div className="rounded-2xl border border-zinc-800/70 bg-black/30 p-6 shadow-xl backdrop-blur-sm">
-            <div className="mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <h2 className="text-lg font-semibold text-amber-400">Request Funds</h2>
+              <h2 className="text-base font-black text-white uppercase tracking-wider">Request Funds</h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Amount (CAD)</label>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400 uppercase tracking-widest">Amount (CAD)</label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
                   <input
                     type="number"
                     step="0.01"
@@ -287,77 +246,82 @@ const refreshRequests = useCallback(async () => {
                     placeholder="100.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-800 bg-black/50 py-3 pl-8 pr-4 text-white placeholder-zinc-600 backdrop-blur-sm focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-xl border border-white/[0.07] bg-white/[0.04] py-3 pl-8 pr-4 text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none focus:bg-white/[0.06] transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Reason for Request</label>
-                <textarea
-                  placeholder="e.g., Account top-up for tournament entry"
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400 uppercase tracking-widest">Reason</label>
+                <select
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  rows={3}
-                  className="w-full rounded-lg border border-zinc-800 bg-black/50 p-3 text-white placeholder-zinc-600 backdrop-blur-sm focus:border-indigo-500 focus:outline-none"
-                />
+                  className="w-full rounded-xl border border-white/[0.07] bg-[#0d0a1a] py-3 px-4 text-white focus:border-violet-500/50 focus:outline-none focus:bg-[#110d20] transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="Account top-up">Account top-up</option>
+                  <option value="Tournament entry">Tournament entry</option>
+                  <option value="Promotional credit">Promotional credit</option>
+                  <option value="Referral reward">Referral reward</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
 
               <button
                 onClick={onRequestFunds}
                 disabled={submitting}
-                className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 py-3 font-semibold text-white transition-all hover:from-indigo-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 font-black text-[#1a0a00] text-sm transition-all hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-900/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {submitting ? "Submitting..." : "Submit Request"}
+                {submitting ? "Submitting…" : "Submit Request"}
               </button>
 
-              <p className="text-xs text-zinc-500">
-                An email will be sent to the admin for approval. You’ll be notified once processed.
+              <p className="text-xs text-slate-600">
+                An admin will review your request. You'll be notified once it's processed.
               </p>
             </div>
           </div>
         </div>
 
         {/* History */}
-        <div className="mt-6 rounded-2xl border border-zinc-800/70 bg-black/30 p-6 shadow-xl backdrop-blur-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <svg className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6">
+          <div className="mb-5 flex items-center gap-2">
+            <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <h2 className="text-lg font-semibold text-amber-400">Request History</h2>
+            <h2 className="text-base font-black text-white uppercase tracking-wider">Request History</h2>
           </div>
 
           {loadingRequests ? (
-            <div className="py-8 text-center text-zinc-400">Loading requests…</div>
+            <div className="flex justify-center py-10">
+              <div className="w-8 h-8 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
+            </div>
           ) : requests.length === 0 ? (
-            <div className="py-8 text-center text-zinc-400">No fund requests yet</div>
+            <div className="py-10 text-center text-sm text-slate-500">No fund requests yet</div>
           ) : (
             <div className="space-y-3">
               {requests.map((req) => (
-                <div key={req.id} className="rounded-lg border border-zinc-800 bg-black/20 p-4 backdrop-blur-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg font-semibold text-white">
+                <div key={req.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-lg font-black text-white">
                           {centsToCAD(req.amountCents)}
                         </span>
-                        <span
-                          className="rounded-full px-3 py-1 text-xs font-medium"
-                          style={{
-                            color: getStatusColor(req.status),
-                            backgroundColor: getStatusBg(req.status),
-                          }}
-                        >
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                          req.status === "APPROVED" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
+                          req.status === "REJECTED" ? "text-red-400 bg-red-500/10 border-red-500/20" :
+                          req.status === "PENDING"  ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
+                          "text-slate-400 bg-white/[0.04] border-white/[0.06]"
+                        }`}>
                           {req.status}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-zinc-300">{req.reason}</p>
-                      <div className="mt-2 text-xs text-zinc-500">
+                      {req.reason && <p className="mt-2 text-sm text-slate-400">{req.reason}</p>}
+                      <div className="mt-2 text-xs text-slate-600">
                         Requested: {req.createdAt ? new Date(req.createdAt).toLocaleString() : "—"}
                       </div>
                       {req.processedAt && (
-                        <div className="text-xs text-zinc-500">
+                        <div className="text-xs text-slate-600">
                           Processed: {new Date(req.processedAt).toLocaleString()}
                         </div>
                       )}
@@ -369,11 +333,6 @@ const refreshRequests = useCallback(async () => {
           )}
         </div>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-      `}</style>
-    </div>
+    </PageShell>
   );
 }
