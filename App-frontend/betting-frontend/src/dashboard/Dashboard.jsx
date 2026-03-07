@@ -6,7 +6,7 @@ import rankImages, { formatRank } from "../lib/rankImages.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-/* ── tiny icons ──────────────────────────────────────────────────────── */
+/* ── icons ───────────────────────────────────────────────────────────── */
 const WalletIcon = (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
     <path d="M21 12V7H5a2 2 0 0 1 0-4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h16" />
@@ -25,21 +25,32 @@ const ChevronRight = (p) => (
     <path d="M9 5l7 7-7 7" />
   </svg>
 );
+const ZapIcon = (p) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+);
+const TargetIcon = (p) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+  </svg>
+);
+const FlameIcon = (p) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2c0 0-5 4.5-5 9a5 5 0 0 0 10 0c0-2.5-1.5-4.5-1.5-4.5S14 9 12 9c0-2 2-4 2-4s-2 1-2-3z"/></svg>
+);
 
 /* ── shared background ───────────────────────────────────────────────── */
 export function PageShell({ children }) {
   return (
-    <div className="min-h-screen bg-[#0d0a18] text-white relative overflow-x-hidden flex flex-col">
-      {/* ambient glow */}
+    <div className="min-h-screen bg-[#080612] text-white relative overflow-x-hidden flex flex-col">
+      {/* ambient glow — more intense */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-[140px] animate-[drift_22s_ease-in-out_infinite]" />
-        <div className="absolute top-1/3 -right-20 w-[420px] h-[420px] rounded-full bg-amber-500/[0.12] blur-[120px] animate-[drift_28s_ease-in-out_infinite_reverse]" />
-        <div className="absolute -bottom-20 left-1/3 w-[500px] h-[350px] rounded-full bg-violet-500/[0.10] blur-[160px] animate-[drift_32s_ease-in-out_infinite]" />
+        <div className="absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full bg-violet-700/25 blur-[160px] animate-[drift_22s_ease-in-out_infinite]" />
+        <div className="absolute top-1/4 -right-32 w-[500px] h-[500px] rounded-full bg-amber-500/[0.18] blur-[130px] animate-[drift_28s_ease-in-out_infinite_reverse]" />
+        <div className="absolute -bottom-32 left-1/3 w-[600px] h-[400px] rounded-full bg-violet-600/[0.15] blur-[180px] animate-[drift_32s_ease-in-out_infinite]" />
+        <div className="absolute top-1/2 left-1/4 w-[300px] h-[300px] rounded-full bg-fuchsia-600/[0.08] blur-[100px] animate-[drift_18s_ease-in-out_infinite_reverse]" />
       </div>
       <div className="relative z-10 flex-1 flex flex-col">
         {children}
       </div>
-      {/* shared footer */}
       <footer className="relative z-10 border-t border-white/[0.04] py-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
           <span>&copy; 2026 Pryzm</span>
@@ -56,51 +67,132 @@ export function PageShell({ children }) {
           33%{transform:translate(25px,-18px) scale(1.04)}
           66%{transform:translate(-18px,14px) scale(.97)}
         }
+        @keyframes pulse-glow {
+          0%,100%{opacity:1} 50%{opacity:0.4}
+        }
+        @keyframes shimmer {
+          0%{background-position:-200% center}
+          100%{background-position:200% center}
+        }
+        @keyframes xp-fill {
+          from{width:0} to{width:var(--xp-width)}
+        }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0d0a18; }
+        ::-webkit-scrollbar-track { background: #080612; }
         ::-webkit-scrollbar-thumb { background: #2d1b4e; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #3d2a6e; }
+        .shimmer-text {
+          background: linear-gradient(90deg, #a78bfa, #fbbf24, #a78bfa);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer 4s linear infinite;
+        }
+        .card-glow:hover { box-shadow: 0 0 28px -4px rgba(139,92,246,0.35); }
+        .gold-glow:hover { box-shadow: 0 0 28px -4px rgba(251,191,36,0.35); }
+        .live-dot { animation: pulse-glow 1.8s ease-in-out infinite; }
       `}</style>
     </div>
   );
 }
 
+/* ── stat card ───────────────────────────────────────────────────────── */
+function StatCard({ label, value, sub, icon, accent = "violet", loading }) {
+  const colors = {
+    violet: { bg: "bg-violet-500/10", border: "border-violet-500/20", icon: "text-violet-400", glow: "hover:shadow-violet-500/20" },
+    amber:  { bg: "bg-amber-500/10",  border: "border-amber-500/20",  icon: "text-amber-400",  glow: "hover:shadow-amber-500/20"  },
+    emerald:{ bg: "bg-emerald-500/10",border: "border-emerald-500/20",icon: "text-emerald-400",glow: "hover:shadow-emerald-500/20"},
+  };
+  const c = colors[accent] || colors.violet;
+  return (
+    <motion.div
+      whileHover={{ y: -3, scale: 1.01 }}
+      className={`rounded-2xl border ${c.border} bg-white/[0.03] p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-xl ${c.glow} cursor-default`}
+    >
+      <div className={`w-12 h-12 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center flex-shrink-0`}>
+        <div className={c.icon}>{icon}</div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{label}</p>
+        <p className="text-2xl font-bold text-white mt-0.5 tracking-tight">{loading ? "…" : value}</p>
+        {sub && <p className="text-xs text-slate-600 mt-0.5">{sub}</p>}
+      </div>
+    </motion.div>
+  );
+}
+
 /* ── market card ─────────────────────────────────────────────────────── */
-function MarketCard({ market }) {
+function MarketCard({ market, index }) {
   const navigate = useNavigate();
   const vol = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(market.volume || 0);
   const date = market.endDate ? new Date(market.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
   const cat = (market.category || "Other").charAt(0) + (market.category || "Other").slice(1).toLowerCase();
+  const isActive = market.status === "ACTIVE";
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -2 }}
+      transition={{ delay: 0.3 + index * 0.06, type: "spring", stiffness: 120 }}
+      whileHover={{ y: -4, scale: 1.02 }}
       onClick={() => navigate(`/markets/${market.id}`)}
-      className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 cursor-pointer hover:border-violet-500/20 hover:bg-white/[0.04] transition-all"
+      className="card-glow group relative flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden p-5 cursor-pointer transition-all duration-200"
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[11px] font-medium text-violet-300 bg-violet-500/10 border border-violet-500/15 px-2 py-0.5 rounded">{cat}</span>
-        {market.status && (
-          <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${market.status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" : "text-amber-400 bg-amber-500/10"}`}>
-            {market.status}
+      {/* top accent line */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] ${isActive ? "bg-gradient-to-r from-violet-500 via-amber-400 to-violet-500" : "bg-gradient-to-r from-slate-700 to-slate-600"}`} />
+
+      <div className="flex items-center gap-2 mb-3 mt-1">
+        <span className="text-[11px] font-semibold text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full">{cat}</span>
+        {isActive && (
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+            <span className="live-dot w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            LIVE
           </span>
+        )}
+        {!isActive && market.status && (
+          <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">{market.status}</span>
         )}
       </div>
 
-      <h3 className="text-sm font-medium text-white leading-snug line-clamp-2 mb-auto min-h-[2.5rem]">{market.title}</h3>
+      <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2 mb-auto min-h-[2.5rem] group-hover:text-violet-100 transition-colors">{market.title}</h3>
 
-      <div className="mt-4 pt-3 border-t border-white/[0.05] flex items-center justify-between text-xs text-slate-500">
-        <span>{vol} vol</span>
+      <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-slate-500">
+        <span className="text-slate-400 font-medium">{vol} vol</span>
         <span>{date}</span>
       </div>
 
-      <div className="mt-2 flex items-center gap-1 text-xs text-amber-400/60 group-hover:text-amber-400 transition-colors">
-        Trade <ChevronRight className="w-3 h-3" />
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-xs text-slate-600">Closes {date}</span>
+        <motion.div
+          whileHover={{ x: 2 }}
+          className="flex items-center gap-1 text-xs font-bold text-amber-400 group-hover:text-amber-300 transition-colors"
+        >
+          Trade now <ChevronRight className="w-3.5 h-3.5" />
+        </motion.div>
       </div>
     </motion.div>
+  );
+}
+
+/* ── xp bar ──────────────────────────────────────────────────────────── */
+function XpBar({ pct, color = "from-violet-500 to-amber-400" }) {
+  return (
+    <div className="relative h-2 rounded-full bg-white/[0.06] overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(pct, 100)}%` }}
+        transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
+        className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${color}`}
+      />
+      {/* shimmer */}
+      <motion.div
+        initial={{ x: "-100%" }}
+        animate={{ x: "200%" }}
+        transition={{ duration: 1.8, ease: "easeInOut", delay: 1.2 }}
+        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+      />
+    </div>
   );
 }
 
@@ -116,13 +208,7 @@ export default function Home() {
 
   // ── announcements: edit this array to add/remove entries ────────────
   const announcements = [
-     {
-       id: "example",
-       title: "Example announcement",
-       body: "Announcement body text.",
-       date: "2026-03-06",
-       pinned: true,
-     },
+    // { id: "ex", title: "Title", body: "Body.", date: "2026-03-06", pinned: true },
   ];
   const sortedAnnouncements = [...announcements].sort((a, b) =>
     a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1
@@ -134,7 +220,6 @@ export default function Home() {
     if (!user) { setLoading(false); return; }
     const userId = user.id || user.userId || user.username;
     if (!userId) { setLoading(false); return; }
-
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/v1/users/${userId}/wallet`, { credentials: "include" });
@@ -150,7 +235,6 @@ export default function Home() {
     if (!user) { setRankLoading(false); return; }
     const userId = user.id || user.userId || user.username;
     if (!userId) { setRankLoading(false); return; }
-
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/ranks/${userId}`, { credentials: "include" });
@@ -177,113 +261,182 @@ export default function Home() {
   const balance = wallet?.balanceCents ? wallet.balanceCents / 100 : 0;
   const fmtBal = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(balance);
   const username = user?.username || "User";
+  const overallPct = rank ? Math.min((rank.overallPoints / 1000) * 100, 100) : 0;
 
   return (
     <PageShell>
-      <main className="pt-20 pb-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="pt-20 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
 
-          {/* ── welcome header ──────────────────────────────────── */}
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mb-8 pb-6 border-b border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-lg bg-violet-500/10 border border-violet-500/15 flex items-center justify-center flex-shrink-0">
-                <span className="text-base font-semibold text-amber-400">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
+          {/* ── HERO HEADER ─────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="relative rounded-3xl overflow-hidden border border-white/[0.08] bg-gradient-to-br from-violet-950/60 via-[#0d0820]/80 to-amber-950/30 p-6 sm:p-8"
+          >
+            {/* decorative bg grid */}
+            <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px)"}} />
+            {/* top accent */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-600 via-amber-400 to-violet-600" />
+
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              {/* left: avatar + greeting */}
+              <div className="flex items-center gap-5">
+                <div className="relative flex-shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
+                    <span className="text-2xl font-black text-white">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
+                  </div>
+                  {/* rank badge overlay */}
+                  {!rankLoading && rank?.overallRank && (
+                    <img
+                      src={rankImages[rank.overallRank]}
+                      alt={rank.overallRank}
+                      className="absolute -bottom-2 -right-2 w-8 h-8 object-contain drop-shadow-lg"
+                    />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-slate-400 font-medium">Welcome back,</p>
+                  <h1 className="text-3xl font-black tracking-tight shimmer-text">{loading ? "…" : username}</h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    {!rankLoading && rank && (
+                      <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        {formatRank(rank.overallRank)}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-600">{rank?.resolvedMarketsCount ?? 0} markets resolved</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-semibold text-white">{loading ? "Loading…" : `Welcome back, ${username}`}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">Prediction Markets</p>
+
+              {/* right: XP bar + CTA */}
+              <div className="w-full sm:w-72 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-semibold">Overall XP</span>
+                  <span className="text-amber-400 font-bold">{rank?.overallPoints ?? 0} pts</span>
+                </div>
+                <XpBar pct={overallPct} color="from-violet-500 via-fuchsia-500 to-amber-400" />
+                <div className="flex gap-3">
+                  <Link
+                    to="/wallet"
+                    className="flex-1 text-center py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-[#1a0a00] text-sm font-black hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-900/30"
+                  >
+                    + Add Funds
+                  </Link>
+                  <Link
+                    to="/markets"
+                    className="flex-1 text-center py-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-sm font-bold hover:bg-violet-500/20 hover:border-violet-500/50 transition-all"
+                  >
+                    Trade →
+                  </Link>
+                </div>
               </div>
             </div>
-            <Link to="/wallet" className="px-4 py-2 rounded-lg bg-amber-400 text-[#0d0a18] text-sm font-medium hover:bg-amber-300 transition-colors flex-shrink-0">
-              Add Funds
-            </Link>
           </motion.div>
 
-          <div className="space-y-10">
+          {/* ── STAT TILES ──────────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          >
+            <StatCard
+              label="Balance"
+              value={fmtBal}
+              sub="Available to trade"
+              icon={<WalletIcon className="w-5 h-5" />}
+              accent="violet"
+              loading={loading}
+            />
+            <StatCard
+              label="Overall Rank"
+              value={formatRank(rank?.overallRank)}
+              sub={`${rank?.overallPoints ?? 0} overall pts`}
+              icon={rankLoading || !rank?.overallRank
+                ? <TrophyIcon className="w-5 h-5" />
+                : <img src={rankImages[rank.overallRank]} alt="" className="w-7 h-7 object-contain" />}
+              accent="amber"
+              loading={rankLoading}
+            />
+            <StatCard
+              label="Markets Resolved"
+              value={rank?.resolvedMarketsCount ?? "—"}
+              sub="Completed predictions"
+              icon={<TargetIcon className="w-5 h-5" />}
+              accent="emerald"
+              loading={rankLoading}
+            />
+          </motion.div>
 
-          {/* ── stats ───────────────────────────────────────────── */}
-          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-center gap-4">
-              <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                <WalletIcon className="w-4 h-4 text-violet-400" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</p>
-                <p className="text-xl font-semibold text-white mt-0.5">{loading ? "…" : fmtBal}</p>
-              </div>
-            </div>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-center gap-4">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center overflow-hidden">
-                {rankLoading || !rank?.overallRank ? (
-                  <TrophyIcon className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <img src={rankImages[rank.overallRank]} alt={rank.overallRank} className="w-8 h-8 object-contain" />
-                )}
-              </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Overall Rank</p>
-                <p className="text-xl font-semibold text-white mt-0.5">
-                  {rankLoading ? "…" : formatRank(rank?.overallRank)}
-                </p>
-              </div>
-            </div>
-          </motion.section>
-
-          {/* ── rank breakdown ──────────────────────────────────── */}
+          {/* ── RANK CARD ────────────────────────────────────────── */}
           {!rankLoading && rank && (
-            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
-              <h2 className="text-base font-semibold text-white mb-4">Your Ranking</h2>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <ZapIcon className="w-4 h-4 text-amber-400" />
+                <h2 className="text-base font-black text-white uppercase tracking-wider">Rank Breakdown</h2>
+              </div>
 
-                {/* overall row */}
-                <div className="flex items-center gap-4 pb-5 border-b border-white/[0.05]">
-                  <img
+              <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.03] to-violet-950/20 overflow-hidden">
+                {/* overall banner */}
+                <div className="relative px-6 py-5 border-b border-white/[0.06] flex items-center gap-5 bg-gradient-to-r from-violet-900/20 to-transparent">
+                  <motion.img
+                    initial={{ scale: 0.7, rotate: -10 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.4, type: "spring", stiffness: 150 }}
                     src={rankImages[rank.overallRank]}
                     alt={rank.overallRank}
-                    className="w-14 h-14 object-contain flex-shrink-0"
+                    className="w-20 h-20 object-contain flex-shrink-0 drop-shadow-xl"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Overall</p>
-                    <p className="text-lg font-semibold text-white">{formatRank(rank.overallRank)}</p>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-amber-400 transition-all"
-                          style={{ width: `${Math.min((rank.overallPoints / 1000) * 100, 100)}%` }}
-                        />
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Overall</p>
+                    <p className="text-2xl font-black text-white mt-0.5">{formatRank(rank.overallRank)}</p>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-500">Progress to next rank</span>
+                        <span className="text-amber-400 font-bold">{rank.overallPoints} / 1000 pts</span>
                       </div>
-                      <span className="text-xs text-slate-400 flex-shrink-0">{rank.overallPoints} pts</span>
+                      <XpBar pct={overallPct} color="from-violet-500 via-fuchsia-500 to-amber-400" />
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-lg font-semibold text-slate-300">{rank.resolvedMarketsCount ?? 0}</p>
-                    <p className="text-[11px] text-slate-600 uppercase tracking-wider">resolved</p>
+                  <div className="text-right flex-shrink-0 hidden sm:block">
+                    <p className="text-3xl font-black text-white">{rank.resolvedMarketsCount ?? 0}</p>
+                    <p className="text-xs text-slate-600 uppercase tracking-wider">Resolved</p>
                   </div>
                 </div>
 
                 {/* trader + predictor */}
-                <div className="grid grid-cols-2 gap-4 pt-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.05]">
                   {[
-                    { label: "Trader",    rankKey: rank.traderRank,    pts: rank.traderPoints,    color: "from-violet-500 to-violet-400" },
-                    { label: "Predictor", rankKey: rank.predictorRank, pts: rank.predictorPoints, color: "from-amber-500 to-amber-400" },
-                  ].map(({ label, rankKey, pts, color }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <img
+                    { label: "Trader",    rankKey: rank.traderRank,    pts: rank.traderPoints,    color: "from-violet-500 to-fuchsia-500", icon: <ZapIcon className="w-3.5 h-3.5" /> },
+                    { label: "Predictor", rankKey: rank.predictorRank, pts: rank.predictorPoints, color: "from-amber-400 to-orange-500",    icon: <FlameIcon className="w-3.5 h-3.5" /> },
+                  ].map(({ label, rankKey, pts, color, icon }) => (
+                    <div key={label} className="px-6 py-5 flex items-center gap-4">
+                      <motion.img
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.55, type: "spring" }}
                         src={rankImages[rankKey]}
                         alt={rankKey}
-                        className="w-10 h-10 object-contain flex-shrink-0"
+                        className="w-14 h-14 object-contain flex-shrink-0 drop-shadow-lg"
                       />
-                      <div className="min-w-0">
-                        <p className="text-[11px] text-slate-500 uppercase tracking-wider">{label}</p>
-                        <p className="text-sm font-semibold text-white truncate">{formatRank(rankKey)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                            <div
-                              className={`h-full rounded-full bg-gradient-to-r ${color}`}
-                              style={{ width: `${Math.min((pts / 1000) * 100, 100)}%` }}
-                            />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{icon}</span>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+                        </div>
+                        <p className="text-lg font-black text-white">{formatRank(rankKey)}</p>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-slate-600">XP</span>
+                            <span className="text-slate-400 font-semibold">{pts} pts</span>
                           </div>
-                          <span className="text-[11px] text-slate-500 flex-shrink-0">{pts} pts</span>
+                          <XpBar pct={Math.min((pts / 1000) * 100, 100)} color={color} />
                         </div>
                       </div>
                     </div>
@@ -293,73 +446,74 @@ export default function Home() {
             </motion.section>
           )}
 
-          {/* ── announcements ──────────────────────────────────── */}
+          {/* ── ANNOUNCEMENTS ────────────────────────────────────── */}
           {sortedAnnouncements.length > 0 && (
-            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-base font-semibold text-white">Announcements</h2>
-              </div>
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <h2 className="text-base font-black text-white uppercase tracking-wider mb-4">📢 Announcements</h2>
               <div className="space-y-3">
                 {sortedAnnouncements.map((a) => (
                   <div
                     key={a.id}
-                    className={`rounded-xl border px-5 py-4 ${
-                      a.pinned
-                        ? "border-violet-500/20 bg-violet-500/[0.04]"
-                        : "border-white/[0.06] bg-white/[0.02]"
+                    className={`rounded-2xl border px-5 py-4 ${
+                      a.pinned ? "border-amber-500/20 bg-amber-500/[0.04]" : "border-white/[0.06] bg-white/[0.02]"
                     }`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white leading-snug">
-                        {a.title}
-                        {a.pinned && (
-                          <span className="ml-2 text-[10px] font-medium text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">PINNED</span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">{a.body}</p>
-                      <p className="mt-2 text-[11px] text-slate-600">
-                        {a.date ? new Date(a.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
-                      </p>
-                    </div>
+                    <p className="text-sm font-bold text-white leading-snug">
+                      {a.pinned && <span className="mr-2 text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">📌 PINNED</span>}
+                      {a.title}
+                    </p>
+                    <p className="mt-1.5 text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">{a.body}</p>
+                    <p className="mt-2 text-[11px] text-slate-600">
+                      {a.date ? new Date(a.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                    </p>
                   </div>
                 ))}
               </div>
             </motion.section>
           )}
 
-          {/* ── active markets ──────────────────────────────────── */}
-          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          {/* ── ACTIVE MARKETS ───────────────────────────────────── */}
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
             <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-base font-semibold text-white">Active Markets</h2>
-                <p className="text-sm text-slate-500 mt-0.5">Trade on real-world events</p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="live-dot w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                  <span className="live-dot w-2 h-2 rounded-full bg-emerald-400 inline-block opacity-60" style={{animationDelay:"0.3s"}} />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-white uppercase tracking-wider">Live Markets</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Trade on real-world events in real time</p>
+                </div>
               </div>
-              <Link to="/markets" className="text-sm text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-1">
-                View all <ChevronRight className="w-3.5 h-3.5" />
+              <Link
+                to="/markets"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-300 text-sm font-bold hover:bg-violet-500/20 hover:border-violet-500/40 transition-all"
+              >
+                All markets <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {marketsLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="w-8 h-8 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
+              <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
               </div>
             ) : activeMarkets.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
-                <p className="text-slate-500 text-sm">No active markets right now.</p>
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-14 text-center">
+                <p className="text-slate-500 text-sm">No active markets right now — check back soon.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeMarkets.map((m, i) => (
-                  <motion.div key={m.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.04 }}>
-                    <MarketCard market={m} />
-                  </motion.div>
+                  <MarketCard key={m.id} market={m} index={i} />
                 ))}
               </div>
             )}
           </motion.section>
-          </div>
+
         </div>
       </main>
     </PageShell>
   );
 }
+
+
