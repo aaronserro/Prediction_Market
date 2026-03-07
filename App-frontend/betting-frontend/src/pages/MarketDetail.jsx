@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { PageShell } from "../dashboard/Dashboard.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -301,397 +302,367 @@ export default function MarketDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
+      <PageShell>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-12 h-12 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (error || !market) {
     return (
-      <div className="min-h-screen bg-slate-950 pt-24 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-sm text-slate-400 hover:text-amber-400"
-            >
-              ← Back
-            </button>
-          </div>
-          <div className="rounded-2xl border border-red-500/50 bg-red-500/10 p-6 text-red-200">
+      <PageShell>
+        <div className="pt-24 px-4 max-w-3xl mx-auto">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-slate-500 hover:text-amber-400 transition-colors mb-5">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Back to markets
+          </button>
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.06] p-6 text-red-300">
             {error || "Market not found"}
           </div>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   const categoryColor = CATEGORY_COLORS[market.category] || CATEGORY_COLORS.OTHER;
   const categoryIcon = CATEGORY_ICONS[market.category] || CATEGORY_ICONS.OTHER;
+  const isActive = market.status === "ACTIVE";
 
   return (
-    <div className="min-h-screen bg-slate-950 pt-20 pb-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
-        <div className="mb-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm text-slate-400 hover:text-amber-400 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to markets
-          </button>
-        </div>
+    <PageShell>
+      <main className="pt-20 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Market Info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Market Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
+          {/* back nav */}
+          <div className="mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-amber-400 transition-colors"
             >
-              <div className="flex items-start gap-3 mb-4">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold border bg-gradient-to-r ${categoryColor}`}
-                >
-                  <span>{categoryIcon}</span>
-                  {market.category}
-                </span>
-                <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                    market.status === "ACTIVE"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : market.status === "PENDING"
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      : "bg-slate-500/20 text-slate-300 border border-slate-500/30"
-                  }`}
-                >
-                  {market.status}
-                </span>
-              </div>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to markets
+            </button>
+          </div>
 
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-                {market.title}
-              </h1>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-              {market.description && (
-                <p className="text-slate-400 leading-relaxed">
-                  {market.description}
-                </p>
-              )}
-            </motion.div>
+            {/* ── LEFT COLUMN ──────────────────────────────────── */}
+            <div className="lg:col-span-2 space-y-5">
 
-            {/* Market Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-4"
-            >
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4">
-                <p className="text-xs text-slate-500 mb-1">Volume</p>
-                <p className="text-xl font-bold text-white">${Math.floor(Math.random() * 100000 + 10000).toLocaleString()}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4">
-                <p className="text-xs text-slate-500 mb-1">Traders</p>
-                <p className="text-xl font-bold text-white">{Math.floor(Math.random() * 1000 + 100)}</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-4">
-                <p className="text-xs text-slate-500 mb-1">Liquidity</p>
-                <p className="text-xl font-bold text-white">${Math.floor(Math.random() * 50000 + 5000).toLocaleString()}</p>
-              </div>
-            </motion.div>
-
-
-            {/* Outcomes Trading Section */}
-            {Array.isArray(market.outcomes) && market.outcomes.length > 0 && (
+              {/* Hero Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
+                className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-violet-950/40 via-[#0d0820]/60 to-[#0d0820]/80 overflow-hidden p-6"
               >
-                <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white">Trade</h2>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Quantity</span>
-                    <input
-                    type="number"
-                    min={1}
-                    value={tradeQuantity}
-                    onChange={(e) =>
-                        setTradeQuantity(parseInt(e.target.value || "1", 20))
-                    }
-                    className="w-20 px-2 py-1 rounded-md bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                    />
+                {/* top accent */}
+                <div className={`absolute top-0 left-0 right-0 h-[2px] ${
+                  isActive
+                    ? "bg-gradient-to-r from-violet-500 via-amber-400 to-violet-500"
+                    : "bg-gradient-to-r from-slate-700 to-slate-600"
+                }`} />
+
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border bg-gradient-to-r ${categoryColor}`}>
+                    <span>{categoryIcon}</span>
+                    {market.category}
+                  </span>
+                  {isActive ? (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                      LIVE
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+                      {market.status}
+                    </span>
+                  )}
                 </div>
-                </div>
-                <div className="space-y-3">
-                  {market.outcomes.map((outcome, idx) => (
-                    <div
-                      key={outcome.id || idx}
-                      className="group rounded-lg border border-slate-800 bg-slate-950/50 hover:border-slate-700 transition-all"
-                    >
-                      <div className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-sm text-white">
-                              {idx === 0 ? "✓" : "✗"}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-white">
-                                {outcome.label || outcome.description || `Outcome ${idx + 1}`}
-                              </p>
-                              {outcome.description && outcome.label && (
-                                <p className="text-xs text-slate-500 mt-0.5">{outcome.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {/* Price Display */}
-                          <div className="flex-1 rounded-lg border border-slate-700 bg-slate-900 p-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-slate-400">Current Price</span>
-                              <div className="text-right">
-                                {outcomePrices[outcome.id] !== undefined ? (
-                                  <>
-                                    <span className="text-xl font-bold text-white">
-                                      {(outcomePrices[outcome.id] * 100).toFixed(0)}¢
-                                    </span>
-                                    <span className="text-xs text-slate-400 ml-2">
-                                      ({(outcomePrices[outcome.id] * 100).toFixed(1)}%)
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-lg text-slate-500">—</span>
+
+                <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight mb-3">
+                  {market.title}
+                </h1>
+
+                {market.description && (
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    {market.description}
+                  </p>
+                )}
+
+                {market.closeTime && (
+                  <div className="mt-4 inline-flex items-center gap-2 text-xs text-slate-500 bg-white/[0.04] border border-white/[0.06] rounded-full px-3 py-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Closes {new Date(market.closeTime).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Outcomes / Trade */}
+              {Array.isArray(market.outcomes) && market.outcomes.length > 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden"
+                >
+                  {/* trade header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+                    <h2 className="text-base font-black text-white uppercase tracking-wider">Trade</h2>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs text-slate-500 font-semibold uppercase tracking-widest">Qty</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={tradeQuantity}
+                        onChange={(e) => setTradeQuantity(parseInt(e.target.value || "1", 10))}
+                        className="w-20 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors text-center"
+                      />
+                    </div>
+                  </div>
+
+                  {/* outcome rows */}
+                  <div className="divide-y divide-white/[0.05]">
+                    {market.outcomes.map((outcome, idx) => {
+                      const price = outcomePrices[outcome.id];
+                      const pct = price !== undefined ? price * 100 : null;
+                      const isYes = idx === 0;
+                      const barColor = isYes ? "from-emerald-500 to-emerald-400" : "from-red-500 to-orange-400";
+                      const priceColor = isYes ? "text-emerald-400" : "text-red-400";
+
+                      return (
+                        <div key={outcome.id || idx} className="px-6 py-5">
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                                isYes ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                              }`}>
+                                {isYes ? "Y" : "N"}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-white leading-snug">
+                                  {outcome.label || outcome.description || `Outcome ${idx + 1}`}
+                                </p>
+                                {outcome.description && outcome.label && (
+                                  <p className="text-xs text-slate-500 mt-0.5 truncate">{outcome.description}</p>
                                 )}
                               </div>
                             </div>
-                            {/* Price bar indicator */}
-                            {outcomePrices[outcome.id] !== undefined && (
-                              <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-300"
-                                  style={{ width: `${(outcomePrices[outcome.id] * 100)}%` }}
-                                />
-                              </div>
-                            )}
+                            {/* price display */}
+                            <div className="text-right flex-shrink-0">
+                              {pct !== null ? (
+                                <>
+                                  <p className={`text-2xl font-black ${priceColor}`}>{pct.toFixed(0)}¢</p>
+                                  <p className="text-xs text-slate-500 mt-0.5">{pct.toFixed(1)}% chance</p>
+                                </>
+                              ) : (
+                                <p className="text-xl text-slate-600">—</p>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Buy/Sell Buttons */}
-                          <div className="flex gap-2">
+                          {/* probability bar */}
+                          {pct !== null && (
+                            <div className="mb-4">
+                              <div className="h-2 rounded-full bg-white/[0.05] overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ duration: 1, ease: "easeOut", delay: 0.2 + idx * 0.1 }}
+                                  className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* buy / sell */}
+                          <div className="flex gap-3">
                             <button
-                              disabled={market.status !== "ACTIVE" || tradeLoading}
-                              onClick={() => openTradeConfirmation(outcome, 'BUY')}
-                              className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
-                                market.status === "ACTIVE"
-                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-                                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                              } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
+                              disabled={!isActive || tradeLoading}
+                              onClick={() => openTradeConfirmation(outcome, "BUY")}
+                              className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${
+                                isActive
+                                  ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500/50"
+                                  : "bg-white/[0.03] border border-white/[0.05] text-slate-600 cursor-not-allowed"
+                              } ${tradeLoading ? "opacity-50 cursor-wait" : ""}`}
                             >
                               Buy
                             </button>
                             <button
-                              disabled={market.status !== "ACTIVE" || tradeLoading}
-                              onClick={() => openTradeConfirmation(outcome, 'SELL')}
-                              className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
-                                market.status === "ACTIVE"
-                                  ? "bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 border border-orange-500"
-                                  : "bg-slate-800 text-slate-500 cursor-not-allowed"
-                              } ${tradeLoading ? "opacity-70 cursor-wait" : ""}`}
+                              disabled={!isActive || tradeLoading}
+                              onClick={() => openTradeConfirmation(outcome, "SELL")}
+                              className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${
+                                isActive
+                                  ? "bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 hover:border-amber-500/50"
+                                  : "bg-white/[0.03] border border-white/[0.05] text-slate-600 cursor-not-allowed"
+                              } ${tradeLoading ? "opacity-50 cursor-wait" : ""}`}
                             >
                               Sell
                             </button>
                           </div>
                         </div>
-                        {tradeError && (
-                          <div className="mt-4 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 flex items-start gap-2">
-                            <svg className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p className="text-sm text-red-200">{tradeError}</p>
-                          </div>
-                        )}
-                        {tradeSuccess && (
-                          <div className="mt-4 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 flex items-start gap-2">
-                            <svg className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <p className="text-sm text-emerald-200">{tradeSuccess}</p>
-                          </div>
-                        )}
-                      </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* trade feedback */}
+                  {(tradeError || tradeSuccess) && (
+                    <div className={`mx-6 mb-5 rounded-xl border px-4 py-3 text-sm ${
+                      tradeError
+                        ? "border-red-500/20 bg-red-500/[0.06] text-red-300"
+                        : "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300"
+                    }`}>
+                      {tradeError || tradeSuccess}
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-            {(!market.outcomes || market.outcomes.length === 0) && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-8 text-center"
-              >
-                <p className="text-slate-400">This market has no outcomes configured yet.</p>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Right Column - Sidebar */}
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
-            >
-              <h3 className="text-sm font-semibold text-white mb-4">Market Details</h3>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Market ID</p>
-                  <p className="text-sm font-mono text-slate-300">#{market.id}</p>
-                </div>
-                {market.closeTime && (
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Close Date</p>
-                    <p className="text-sm text-slate-300">
-                      {new Date(market.closeTime).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                )}
-                {market.resolutionSource && (
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Resolution Source</p>
-                    <p className="text-sm text-slate-300">{market.resolutionSource}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Created</p>
-                  <p className="text-sm text-slate-300">
-                    {market.createdAt
-                      ? new Date(market.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                      : '—'
-                    }
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-6"
-            >
-              <h3 className="text-sm font-semibold text-white mb-3">Rules</h3>
-              <ul className="space-y-2 text-xs text-slate-400">
-                <li className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
-                  <span>Market resolves based on official results</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
-                  <span>Trades execute instantly at displayed prices</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
-                  <span>Winning shares pay out $1.00 each</span>
-                </li>
-              </ul>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation Modal */}
-      {showConfirmModal && pendingTrade && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
-          >
-            <h3 className="text-xl font-bold text-white mb-3">
-              Confirm Trade
-            </h3>
-
-            <div className="bg-slate-950 rounded-lg p-4 mb-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Action:</span>
-                <span className={`font-semibold ${
-                  pendingTrade.action === 'BUY' ? 'text-emerald-400' : 'text-orange-400'
-                }`}>
-                  {pendingTrade.action}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Outcome:</span>
-                <span className="text-white font-medium">
-                  {pendingTrade.outcome.label || pendingTrade.outcome.description}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Quantity:</span>
-                <span className="text-white font-medium">{tradeQuantity} shares</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Price:</span>
-                <span className="text-white font-medium">
-
-                  {p !== undefined
-                    ? `${(p * 100).toFixed(0)}¢ per share`
-                    : '—'}
-                </span>
-              </div>
-              {p !== undefined && (
-                <div className="flex justify-between text-sm pt-2 border-t border-slate-800">
-                  <span className="text-slate-400">Total {pendingTrade.action === 'BUY' ? 'Cost' : 'Value'}:</span>
-                  <span className="text-amber-400 font-bold">
-                    ${((p * tradeQuantity)).toFixed(2)}
-                  </span>
-                </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-10 text-center text-sm text-slate-500"
+                >
+                  This market has no outcomes configured yet.
+                </motion.div>
               )}
             </div>
 
-            <p className="text-sm text-slate-400 mb-6">
-              Are you sure you want to proceed with this trade?
-            </p>
+            {/* ── RIGHT SIDEBAR ─────────────────────────────────── */}
+            <div className="space-y-5">
+              {/* Market Details */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 }}
+                className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"
+              >
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">Details</h3>
+                <div className="space-y-4">
+                  {market.closeTime && (
+                    <div>
+                      <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Closes</p>
+                      <p className="text-sm text-slate-300 font-medium">
+                        {new Date(market.closeTime).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                  )}
+                  {market.resolutionSource && (
+                    <div>
+                      <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Resolution Source</p>
+                      <p className="text-sm text-slate-300">{market.resolutionSource}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Created</p>
+                    <p className="text-sm text-slate-300">
+                      {market.createdAt
+                        ? new Date(market.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-600 uppercase tracking-wider mb-1">Outcomes</p>
+                    <p className="text-sm text-slate-300">{market.outcomes?.length ?? 0}</p>
+                  </div>
+                </div>
+              </motion.div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={closeTradeConfirmation}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+              {/* Rules */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5"
               >
-                Cancel
-              </button>
-              <button
-                onClick={confirmTrade}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-colors ${
-                  pendingTrade.action === 'BUY'
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20'
-                    : 'bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20'
-                }`}
-              >
-                Confirm {pendingTrade.action}
-              </button>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">Rules</h3>
+                <ul className="space-y-2.5">
+                  {[
+                    "Market resolves based on official results",
+                    "Trades execute instantly at displayed prices",
+                    "Winning shares pay out $1.00 each",
+                  ].map((rule) => (
+                    <li key={rule} className="flex items-start gap-2 text-xs text-slate-400">
+                      <span className="text-amber-400 mt-0.5 flex-shrink-0">•</span>
+                      <span>{rule}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+
+          </div>
+        </div>
+      </main>
+
+      {/* ── CONFIRMATION MODAL ───────────────────────────────── */}
+      {showConfirmModal && pendingTrade && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0e0b1c] overflow-hidden shadow-2xl"
+          >
+            {/* header accent */}
+            <div className={`h-[2px] ${
+              pendingTrade.action === "BUY"
+                ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                : "bg-gradient-to-r from-amber-500 to-amber-400"
+            }`} />
+            <div className="p-6">
+              <h3 className="text-xl font-black text-white mb-4">Confirm {pendingTrade.action === "BUY" ? "Buy" : "Sell"}</h3>
+
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-3 mb-5">
+                {[
+                  { label: "Action", value: pendingTrade.action, color: pendingTrade.action === "BUY" ? "text-emerald-400" : "text-amber-400" },
+                  { label: "Outcome", value: pendingTrade.outcome.label || pendingTrade.outcome.description },
+                  { label: "Quantity", value: `${tradeQuantity} shares` },
+                  { label: "Price", value: p !== undefined ? `${(p * 100).toFixed(0)}¢ per share` : "—" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500">{label}</span>
+                    <span className={`font-bold ${color || "text-white"}`}>{value}</span>
+                  </div>
+                ))}
+                {p !== undefined && (
+                  <div className="flex justify-between items-center text-sm pt-3 border-t border-white/[0.06]">
+                    <span className="text-slate-400 font-semibold">
+                      Total {pendingTrade.action === "BUY" ? "Cost" : "Proceeds"}
+                    </span>
+                    <span className="text-amber-400 font-black text-lg">
+                      ${(p * tradeQuantity).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={closeTradeConfirmation}
+                  className="flex-1 py-2.5 rounded-xl border border-white/[0.07] bg-white/[0.03] text-slate-400 text-sm font-bold hover:bg-white/[0.06] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmTrade}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${
+                    pendingTrade.action === "BUY"
+                      ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30"
+                      : "bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30"
+                  }`}
+                >
+                  Confirm {pendingTrade.action === "BUY" ? "Buy" : "Sell"}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

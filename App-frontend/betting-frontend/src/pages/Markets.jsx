@@ -45,22 +45,32 @@ export default function Markets() {
       <main className="pt-20 pb-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* header */}
-          <div className="mb-8 pb-6 border-b border-white/[0.06]">
-            <h1 className="text-2xl font-semibold text-white">Markets</h1>
+          {/* hero header */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-violet-950/40 via-[#0d0820]/60 to-[#0d0820]/80 overflow-hidden px-6 py-7"
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500 via-amber-400 to-violet-500" />
+            <h1 className="text-3xl font-black tracking-tight text-white">Markets</h1>
             <p className="text-sm text-slate-500 mt-1">Trade on the outcome of real-world events.</p>
-          </div>
+          </motion.div>
 
           {/* filters */}
-          <div className="mb-6 flex flex-col lg:flex-row gap-4">
-            <div className="relative lg:w-72">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="mb-6 flex flex-col lg:flex-row gap-3"
+          >
+            <div className="relative lg:w-80">
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 type="text"
                 placeholder="Search markets…"
-                className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] pl-9 pr-4 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:border-violet-500/30 focus:outline-none transition-colors"
+                className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-violet-500/40 focus:outline-none focus:bg-white/[0.05] transition-colors"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -70,30 +80,30 @@ export default function Markets() {
                 <button
                   key={c}
                   onClick={() => setCategory(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     category === c
-                      ? "bg-violet-500 text-white"
-                      : "bg-white/[0.03] text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] border border-white/[0.06]"
+                      ? "bg-violet-500/20 border border-violet-500/40 text-violet-300"
+                      : "bg-white/[0.03] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06] border border-white/[0.06]"
                   }`}
                 >
                   {c === "ALL" ? "All" : c.charAt(0) + c.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* error */}
           {error && (
-            <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</div>
+            <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-300">{error}</div>
           )}
 
           {/* body */}
           {loading ? (
             <div className="flex justify-center py-24">
-              <div className="w-8 h-8 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
+              <div className="w-10 h-10 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-14 text-center">
               <p className="text-slate-500 text-sm">
                 {search || category !== "ALL" ? "No markets match your filters." : "No markets available."}
               </p>
@@ -105,33 +115,47 @@ export default function Markets() {
                   {filtered.map((m, i) => {
                     const cat = (m.category || "Other").charAt(0) + (m.category || "Other").slice(1).toLowerCase();
                     const date = m.endDate ? new Date(m.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                    const isActive = m.status === "ACTIVE";
 
                     return (
                       <motion.div
                         key={m.id}
-                        initial={{ opacity: 0, y: 12 }}
+                        initial={{ opacity: 0, y: 14 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.97 }}
-                        transition={{ duration: 0.2, delay: i * 0.03 }}
+                        transition={{ duration: 0.18, delay: i * 0.03 }}
+                        whileHover={{ y: -3, scale: 1.01 }}
                         onClick={() => navigate(`/markets/${m.id}`)}
-                        className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 cursor-pointer hover:border-violet-500/20 hover:bg-white/[0.04] transition-all"
+                        className="group relative flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden p-5 cursor-pointer transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/10 hover:border-violet-500/20"
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[11px] font-medium text-violet-300 bg-violet-500/10 border border-violet-500/15 px-2 py-0.5 rounded">{cat}</span>
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
-                            m.status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" : "text-amber-400 bg-amber-500/10"
-                          }`}>{m.status}</span>
+                        {/* top accent */}
+                        <div className={`absolute top-0 left-0 right-0 h-[2px] ${
+                          isActive
+                            ? "bg-gradient-to-r from-violet-500 via-amber-400 to-violet-500"
+                            : "bg-gradient-to-r from-slate-700 to-slate-600"
+                        }`} />
+
+                        <div className="flex items-center gap-2 mb-3 mt-1">
+                          <span className="text-[11px] font-bold text-violet-300 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full">{cat}</span>
+                          {isActive ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                              LIVE
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">{m.status}</span>
+                          )}
                         </div>
 
-                        <h3 className="text-sm font-medium text-white mb-3 line-clamp-2 leading-snug flex-1">{m.title}</h3>
+                        <h3 className="text-sm font-bold text-white mb-auto line-clamp-2 leading-snug min-h-[2.5rem] group-hover:text-violet-100 transition-colors">{m.title}</h3>
 
                         {m.description && (
-                          <p className="text-xs text-slate-500 mb-3 line-clamp-2">{m.description}</p>
+                          <p className="text-xs text-slate-600 mt-2 line-clamp-2">{m.description}</p>
                         )}
 
-                        <div className="border-t border-white/[0.05] pt-3 flex items-center justify-between mt-auto text-xs text-slate-500">
-                          <span>Closes <span className="text-slate-300">{date}</span></span>
-                          <span className="group-hover:text-amber-400 transition-colors flex items-center gap-1">
+                        <div className="border-t border-white/[0.05] pt-3 mt-4 flex items-center justify-between text-xs text-slate-600">
+                          <span>Closes <span className="text-slate-400 font-medium">{date}</span></span>
+                          <span className="group-hover:text-amber-400 font-bold transition-colors flex items-center gap-1">
                             Trade
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

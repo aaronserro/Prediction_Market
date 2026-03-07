@@ -6,6 +6,42 @@ import rankImages, { formatRank } from "../lib/rankImages.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
+/* ── rank thresholds (must mirror backend RankTier logic) ────────────── */
+const RANK_TIERS = [
+  { floor: 0,    ceil: 100  }, // BRONZE_3
+  { floor: 100,  ceil: 150  }, // BRONZE_2
+  { floor: 150,  ceil: 200  }, // BRONZE_1
+  { floor: 200,  ceil: 300  }, // SILVER_3
+  { floor: 300,  ceil: 400  }, // SILVER_2
+  { floor: 400,  ceil: 550  }, // SILVER_1
+  { floor: 550,  ceil: 750  }, // GOLD_3
+  { floor: 750,  ceil: 1000 }, // GOLD_2
+  { floor: 1000, ceil: null }, // GOLD_1 (max)
+];
+
+function rankProgress(pts) {
+  const tier = [...RANK_TIERS].reverse().find((t) => pts >= t.floor) ?? RANK_TIERS[0];
+  if (tier.ceil === null) return { pct: 100, next: tier.floor, isMax: true };
+  return {
+    pct: Math.min(((pts - tier.floor) / (tier.ceil - tier.floor)) * 100, 100),
+    next: tier.ceil,
+    isMax: false,
+  };
+}
+
+/** Mirrors backend RankTier logic exactly */
+function computeRank(pts = 0) {
+  if (pts >= 1000) return "GOLD_1";
+  if (pts >= 750)  return "GOLD_2";
+  if (pts >= 550)  return "GOLD_3";
+  if (pts >= 400)  return "SILVER_1";
+  if (pts >= 300)  return "SILVER_2";
+  if (pts >= 200)  return "SILVER_3";
+  if (pts >= 150)  return "BRONZE_1";
+  if (pts >= 100)  return "BRONZE_2";
+  return "BRONZE_3";
+}
+
 /* ── icons ───────────────────────────────────────────────────────────── */
 const WalletIcon = (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
@@ -261,7 +297,13 @@ export default function Home() {
   const balance = wallet?.balanceCents ? wallet.balanceCents / 100 : 0;
   const fmtBal = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(balance);
   const username = user?.username || "User";
-  const overallPct = rank ? Math.min((rank.overallPoints / 1000) * 100, 100) : 0;
+  const overallProgress = rank ? rankProgress(rank.overallPoints) : null;
+  const overallPct = overallProgress?.pct ?? 0;
+
+  /* derive rank keys from points so icons/labels always match actual points */
+  const overallRankKey   = rank ? computeRank(rank.overallPoints ?? 0)   : null;
+  const traderRankKey    = rank ? computeRank(rank.traderPoints ?? 0)    : null;
+  const predictorRankKey = rank ? computeRank(rank.predictorPoints ?? 0) : null;
 
   return (
     <PageShell>
@@ -288,10 +330,10 @@ export default function Home() {
                     <span className="text-2xl font-black text-white">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
                   </div>
                   {/* rank badge overlay */}
-                  {!rankLoading && rank?.overallRank && (
+                  {!rankLoading && overallRankKey && (
                     <img
-                      src={rankImages[rank.overallRank]}
-                      alt={rank.overallRank}
+                      src={rankImages[overallRankKey]}
+                      alt={overallRankKey}
                       className="absolute -bottom-2 -right-2 w-8 h-8 object-contain drop-shadow-lg"
                     />
                   )}
@@ -300,9 +342,9 @@ export default function Home() {
                   <p className="text-sm text-slate-400 font-medium">Welcome back,</p>
                   <h1 className="text-3xl font-black tracking-tight shimmer-text">{loading ? "…" : username}</h1>
                   <div className="flex items-center gap-2 mt-1">
-                    {!rankLoading && rank && (
+                    {!rankLoading && overallRankKey && (
                       <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                        {formatRank(rank.overallRank)}
+                        {formatRank(overallRankKey)}
                       </span>
                     )}
                     <span className="text-xs text-slate-600">{rank?.resolvedMarketsCount ?? 0} markets resolved</span>
@@ -352,11 +394,11 @@ export default function Home() {
             />
             <StatCard
               label="Overall Rank"
-              value={formatRank(rank?.overallRank)}
+              value={formatRank(overallRankKey)}
               sub={`${rank?.overallPoints ?? 0} overall pts`}
-              icon={rankLoading || !rank?.overallRank
+              icon={rankLoading || !overallRankKey
                 ? <TrophyIcon className="w-5 h-5" />
-                : <img src={rankImages[rank.overallRank]} alt="" className="w-7 h-7 object-contain" />}
+                : <img src={rankImages[overallRankKey]} alt="" className="w-7 h-7 object-contain" />}
               accent="amber"
               loading={rankLoading}
             />
@@ -369,82 +411,6 @@ export default function Home() {
               loading={rankLoading}
             />
           </motion.div>
-
-          {/* ── RANK CARD ────────────────────────────────────────── */}
-          {!rankLoading && rank && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <ZapIcon className="w-4 h-4 text-amber-400" />
-                <h2 className="text-base font-black text-white uppercase tracking-wider">Rank Breakdown</h2>
-              </div>
-
-              <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.03] to-violet-950/20 overflow-hidden">
-                {/* overall banner */}
-                <div className="relative px-6 py-5 border-b border-white/[0.06] flex items-center gap-5 bg-gradient-to-r from-violet-900/20 to-transparent">
-                  <motion.img
-                    initial={{ scale: 0.7, rotate: -10 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ delay: 0.4, type: "spring", stiffness: 150 }}
-                    src={rankImages[rank.overallRank]}
-                    alt={rank.overallRank}
-                    className="w-20 h-20 object-contain flex-shrink-0 drop-shadow-xl"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Overall</p>
-                    <p className="text-2xl font-black text-white mt-0.5">{formatRank(rank.overallRank)}</p>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500">Progress to next rank</span>
-                        <span className="text-amber-400 font-bold">{rank.overallPoints} / 1000 pts</span>
-                      </div>
-                      <XpBar pct={overallPct} color="from-violet-500 via-fuchsia-500 to-amber-400" />
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 hidden sm:block">
-                    <p className="text-3xl font-black text-white">{rank.resolvedMarketsCount ?? 0}</p>
-                    <p className="text-xs text-slate-600 uppercase tracking-wider">Resolved</p>
-                  </div>
-                </div>
-
-                {/* trader + predictor */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.05]">
-                  {[
-                    { label: "Trader",    rankKey: rank.traderRank,    pts: rank.traderPoints,    color: "from-violet-500 to-fuchsia-500", icon: <ZapIcon className="w-3.5 h-3.5" /> },
-                    { label: "Predictor", rankKey: rank.predictorRank, pts: rank.predictorPoints, color: "from-amber-400 to-orange-500",    icon: <FlameIcon className="w-3.5 h-3.5" /> },
-                  ].map(({ label, rankKey, pts, color, icon }) => (
-                    <div key={label} className="px-6 py-5 flex items-center gap-4">
-                      <motion.img
-                        initial={{ scale: 0.7, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.55, type: "spring" }}
-                        src={rankImages[rankKey]}
-                        alt={rankKey}
-                        className="w-14 h-14 object-contain flex-shrink-0 drop-shadow-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{icon}</span>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-                        </div>
-                        <p className="text-lg font-black text-white">{formatRank(rankKey)}</p>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-slate-600">XP</span>
-                            <span className="text-slate-400 font-semibold">{pts} pts</span>
-                          </div>
-                          <XpBar pct={Math.min((pts / 1000) * 100, 100)} color={color} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.section>
-          )}
 
           {/* ── ANNOUNCEMENTS ────────────────────────────────────── */}
           {sortedAnnouncements.length > 0 && (
