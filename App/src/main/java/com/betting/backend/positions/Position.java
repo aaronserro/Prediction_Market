@@ -30,6 +30,9 @@ public class Position {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
+
+    @Column(name = "settledCostBasisCents")
+    private Long settledCostBasisCents;
     @Column(name = "cost_basis_cents", nullable = false)
     private long costBasisCents;
 
@@ -100,6 +103,14 @@ public class Position {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public long getSettledCostBasisCents() {
+        return settledCostBasisCents;
+    }
+
+    public void setSettledCostBasisCents(long settledCostBasisCents) {
+        this.settledCostBasisCents = settledCostBasisCents;
     }
 
     public long getCostBasisCents() {

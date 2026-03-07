@@ -30,6 +30,7 @@ Optional<Position> findByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
 
     List<Position> findAllByUser_Id(Long userId);
     List<Position> findByOutcome_Market_IdAndStatus(UUID marketId, PositionStatus status);
+       List<Position> findByMarketId(UUID marketId);
     boolean existsByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
 
     void deleteByUser_IdAndOutcomeId(Long userId, UUID outcomeId);

@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext.jsx";
 
 const NAV_ITEMS = [
   { label: "Overview", path: "/admin" },
+  { label: "Create User", path: "/admin/create-user" },
   { label: "Fund Requests", path: "/admin/fund-requests" },
   { label: "Markets & Events", path: "/admin/markets-events" },
   { label: "Tournaments", path: "/admin/tournaments" },

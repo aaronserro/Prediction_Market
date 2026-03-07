@@ -1,1003 +1,365 @@
-import { useMemo, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from '../auth/AuthContext.jsx';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useAuth } from "../auth/AuthContext.jsx";
+import { Link, useNavigate } from "react-router-dom";
+import rankImages, { formatRank } from "../lib/rankImages.js";
 
-/**
- * Betting App: Fixed Dashboard
- * Fixed: Announcements section visibility issue
- */
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-// --- SVG Icons -----------------------------------------------------------------
-const ICONS = {
-  megaphone: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
- p     viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m3 11 18-5v12L3 14v-3z" />
-      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-    </svg>
-  ),
-  user: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  ),
-  wallet: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M21 12V7H5a2 2 0 0 1 0-4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h16" />
-    </svg>
-  ),
-  trophy: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M4 22h16" />
-      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.81 18.75 7 19.78 7 21" />
-      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.19 18.75 17 19.78 17 21" />
-      <path d="M18 4H6v8c0 2.21 1.79 4 4 4h4c2.21 0 4-1.79 4-4V4z" />
-    </svg>
-  ),
-  blackjack: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M14 4h-4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z" />
-      <path d="M4 7v10M20 7v10" />
-    </svg>
-  ),
-  roulette: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="1" />
-      <path d="m19.07 4.93-1.41 1.41" />
-      <path d="m17.66 17.66-1.41 1.41" />
-      <path d="m4.93 19.07 1.41-1.41" />
-      <path d="m6.34 6.34 1.41 1.41" />
-      <path d="m12 2 1.41 2.41" />
-      <path d="m22 12-2.41-1.41" />
-      <path d="m12 22-1.41-2.41" />
-      <path d="m2 12 2.41 1.41" />
-    </svg>
-  ),
-  poker: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M3 16h.01" />
-      <path d="M3 20h.01" />
-      <path d="M7 16h.01" />
-      <path d="M7 20h.01" />
-      <path d="M11 16h.01" />
-      <path d="M11 20h.01" />
-      <path d="M15 16h.01" />
-      <path d="M15 20h.01" />
-      <path d="M19 16h.01" />
-      <path d="M19 20h.01" />
-      <path d="M5 8v8" />
-      <path d="M9 8v8" />
-      <path d="M13 8v8" />
-      <path d="M17 8v8" />
-      <path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-    </svg>
-  ),
-  sudoku: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
-    </svg>
-  ),
-  battleship: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M2 20h20" />
-      <path d="M4 18V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12" />
-      <path d="M12 8h.01" />
-      <path d="M12 12h.01" />
-      <path d="M12 16h.01" />
-      <path d="M16 12h.01" />
-      <path d="M8 12h.01" />
-    </svg>
-  ),
-  twenty48: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M2 13h2" />
-      <path d="M20 13h2" />
-      <path d="M11 2v2" />
-      <path d="M11 20v2" />
-      <path d="M4.6 4.6l1.4 1.4" />
-      <path d="M17.9 17.9l1.4 1.4" />
-      <path d="M4.6 17.9l1.4-1.4" />
-      <path d="M17.9 4.6l1.4 1.4" />
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M7 12h2v-2" />
-      <path d="M13 17v-5h4" />
-      <path d="M11 17v-2a2 2 0 0 1 2-2h2" />
-    </svg>
-  ),
-  wordsearch: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      <path d="M7 11h8" />
-      <path d="M11 7v8" />
-    </svg>
-  ),
-  chess: (props) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M8 18L10 14.5" />
-      <path d="M14 18l2-3.5" />
-      <path d="M8.5 7h7" />
-      <path d="M6 18h12" />
-      <path d="M4 22h16" />
-      <path d="M10 4.5a2.5 2.5 0 0 1 5 0V7H10V4.5z" />
-      <path d="M6 18c0-2.6 1.8-5 4-6" />
-      <path d="M18 18c0-2.6-1.8-5-4-6" />
-    </svg>
-  ),
-};
+/* ── tiny icons ──────────────────────────────────────────────────────── */
+const WalletIcon = (p) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M21 12V7H5a2 2 0 0 1 0-4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h16" />
+  </svg>
+);
+const TrophyIcon = (p) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+    <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.81 18.75 7 19.78 7 21" />
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.19 18.75 17 19.78 17 21" />
+    <path d="M18 4H6v8c0 2.21 1.79 4 4 4h4c2.21 0 4-1.79 4-4V4z" />
+  </svg>
+);
+const ChevronRight = (p) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+);
 
-// --- Mock Data -----------------------------------------------------------------
-
-const defaultAnnouncements = [
-  {
-    id: 1,
-    title: "Welcome to Fantasy Labs!",
-    body: "Weekly tournaments open — claim your free entry before Friday 11:59 PM!",
-    href: "/events/weeklies",
-  },
-  {
-    id: 2,
-    title: "System Status",
-    body: "All systems operational. Minor maintenance window on Sept 20, 02:00–03:00 ET.",
-    href: "/status",
-  },
-  {
-    id: 3,
-    title: "New Game",
-    body: "Try our brand‑new Word Search Arena with streak multipliers and daily ladders!",
-    href: "/games/word-search",
-  },
-];
-
-const markets = [
-  {
-    id: 1,
-    title: "2024 US Presidential Election",
-    activeUsers: 12534,
-    volume: 2847650,
-    closeDate: "2024-11-05T20:00:00Z",
-    category: "Politics",
-    currentLeader: "YES - 67%",
-  },
-  {
-    id: 2,
-    title: "Bitcoin Price Above $100K by EOY 2025?",
-    activeUsers: 8921,
-    volume: 1456320,
-    closeDate: "2025-12-31T23:59:00Z",
-    category: "Crypto",
-    currentLeader: "YES - 58%",
-  },
-  {
-    id: 3,
-    title: "Super Bowl LIX Winner",
-    activeUsers: 15678,
-    volume: 3245890,
-    closeDate: "2025-02-09T18:30:00Z",
-    category: "Sports",
-    currentLeader: "Chiefs - 34%",
-  },
-  {
-    id: 4,
-    title: "Fed Interest Rate Decision - March 2025",
-    activeUsers: 5432,
-    volume: 987450,
-    closeDate: "2025-03-20T14:00:00Z",
-    category: "Economics",
-    currentLeader: "Hold - 52%",
-  },
-  {
-    id: 5,
-    title: "Next iPhone Release Features AI?",
-    activeUsers: 6789,
-    volume: 1234560,
-    closeDate: "2025-09-15T17:00:00Z",
-    category: "Technology",
-    currentLeader: "YES - 81%",
-  },
-  {
-    id: 6,
-    title: "Tesla Stock Above $300 by Q2 2025?",
-    activeUsers: 9876,
-    volume: 2134890,
-    closeDate: "2025-06-30T16:00:00Z",
-    category: "Stocks",
-    currentLeader: "NO - 54%",
-  },
-  {
-    id: 7,
-    title: "Will Ethereum Merge 2.0 Launch This Year?",
-    activeUsers: 4532,
-    volume: 876540,
-    closeDate: "2025-12-31T23:59:00Z",
-    category: "Crypto",
-    currentLeader: "NO - 61%",
-  },
-  {
-    id: 8,
-    title: "NBA MVP 2024-2025 Season",
-    activeUsers: 11234,
-    volume: 1987650,
-    closeDate: "2025-06-15T20:00:00Z",
-    category: "Sports",
-    currentLeader: "Jokić - 42%",
-  },
-];
-
-// Removed hardcoded userStats - now fetched from API
-
-// --- Reusable Components -------------------------------------------------------
-
-function StatCard({ icon: Icon, title, value, unit, color = "amber", trend }) {
-  const colorClasses = {
-    amber: "from-amber-500/20 to-amber-600/20 border-amber-500/30 shadow-amber-500/20",
-    green: "from-emerald-500/20 to-emerald-600/20 border-emerald-500/30 shadow-emerald-500/20",
-    purple: "from-purple-500/20 to-purple-600/20 border-purple-500/30 shadow-purple-500/20",
-    blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 shadow-blue-500/20"
-  };
-
-  const iconColorClasses = {
-    amber: "from-amber-400 to-amber-600",
-    green: "from-emerald-400 to-emerald-600",
-    purple: "from-purple-400 to-purple-600",
-    blue: "from-blue-400 to-blue-600"
-  };
-
+/* ── shared background ───────────────────────────────────────────────── */
+export function PageShell({ children }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.02, y: -4 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br backdrop-blur-xl p-6 shadow-2xl ${colorClasses[color]}`}
-    >
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 opacity-20">
-        <div className={`absolute inset-0 bg-gradient-to-r ${iconColorClasses[color]} blur-3xl`} />
+    <div className="min-h-screen bg-[#0d0a18] text-white relative overflow-x-hidden flex flex-col">
+      {/* ambient glow */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-[140px] animate-[drift_22s_ease-in-out_infinite]" />
+        <div className="absolute top-1/3 -right-20 w-[420px] h-[420px] rounded-full bg-amber-500/[0.12] blur-[120px] animate-[drift_28s_ease-in-out_infinite_reverse]" />
+        <div className="absolute -bottom-20 left-1/3 w-[500px] h-[350px] rounded-full bg-violet-500/[0.10] blur-[160px] animate-[drift_32s_ease-in-out_infinite]" />
       </div>
-
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${iconColorClasses[color]} flex items-center justify-center shadow-lg`}>
-            <Icon className="w-7 h-7 text-slate-900" />
+      <div className="relative z-10 flex-1 flex flex-col">
+        {children}
+      </div>
+      {/* shared footer */}
+      <footer className="relative z-10 border-t border-white/[0.04] py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+          <span>&copy; 2026 Pryzm</span>
+          <div className="flex gap-5">
+            <a href="/terms" className="hover:text-slate-400 transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-slate-400 transition-colors">Privacy</a>
+            <a href="/support" className="hover:text-slate-400 transition-colors">Support</a>
           </div>
-          {trend && (
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${
-              trend > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-            }`}>
-              {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
-            </div>
-          )}
         </div>
-
-        <div className="text-sm font-medium uppercase tracking-wider text-slate-400 mb-2">
-          {title}
-        </div>
-        <div className="text-3xl font-bold text-white flex items-baseline gap-1">
-          {unit}<span className="tabular-nums">{value}</span>
-        </div>
-      </div>
-
-      {/* Decorative corner accent */}
-      <div className={`absolute -bottom-8 -right-8 w-32 h-32 bg-gradient-to-br ${iconColorClasses[color]} opacity-10 rounded-full blur-2xl`} />
-    </motion.div>
-  );
-}
-
-function SectionHeader({ title, subtitle }) {
-  return (
-    <div className="flex items-end justify-between gap-4">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-amber-400 sm:text-3xl">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="mt-1 text-sm text-zinc-300/80 sm:text-base">
-            {subtitle}
-          </p>
-        )}
-      </div>
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+      </footer>
+      <style>{`
+        @keyframes drift {
+          0%,100%{transform:translate(0,0) scale(1)}
+          33%{transform:translate(25px,-18px) scale(1.04)}
+          66%{transform:translate(-18px,14px) scale(.97)}
+        }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d0a18; }
+        ::-webkit-scrollbar-thumb { background: #2d1b4e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3d2a6e; }
+      `}</style>
     </div>
   );
 }
 
-function AnnouncementCard({ item, isClone = false }) {
-  return (
-    <motion.a
-      key={isClone ? `clone-${item.id}` : item.id}
-      href={item.href}
-      whileHover={{ y: -2 }}
-      className="group relative min-w-[24rem] max-w-[36rem] overflow-hidden rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-5 backdrop-blur-xl transition-all duration-300 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/20 sm:min-w-[28rem] lg:min-w-[34rem]"
-    >
-      {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      <div className="relative z-10">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
-            <ICONS.megaphone className="h-5 w-5 text-slate-900" />
-          </div>
-          <div className="flex flex-col">
-            <div className="text-xs font-bold uppercase tracking-wider text-amber-400">
-              Announcement
-            </div>
-            <div className="text-xs text-slate-500">Just now</div>
-          </div>
-        </div>
-
-        <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-amber-300 transition-colors">
-          {item.title}
-        </h3>
-        <p className="text-sm text-slate-400 line-clamp-2 mb-3">
-          {item.body}
-        </p>
-
-        <div className="flex items-center gap-2 text-sm font-semibold text-amber-400 group-hover:gap-3 transition-all">
-          Read More
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-        </div>
-      </div>
-    </motion.a>
-  );
-}
-
+/* ── market card ─────────────────────────────────────────────────────── */
 function MarketCard({ market }) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Format volume as currency
-  const formattedVolume = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(market.volume);
-
-  // Format active users with commas
-  const formattedUsers = new Intl.NumberFormat("en-US").format(market.activeUsers);
-
-  // Format close date
-  const closeDate = new Date(market.closeDate);
-  const formattedDate = closeDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const formattedTime = closeDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  // Category color mapping
-  const categoryColors = {
-    Politics: "from-blue-500 to-blue-600",
-    Crypto: "from-amber-500 to-amber-600",
-    Sports: "from-green-500 to-green-600",
-    Economics: "from-purple-500 to-purple-600",
-    Technology: "from-cyan-500 to-cyan-600",
-    Stocks: "from-pink-500 to-pink-600",
-  };
-
-  const categoryColor = categoryColors[market.category] || "from-indigo-500 to-indigo-600";
+  const navigate = useNavigate();
+  const vol = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(market.volume || 0);
+  const date = market.endDate ? new Date(market.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+  const cat = (market.category || "Other").charAt(0) + (market.category || "Other").slice(1).toLowerCase();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group relative flex cursor-pointer flex-col items-start overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-6 text-left shadow-2xl backdrop-blur-xl hover:border-amber-500/50 hover:shadow-amber-500/20"
+      whileHover={{ y: -2 }}
+      onClick={() => navigate(`/markets/${market.id}`)}
+      className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 cursor-pointer hover:border-violet-500/20 hover:bg-white/[0.04] transition-all"
     >
-      {/* Animated background gradient */}
-      <motion.div
-        animate={{ opacity: isHovered ? 0.3 : 0 }}
-        className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-amber-600/20"
-      />
-
-      {/* Category badge */}
-      <div className="relative z-10 mb-3">
-        <div className={`px-3 py-1 rounded-lg bg-gradient-to-r ${categoryColor} text-white text-xs font-bold shadow-lg`}>
-          {market.category}
-        </div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[11px] font-medium text-violet-300 bg-violet-500/10 border border-violet-500/15 px-2 py-0.5 rounded">{cat}</span>
+        {market.status && (
+          <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${market.status === "ACTIVE" ? "text-emerald-400 bg-emerald-500/10" : "text-amber-400 bg-amber-500/10"}`}>
+            {market.status}
+          </span>
+        )}
       </div>
 
-      <div className="relative z-10 w-full">
-        <h3 className="text-xl font-bold text-white mb-3 group-hover:text-amber-300 transition-colors line-clamp-2 min-h-[3.5rem]">
-          {market.title}
-        </h3>
+      <h3 className="text-sm font-medium text-white leading-snug line-clamp-2 mb-auto min-h-[2.5rem]">{market.title}</h3>
 
-        {/* Current Leader - Compact Display */}
-        <div className="mb-4 flex justify-center">
-          <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/30">
-            <span className="text-sm font-bold text-amber-400">{market.currentLeader}</span>
-          </div>
-        </div>
-
-        {/* Market stats */}
-        <div className="space-y-3 mb-4">
-          {/* Active Users */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <span className="text-sm">Active Users</span>
-            </div>
-            <span className="text-sm font-semibold text-white">{formattedUsers}</span>
-          </div>
-
-          {/* Volume */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm">Volume</span>
-            </div>
-            <span className="text-sm font-semibold text-emerald-400">{formattedVolume}</span>
-          </div>
-
-          {/* Close Date */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-sm">Closes</span>
-            </div>
-            <div className="text-right">
-              <div className="text-sm font-semibold text-white">{formattedDate}</div>
-              <div className="text-xs text-slate-400">{formattedTime}</div>
-            </div>
-          </div>
-        </div>
-
-        <motion.div
-          animate={{ x: isHovered ? 5 : 0 }}
-          className="flex items-center gap-2 text-sm font-semibold text-amber-400 group-hover:text-amber-300 pt-2 border-t border-slate-700/50"
-        >
-          View Market
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-          </svg>
-        </motion.div>
+      <div className="mt-4 pt-3 border-t border-white/[0.05] flex items-center justify-between text-xs text-slate-500">
+        <span>{vol} vol</span>
+        <span>{date}</span>
       </div>
 
-      {/* Corner decoration */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-amber-600/10 rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="mt-2 flex items-center gap-1 text-xs text-amber-400/60 group-hover:text-amber-400 transition-colors">
+        Trade <ChevronRight className="w-3 h-3" />
+      </div>
     </motion.div>
   );
 }
 
-// --- Page Sections -------------------------------------------------------------
-
-function HeaderDashboard({ username, balance, rank, loading }) {
-  const formattedBalance = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(balance);
-
-  return (
-    <section className="space-y-8">
-      {/* Welcome Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative overflow-hidden rounded-3xl border border-slate-800/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50 p-8 backdrop-blur-xl shadow-2xl"
-      >
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
-        </div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          {/* Avatar */}
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-600 rounded-2xl blur-xl opacity-50 animate-pulse" />
-            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-xl">
-              <span className="text-3xl font-bold text-slate-900">
-                {loading ? "..." : username.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            {/* Online indicator */}
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-lg border-4 border-slate-900 shadow-lg">
-              <div className="w-full h-full bg-emerald-400 rounded animate-ping" />
-            </div>
-          </motion.div>
-
-          {/* Welcome Text */}
-          <div className="flex-1">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                Welcome back,{" "}
-                <span className="bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">
-                  {loading ? "..." : username}
-                </span>
-                <motion.span
-                  animate={{ rotate: [0, 14, -8, 14, 0] }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                  className="inline-block ml-2"
-                >
-                  👋
-                </motion.span>
-              </h1>
-              <p className="text-slate-400 text-lg">
-                Ready to make your predictions? Let's dive in!
-              </p>
-            </motion.div>
-          </div>
-
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex gap-3"
-          >
-            <Link
-              to="/wallet"
-              className="px-4 py-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-400 font-medium transition-all flex items-center gap-2"
-            >
-              <span>💰</span>
-              <span className="hidden sm:inline">Add Funds</span>
-            </Link>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* Stats Grid */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
-      >
-        <StatCard
-          icon={ICONS.wallet}
-          title="Balance"
-          value={loading ? "..." : formattedBalance.replace("$", "")}
-          unit="$"
-          color="amber"
-          trend={5.2}
-        />
-        <StatCard
-          icon={ICONS.trophy}
-          title="Rank"
-          value={loading ? "..." : rank}
-          color="purple"
-        />
-        <StatCard
-          icon={ICONS.user}
-          title="Active Bets"
-          value={loading ? "..." : "12"}
-          color="blue"
-          trend={8.5}
-        />
-        <StatCard
-          icon={() => <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
-          title="Win Rate"
-          value={loading ? "..." : "68"}
-          unit="%"
-          color="green"
-          trend={3.1}
-        />
-      </motion.div>
-    </section>
-  );
-}
-
-function AnnouncementsSection({ items = defaultAnnouncements }) {
-  const marquee = useMemo(() => [...items, ...items], [items]);
-
-  return (
-    <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.45, duration: 0.6 }}
-      className="relative"
-    >
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            📢 Latest Updates
-          </h2>
-          <p className="mt-2 text-slate-400 text-lg">
-            Stay informed with the latest news
-          </p>
-        </div>
-      </div>
-
-      {/* Container with controlled overflow */}
-      <div className="relative overflow-hidden rounded-2xl">
-        {/* Gradient fade-out masks */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#0f0f14] via-[#0f0f14] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#0f0f14] via-[#0f0f14] to-transparent" />
-
-        {/* Marquee Track */}
-        <div className="group py-2">
-          <div className="flex animate-[marquee_40s_linear_infinite] gap-6 will-change-transform group-hover:[animation-play-state:paused]">
-            {marquee.map((a, idx) => (
-              <AnnouncementCard
-                key={`${a.id}-${idx}`}
-                item={a}
-                isClone={idx >= items.length}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.section>
-  );
-}
-
-function ActiveMarketsSection() {
-  return (
-    <motion.section
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.5, duration: 0.6 }}
-      className="relative"
-    >
-      <div className="mb-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              📈 Active Markets
-            </h2>
-            <p className="mt-2 text-slate-400 text-lg">
-              Trade on the outcomes of real-world events
-            </p>
-          </div>
-          <Link
-            to="/markets"
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-lg shadow-amber-500/30 transition-all flex items-center gap-2"
-          >
-            View All
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {markets.map((market, idx) => (
-          <motion.div
-            key={market.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 + idx * 0.05 }}
-          >
-            <MarketCard market={market} />
-          </motion.div>
-        ))}
-      </div>
-    </motion.section>
-  );
-}
-
-// --- Main Page Component -------------------------------------------------------
-
+/* ── main component ──────────────────────────────────────────────────── */
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeMarkets, setActiveMarkets] = useState([]);
+  const [marketsLoading, setMarketsLoading] = useState(true);
+  const [rank, setRank] = useState(null);
+  const [rankLoading, setRankLoading] = useState(true);
 
+  // ── announcements: edit this array to add/remove entries ────────────
+  const announcements = [
+     {
+       id: "example",
+       title: "Example announcement",
+       body: "Announcement body text.",
+       date: "2026-03-06",
+       pinned: true,
+     },
+  ];
+  const sortedAnnouncements = [...announcements].sort((a, b) =>
+    a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1
+  );
+
+  /* fetch wallet */
   useEffect(() => {
-    async function fetchWallet() {
-      console.log('[Dashboard] user object:', user);
-      console.log('[Dashboard] authLoading:', authLoading);
+    if (authLoading) return;
+    if (!user) { setLoading(false); return; }
+    const userId = user.id || user.userId || user.username;
+    if (!userId) { setLoading(false); return; }
 
-      if (authLoading) {
-        console.log('[Dashboard] Still loading auth, waiting...');
-        return;
-      }
-
-      if (!user) {
-        console.log('[Dashboard] No user, setting loading to false');
-        setLoading(false);
-        return;
-      }
-
-      // Try to get user ID from different possible fields
-      const userId = user.id || user.userId || user.username;
-      console.log('[Dashboard] Using userId:', userId);
-
-      if (!userId) {
-        console.error('[Dashboard] No user ID found in user object');
-        setLoading(false);
-        return;
-      }
-
+    (async () => {
       try {
-        setLoading(true);
-        const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
-        const url = `${API_BASE}/api/v1/users/${userId}/wallet`;
-        console.log('[Dashboard] Fetching wallet from:', url);
-
-        const res = await fetch(url, {
-          credentials: "include",
-        });
-
-        console.log('[Dashboard] Wallet response status:', res.status);
-
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[Dashboard] Wallet data:', data);
-          setWallet(data);
-        } else {
-          const text = await res.text();
-          console.error('[Dashboard] Failed to fetch wallet:', res.status, text);
-        }
-      } catch (err) {
-        console.error('[Dashboard] Error fetching wallet:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchWallet();
+        const res = await fetch(`${API_BASE}/api/v1/users/${userId}/wallet`, { credentials: "include" });
+        if (res.ok) setWallet(await res.json());
+      } catch (e) { console.error("[Dashboard] wallet error", e); }
+      finally { setLoading(false); }
+    })();
   }, [user, authLoading]);
 
+  /* fetch rank */
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setRankLoading(false); return; }
+    const userId = user.id || user.userId || user.username;
+    if (!userId) { setRankLoading(false); return; }
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/ranks/${userId}`, { credentials: "include" });
+        if (res.ok) setRank(await res.json());
+      } catch (e) { console.error("[Dashboard] rank error", e); }
+      finally { setRankLoading(false); }
+    })();
+  }, [user, authLoading]);
+
+  /* fetch markets */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/markets`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveMarkets(data.filter((m) => m.status === "ACTIVE" || m.status === "UPCOMING").slice(0, 6));
+        }
+      } catch (e) { console.error("[Dashboard] markets error", e); }
+      finally { setMarketsLoading(false); }
+    })();
+  }, []);
+
   const balance = wallet?.balanceCents ? wallet.balanceCents / 100 : 0;
+  const fmtBal = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(balance);
   const username = user?.username || "User";
-  const rank = "Gold II"; // TODO: fetch from backend if available
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-x-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/50 via-slate-900 to-purple-950/50" />
+    <PageShell>
+      <main className="pt-20 pb-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Animated orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000" />
+          {/* ── welcome header ──────────────────────────────────── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mb-8 pb-6 border-b border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-lg bg-violet-500/10 border border-violet-500/15 flex items-center justify-center flex-shrink-0">
+                <span className="text-base font-semibold text-amber-400">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-white">{loading ? "Loading…" : `Welcome back, ${username}`}</h1>
+                <p className="text-sm text-slate-500 mt-0.5">Prediction Markets</p>
+              </div>
+            </div>
+            <Link to="/wallet" className="px-4 py-2 rounded-lg bg-amber-400 text-[#0d0a18] text-sm font-medium hover:bg-amber-300 transition-colors flex-shrink-0">
+              Add Funds
+            </Link>
+          </motion.div>
 
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.02]" style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }} />
-      </div>
+          <div className="space-y-10">
 
-      <main className="flex-1 w-full pt-24 pb-12">
-        <div className="mx-auto w-full max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
-          <HeaderDashboard username={username} balance={balance} rank={rank} loading={loading} />
-          <AnnouncementsSection />
-          <ActiveMarketsSection />
-        </div>
-      </main>
+          {/* ── stats ───────────────────────────────────────────── */}
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <WalletIcon className="w-4 h-4 text-violet-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Balance</p>
+                <p className="text-xl font-semibold text-white mt-0.5">{loading ? "…" : fmtBal}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center overflow-hidden">
+                {rankLoading || !rank?.overallRank ? (
+                  <TrophyIcon className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <img src={rankImages[rank.overallRank]} alt={rank.overallRank} className="w-8 h-8 object-contain" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Overall Rank</p>
+                <p className="text-xl font-semibold text-white mt-0.5">
+                  {rankLoading ? "…" : formatRank(rank?.overallRank)}
+                </p>
+              </div>
+            </div>
+          </motion.section>
 
-      {/* Footer */}
-      <motion.footer
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="relative border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-xl py-8"
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-slate-400 text-sm">
-              © 2025 Pryzm. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link to="/terms" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
-                Terms
-              </Link>
-              <Link to="/privacy" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
-                Privacy
-              </Link>
-              <Link to="/support" className="text-slate-400 hover:text-amber-400 text-sm transition-colors">
-                Support
+          {/* ── rank breakdown ──────────────────────────────────── */}
+          {!rankLoading && rank && (
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+              <h2 className="text-base font-semibold text-white mb-4">Your Ranking</h2>
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+
+                {/* overall row */}
+                <div className="flex items-center gap-4 pb-5 border-b border-white/[0.05]">
+                  <img
+                    src={rankImages[rank.overallRank]}
+                    alt={rank.overallRank}
+                    className="w-14 h-14 object-contain flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Overall</p>
+                    <p className="text-lg font-semibold text-white">{formatRank(rank.overallRank)}</p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-amber-400 transition-all"
+                          style={{ width: `${Math.min((rank.overallPoints / 1000) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-400 flex-shrink-0">{rank.overallPoints} pts</span>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-lg font-semibold text-slate-300">{rank.resolvedMarketsCount ?? 0}</p>
+                    <p className="text-[11px] text-slate-600 uppercase tracking-wider">resolved</p>
+                  </div>
+                </div>
+
+                {/* trader + predictor */}
+                <div className="grid grid-cols-2 gap-4 pt-5">
+                  {[
+                    { label: "Trader",    rankKey: rank.traderRank,    pts: rank.traderPoints,    color: "from-violet-500 to-violet-400" },
+                    { label: "Predictor", rankKey: rank.predictorRank, pts: rank.predictorPoints, color: "from-amber-500 to-amber-400" },
+                  ].map(({ label, rankKey, pts, color }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <img
+                        src={rankImages[rankKey]}
+                        alt={rankKey}
+                        className="w-10 h-10 object-contain flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-slate-500 uppercase tracking-wider">{label}</p>
+                        <p className="text-sm font-semibold text-white truncate">{formatRank(rankKey)}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${color}`}
+                              style={{ width: `${Math.min((pts / 1000) * 100, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-slate-500 flex-shrink-0">{pts} pts</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+          )}
+
+          {/* ── announcements ──────────────────────────────────── */}
+          {sortedAnnouncements.length > 0 && (
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-base font-semibold text-white">Announcements</h2>
+              </div>
+              <div className="space-y-3">
+                {sortedAnnouncements.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`rounded-xl border px-5 py-4 ${
+                      a.pinned
+                        ? "border-violet-500/20 bg-violet-500/[0.04]"
+                        : "border-white/[0.06] bg-white/[0.02]"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white leading-snug">
+                        {a.title}
+                        {a.pinned && (
+                          <span className="ml-2 text-[10px] font-medium text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">PINNED</span>
+                        )}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">{a.body}</p>
+                      <p className="mt-2 text-[11px] text-slate-600">
+                        {a.date ? new Date(a.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {/* ── active markets ──────────────────────────────────── */}
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-semibold text-white">Active Markets</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Trade on real-world events</p>
+              </div>
+              <Link to="/markets" className="text-sm text-slate-500 hover:text-amber-400 transition-colors flex items-center gap-1">
+                View all <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+
+            {marketsLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="w-8 h-8 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
+              </div>
+            ) : activeMarkets.length === 0 ? (
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
+                <p className="text-slate-500 text-sm">No active markets right now.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeMarkets.map((m, i) => (
+                  <motion.div key={m.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.04 }}>
+                    <MarketCard market={m} />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.section>
           </div>
         </div>
-      </motion.footer>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-        body {
-          font-family: 'Inter', sans-serif;
-        }
-
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 0.1; }
-          50% { opacity: 0.2; }
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-
-        /* Smooth scrolling */
-        html {
-          scroll-behavior: smooth;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 10px;
-          height: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: #0f172a;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: #334155;
-          border-radius: 5px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: #475569;
-        }
-      `}</style>
-    </div>
+      </main>
+    </PageShell>
   );
 }

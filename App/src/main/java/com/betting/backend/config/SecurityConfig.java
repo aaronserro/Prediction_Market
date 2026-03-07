@@ -73,9 +73,15 @@ public class SecurityConfig {
         // Admin endpoints (must come before other /api/v1/** rules)
         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
+        // Admin-only user management endpoints
+        .requestMatchers("/api/v1/users", "/api/v1/users/*").hasAuthority("ROLE_ADMIN")
+
         // Public market GET endpoints - anyone can view markets
         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
+
+        // Public rank profile endpoint
+        .requestMatchers(HttpMethod.GET, "/api/ranks/**").permitAll()
 
         // Authenticated endpoints - must be logged in
         .requestMatchers(HttpMethod.POST, "/api/v1/trades/**").authenticated()

@@ -5,9 +5,15 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.betting.backend.positions.Position;
+import com.betting.backend.trades.Trade;
+import com.betting.backend.wallet.model.Wallet;
 
 @Entity
 @Table(name = "users")
@@ -30,6 +36,15 @@ public class User implements UserDetails {
     @Column(name = "role")
     private Set<String> roles;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Position> positions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Trade> trades = new ArrayList<>();
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Wallet wallet;
+
     // --- Getters ---
     public Long getId() {
         return id;
@@ -51,6 +66,18 @@ public class User implements UserDetails {
         return roles;
     }
 
+    public List<Position> getPositions() {
+        return positions;
+    }
+
+    public List<Trade> getTrades() {
+        return trades;
+    }
+
+    public Wallet getWallet() {
+        return wallet;
+    }
+
     // --- Setters ---
     public void setId(Long id) {
         this.id = id;
@@ -70,6 +97,18 @@ public class User implements UserDetails {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public void setPositions(List<Position> positions) {
+        this.positions = positions;
+    }
+
+    public void setTrades(List<Trade> trades) {
+        this.trades = trades;
+    }
+
+    public void setWallet(Wallet wallet) {
+        this.wallet = wallet;
     }
 
     // --- UserDetails implementation ---

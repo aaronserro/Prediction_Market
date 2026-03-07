@@ -154,10 +154,12 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
         System.out.println("  Winner: " + isWinner + ", Payout: " + payoutCents + " cents");
 
         long costBasis = position.getCostBasisCents();
+        position.setSettledCostBasisCents(costBasis); // <-- add this
         long prevRealized = position.getRealizedPnl() == null ? 0L : position.getRealizedPnl();
         long realizedDelta = payoutCents - costBasis;
 
         // Update accounting on the position
+
         position.setRealizedPnl(prevRealized + realizedDelta);
 
         // Close the position

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e88040"/>
+      <stop offset="100%" stop-color="#9a4e20"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <path d="M50 6 L90 22 L90 62 C90 85 50 114 50 114 C50 114 10 85 10 62 L10 22 Z" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M50 6 L90 22 L90 62 C90 85 50 114 50 114 C50 114 10 85 10 62 L10 22 Z" fill="url(#shine)"/>
+  <path d="M50 6 L90 22 L90 62 C90 85 50 114 50 114 C50 114 10 85 10 62 L10 22 Z" fill="none" stroke="#d47838" stroke-width="2"/>
+  <text x="50" y="72" text-anchor="middle" font-family="system-ui,sans-serif" font-size="38" font-weight="800" fill="#fff5e0" opacity="0.95">1</text>
+  <text x="50" y="44" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#ffe4b0" opacity="0.9">BRONZE</text>
+  <text x="50" y="100" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#ffe4b0" opacity="0.75">★☆☆</text>
+</svg>

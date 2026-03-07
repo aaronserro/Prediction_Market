@@ -1,323 +1,186 @@
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+
+const FEATURES = [
+  {
+    title: "Real-Time Markets",
+    description:
+      "Trade on live prediction markets with real-time odds and instant execution.",
+  },
+  {
+    title: "Portfolio Tracking",
+    description:
+      "Monitor all your positions and P/L across every market in one place.",
+  },
+  {
+    title: "Secure Wallet",
+    description:
+      "Your funds are protected with bank-level security and same-day settlements.",
+  },
+  {
+    title: "Advanced Analytics",
+    description:
+      "Track your performance with detailed trade history and market insights.",
+  },
+];
 
 export default function LandingPage() {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
-  const features = [
-    {
-      icon: "📈",
-      title: "Real-Time Markets",
-      description: "Trade on live prediction markets with real-time odds and instant execution"
-    },
-    {
-      icon: "🏆",
-      title: "Competitive Tournaments",
-      description: "Compete in tournaments and climb the leaderboards to win big rewards"
-    },
-    {
-      icon: "💰",
-      title: "Secure Wallet",
-      description: "Your funds are protected with bank-level security and instant withdrawals"
-    },
-    {
-      icon: "📊",
-      title: "Advanced Analytics",
-      description: "Track your performance with detailed statistics and insights"
-    }
-  ];
-
-  const stats = [
-    { value: "50K+", label: "Active Traders" },
-    { value: "$10M+", label: "Trading Volume" },
-    { value: "1000+", label: "Markets" },
-    { value: "99.9%", label: "Uptime" }
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 -z-10">
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/50 via-slate-900 to-purple-950/50" />
+    <div className="min-h-screen bg-[#0b0e14] text-white">
 
-        {/* Animated orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse animation-delay-2000" />
-        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse animation-delay-4000" />
+      {/* Nav */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0b0e14] border-b border-white/[0.06]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          <span className="text-base font-bold tracking-tight bg-gradient-to-r from-violet-400 to-amber-400 bg-clip-text text-transparent">Pryzm</span>
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
+              Sign In
+            </Link>
+          </div>
+        </div>
+      </header>
 
-        {/* Mouse follower */}
-        <motion.div
-          className="absolute w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"
-          animate={{
-            x: mousePosition.x - 128,
-            y: mousePosition.y - 128,
-          }}
-          transition={{ type: "spring", stiffness: 50, damping: 20 }}
-        />
+      {/* Hero */}
+      <section className="pt-40 pb-28 px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+        <p className="text-xs font-medium text-violet-400 uppercase tracking-widest mb-6">
+          Prediction Markets
+        </p>
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold text-white leading-tight mb-6 max-w-3xl">
+          Trade on what <span className="text-amber-400">you know.</span>
+        </h1>
+        <p className="text-lg text-slate-400 max-w-2xl mb-10 leading-relaxed">
+          Pryzm is a closed prediction market platform where your insight has real value.
+          Turn your edge on world events into measurable outcomes — politics, sports, finance, and more.
+        </p>
+        <Link
+          to="/login"
+          className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+        >
+          Sign in to start trading →
+        </Link>
+      </section>
 
-        {/* Grid pattern */}
-        <div className="absolute inset-0 opacity-[0.02]" style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '50px 50px'
-        }} />
-      </div>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-                Predict the Future.
-                <br />
-                <span className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 bg-clip-text text-transparent">
-                  Win Big Rewards.
-                </span>
-              </h1>
-              <p className="text-xl sm:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto">
-                Trade on the outcomes of real-world events. Join thousands of traders making predictions on politics, sports, crypto, and more.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            >
-              <Link
-                to="/signup"
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-lg shadow-2xl shadow-amber-500/50 transition-all hover:scale-105 hover:shadow-amber-500/70"
-              >
-                Start Trading Now
-              </Link>
-              <Link
-                to="/login"
-                className="px-8 py-4 rounded-xl border-2 border-slate-700 hover:border-amber-500 text-white font-semibold text-lg transition-all hover:bg-slate-800/50"
-              >
-                Sign In
-              </Link>
-            </motion.div>
-
-            {/* Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
-            >
-              {stats.map((stat, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent mb-2">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-slate-400 uppercase tracking-wider">{stat.label}</div>
-                </div>
-              ))}
-            </motion.div>
+      {/* About */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-white/[0.06]">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div>
+            <p className="text-xs font-medium text-violet-400 uppercase tracking-widest mb-4">What is Pryzm?</p>
+            <h2 className="text-3xl font-semibold text-white mb-5 leading-snug">
+              A smarter way to put your predictions to the test.
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+              Pryzm is an invitation-only prediction market platform. Members receive access from an administrator and
+              use virtual currency to trade on the outcomes of real-world events — from elections and sports to
+              financial markets and breaking news.
+            </p>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Unlike traditional forecasting tools, Pryzm uses market mechanics to surface the most accurate
+              collective predictions. The better your read on the world, the better your portfolio performs.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-5">
+              <p className="text-xs font-medium text-violet-400 uppercase tracking-wider mb-2">Trade</p>
+              <p className="text-sm text-slate-400 leading-relaxed">Buy and sell positions on hundreds of live markets in real time.</p>
+            </div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-5">
+              <p className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-2">Compete</p>
+              <p className="text-sm text-slate-400 leading-relaxed">Climb the leaderboard and prove your predictions are sharper than the crowd.</p>
+            </div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-5">
+              <p className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-2">Track</p>
+              <p className="text-sm text-slate-400 leading-relaxed">Monitor your portfolio, P/L, and performance across every position.</p>
+            </div>
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-5">
+              <p className="text-xs font-medium text-violet-400 uppercase tracking-wider mb-2">Learn</p>
+              <p className="text-sm text-slate-400 leading-relaxed">Sharpen your forecasting intuition on markets that reflect the real world.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+      {/* Features */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-              Why Choose <span className="text-amber-400">Pryzm</span>?
-            </h2>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              The most advanced prediction market platform with everything you need to succeed
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: idx * 0.1 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="group relative overflow-hidden rounded-2xl border border-slate-800/70 bg-gradient-to-br from-slate-900/80 to-slate-800/50 p-8 backdrop-blur-xl hover:border-amber-500/50 transition-all"
+          <div className="mb-12">
+            <h2 className="text-2xl font-semibold text-white mb-2">Everything you need</h2>
+            <p className="text-sm text-slate-500">Built for serious traders who value clarity and speed.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-6 border-t-2 border-t-violet-500/40"
               >
-                {/* Hover effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/0 to-amber-600/0 group-hover:from-amber-500/10 group-hover:to-amber-600/10 transition-all" />
-
-                <div className="relative z-10">
-                  <div className="text-5xl mb-4">{feature.icon}</div>
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-amber-300 transition-colors">
-                    {feature.title}
-                  </h3>
-                  <p className="text-slate-400">
-                    {feature.description}
-                  </p>
-                </div>
-              </motion.div>
+                <h3 className="text-sm font-semibold text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{f.description}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
+      {/* How it works */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 border-t border-white/[0.06]">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-              How It <span className="text-amber-400">Works</span>
-            </h2>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Start making predictions in three simple steps
-            </p>
-          </motion.div>
-
+          <div className="mb-12">
+            <h2 className="text-2xl font-semibold text-white mb-2">How it works</h2>
+            <p className="text-sm text-slate-500">Get up and running in minutes.</p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: "1", title: "Create Account", desc: "Sign up in seconds and get your secure wallet" },
-              { step: "2", title: "Choose Markets", desc: "Browse thousands of markets across multiple categories" },
-              { step: "3", title: "Start Trading", desc: "Make predictions and watch your portfolio grow" }
-            ].map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: idx * 0.2 }}
-                className="relative"
-              >
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-slate-900 font-bold text-2xl mb-6 shadow-xl shadow-amber-500/50">
-                    {item.step}
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-3">{item.title}</h3>
-                  <p className="text-slate-400 text-lg">{item.desc}</p>
+              { step: "01", title: "Receive access", desc: "An administrator creates your account and grants you access to the platform." },
+              { step: "02", title: "Browse markets", desc: "Explore open markets across politics, sports, finance, and more." },
+              { step: "03", title: "Trade and track", desc: "Place your positions and monitor your portfolio in real time." },
+            ].map((item) => (
+              <div key={item.step} className="flex gap-5">
+                <span className="text-xs font-mono text-amber-400 mt-0.5 flex-shrink-0">{item.step}</span>
+                <div>
+                  <h3 className="text-sm font-semibold text-white mb-1">{item.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
                 </div>
-                {idx < 2 && (
-                  <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-amber-500/50 to-transparent -translate-x-1/2" />
-                )}
-              </motion.div>
+              </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-slate-900/90 to-slate-800/50 p-12 backdrop-blur-xl shadow-2xl"
-          >
-            {/* Animated background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-purple-500/10" />
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl" />
-
-            <div className="relative z-10 text-center">
-              <h2 className="text-4xl sm:text-5xl font-bold mb-6">
-                Ready to Start <span className="text-amber-400">Winning</span>?
-              </h2>
-              <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-                Join thousands of traders making accurate predictions every day. No fees for the first month!
-              </p>
-              <Link
-                to="/signup"
-                className="inline-block px-10 py-5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xl shadow-2xl shadow-amber-500/50 transition-all hover:scale-105 hover:shadow-amber-500/70"
-              >
-                Get Started Free
-              </Link>
-            </div>
-          </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-xl py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent mb-4">
-                Pryzm
-              </h3>
-              <p className="text-slate-400">
-                The future of prediction markets.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Product</h4>
-              <ul className="space-y-2 text-slate-400">
-                <li><Link to="/markets" className="hover:text-amber-400 transition-colors">Markets</Link></li>
-                <li><Link to="/tournaments" className="hover:text-amber-400 transition-colors">Tournaments</Link></li>
-                <li><Link to="/news" className="hover:text-amber-400 transition-colors">News</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Company</h4>
-              <ul className="space-y-2 text-slate-400">
-                <li><Link to="/about" className="hover:text-amber-400 transition-colors">About</Link></li>
-                <li><Link to="/careers" className="hover:text-amber-400 transition-colors">Careers</Link></li>
-                <li><Link to="/support" className="hover:text-amber-400 transition-colors">Support</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-slate-400">
-                <li><Link to="/terms" className="hover:text-amber-400 transition-colors">Terms</Link></li>
-                <li><Link to="/privacy" className="hover:text-amber-400 transition-colors">Privacy</Link></li>
-                <li><a href="mailto:support@pryzm.com" className="hover:text-amber-400 transition-colors">Contact</a></li>
-              </ul>
-            </div>
+      <footer className="border-t border-white/[0.06] py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between gap-8">
+          <div>
+            <p className="text-sm font-bold bg-gradient-to-r from-violet-400 to-amber-400 bg-clip-text text-transparent mb-2">Pryzm</p>
+            <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+              The future of prediction markets. Trade on what you know.
+            </p>
           </div>
-          <div className="border-t border-slate-800/50 pt-8 text-center text-slate-400">
-            <p>© 2025 Pryzm. All rights reserved.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm text-slate-500">
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Product</p>
+              <ul className="space-y-2">
+                <li><Link to="/markets" className="hover:text-white transition-colors">Markets</Link></li>
+                <li><Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link></li>
+                <li><Link to="/portfolio" className="hover:text-white transition-colors">Portfolio</Link></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Company</p>
+              <ul className="space-y-2">
+                <li><a href="mailto:pryzmcompany@gmail.com" className="hover:text-white transition-colors">Contact</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Legal</p>
+              <ul className="space-y-2">
+                <li><span className="cursor-default">Terms</span></li>
+                <li><span className="cursor-default">Privacy</span></li>
+              </ul>
+            </div>
           </div>
         </div>
+        <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-white/[0.06]">
+          <p className="text-xs text-slate-700">© 2026 Pryzm. All rights reserved.</p>
+        </div>
       </footer>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.1; }
-          50% { opacity: 0.2; }
-        }
-
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
     </div>
   );
 }

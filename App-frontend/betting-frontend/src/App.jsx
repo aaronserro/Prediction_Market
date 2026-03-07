@@ -9,6 +9,7 @@ import Settings from './dashboard/Settings.jsx';
 import Wallet from './dashboard/Wallet.jsx';
 import AdminDashboard from './dashboard/admin/AdminDashboard.jsx';
 import AdminFundRequests from './dashboard/admin/AdminFundRequsts.jsx';
+import AdminCreateUser from './dashboard/admin/AdminCreateUser.jsx';
 import MarketsEvents from './dashboard/admin/MarketsEvents.jsx';
 import AdminMarketEdit from './dashboard/admin/AdminMarketEdit.jsx';
 import Markets from './pages/Markets.jsx';
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/tournaments" element={<ProtectedRoute><TournamentsPage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
+          <Route path="/admin/create-user" element={<ProtectedRoute><AdminCreateUser /></ProtectedRoute>} />
           <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />
           <Route path="/admin/markets/:marketId" element={<ProtectedRoute><AdminMarketEdit /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
