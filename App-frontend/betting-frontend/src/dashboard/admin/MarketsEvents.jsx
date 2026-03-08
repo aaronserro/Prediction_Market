@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import MarketCreation from "./MarketCreation";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_OPTIONS = ["ALL", "SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
 const STATUS_OPTIONS = ["ALL", "ACTIVE", "PENDING", "CLOSED", "RESOLVED"];

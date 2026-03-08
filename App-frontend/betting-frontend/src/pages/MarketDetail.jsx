@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PageShell } from "../dashboard/Dashboard.jsx";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_COLORS = {
   SPORTS: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-300",

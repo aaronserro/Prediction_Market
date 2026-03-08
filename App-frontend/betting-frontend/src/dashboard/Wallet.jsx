@@ -10,10 +10,7 @@ import { PageShell } from "./Dashboard.jsx";
  * - Tailwind UI
  */
 
-// ===== Config =====
-// Keep empty and use a Vite proxy for '/api' -> 'http://localhost:8080'.
-// If you prefer direct calls, set e.g. const API_BASE = "http://localhost:8080";
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 // ===== Small fetch helper (robust JSON + good error messages) =====
 async function http(path, opts = {}) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AdminNavbar from "./AdminNavbar.jsx";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 const ROLES = ["USER", "ADMIN"];
 
 const EMPTY_FORM = { username: "", email: "", password: "", confirmPassword: "", role: "USER" };

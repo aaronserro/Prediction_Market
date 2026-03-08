@@ -15,7 +15,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(form.username.trim(), form.password);
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.pryzm.ca' : 'http://localhost:8080');
       const meRes = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
       if (meRes.ok) {
         const userData = await meRes.json();

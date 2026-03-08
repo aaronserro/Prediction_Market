@@ -5,7 +5,7 @@ import { PageShell } from "../dashboard/Dashboard";
 import { useAuth } from "../auth/AuthContext.jsx";
 import rankImages, { formatRank } from "../lib/rankImages.js";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 /* ── rank helpers (mirrors backend thresholds) ───────────────────────── */
 const RANK_TIERS = [

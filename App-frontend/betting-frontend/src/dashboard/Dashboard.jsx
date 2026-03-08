@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import rankImages, { formatRank } from "../lib/rankImages.js";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 /* ── rank thresholds (must mirror backend RankTier logic) ────────────── */
 const RANK_TIERS = [
