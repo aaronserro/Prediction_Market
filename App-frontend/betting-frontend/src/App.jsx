@@ -4,7 +4,7 @@ import Login from './auth/Login.jsx';
 import Signup from './auth/Signup.jsx';
 import Dashboard from './dashboard/Dashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import { AdminRoute } from './components/ProtectedRoute.jsx';
+import { AdminRoute, GuestRoute } from './components/ProtectedRoute.jsx';
 import Navbar from './components/Navbar.jsx';
 import Settings from './dashboard/Settings.jsx';
 import Wallet from './dashboard/Wallet.jsx';
@@ -42,8 +42,8 @@ export default function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<HomeRoute />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
           <Route
             path="/dashboard"
             element={
@@ -63,8 +63,8 @@ export default function App() {
           <Route path="/admin/create-user" element={<AdminRoute><AdminCreateUser /></AdminRoute>} />
           <Route path="/admin/markets-events" element={<AdminRoute><MarketsEvents /></AdminRoute>} />
           <Route path="/admin/markets/:marketId" element={<AdminRoute><AdminMarketEdit /></AdminRoute>} />
+          <Route path="/markets/:marketId" element={<ProtectedRoute><MarketDetail /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
-          <Route path="/markets/:marketId" element={<MarketDetail />} />
         </Routes>
       </div>
     </AuthProvider>
