@@ -57,10 +57,17 @@ export default function Navbar() {
               to={user ? '/dashboard' : '/login'}
               className="flex items-center gap-2.5"
             >
-              <div className="w-7 h-7 rounded-md bg-violet-600 flex items-center justify-center">
-                <svg className="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <div className="relative w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-700/60 ring-1 ring-violet-400/30">
+                <svg className="w-4 h-4 drop-shadow-[0_0_4px_rgba(251,191,36,0.9)]" viewBox="0 0 24 24" fill="url(#navBolt)" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="navBolt" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#fde68a"/>
+                      <stop offset="100%" stopColor="#f59e0b"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
                 </svg>
+                <div className="absolute inset-0 rounded-lg bg-violet-400/20 blur-sm -z-10" />
               </div>
               <span className="text-sm font-semibold bg-gradient-to-r from-violet-400 to-amber-400 bg-clip-text text-transparent tracking-tight">Pryzm</span>
             </Link>

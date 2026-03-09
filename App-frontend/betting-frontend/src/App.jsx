@@ -4,6 +4,7 @@ import Login from './auth/Login.jsx';
 import Signup from './auth/Signup.jsx';
 import Dashboard from './dashboard/Dashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { AdminRoute } from './components/ProtectedRoute.jsx';
 import Navbar from './components/Navbar.jsx';
 import Settings from './dashboard/Settings.jsx';
 import Wallet from './dashboard/Wallet.jsx';
@@ -57,11 +58,11 @@ export default function App() {
           <Route path="/portfolio" element={<ProtectedRoute><PortfolioPage /></ProtectedRoute>} />
           <Route path="/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
           <Route path="/tournaments" element={<ProtectedRoute><TournamentsPage /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/fund-requests" element={<ProtectedRoute><AdminFundRequests /></ProtectedRoute>} />
-          <Route path="/admin/create-user" element={<ProtectedRoute><AdminCreateUser /></ProtectedRoute>} />
-          <Route path="/admin/markets-events" element={<ProtectedRoute><MarketsEvents /></ProtectedRoute>} />
-          <Route path="/admin/markets/:marketId" element={<ProtectedRoute><AdminMarketEdit /></ProtectedRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/fund-requests" element={<AdminRoute><AdminFundRequests /></AdminRoute>} />
+          <Route path="/admin/create-user" element={<AdminRoute><AdminCreateUser /></AdminRoute>} />
+          <Route path="/admin/markets-events" element={<AdminRoute><MarketsEvents /></AdminRoute>} />
+          <Route path="/admin/markets/:marketId" element={<AdminRoute><AdminMarketEdit /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
           <Route path="/markets/:marketId" element={<MarketDetail />} />
         </Routes>
