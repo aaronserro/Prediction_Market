@@ -15,6 +15,8 @@ const TABS = [
   { id: "REJECTED", label: "Rejected" },
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
+
 export default function AdminFundRequests() {
   const [requests, setRequests] = useState([]);
   const [currentStatus, setCurrentStatus] = useState("PENDING");
@@ -30,41 +32,41 @@ export default function AdminFundRequests() {
       setLoading(true);
       setErrorMsg("");
       try {
-        console.log(
-          "[AdminFundRequests] Fetching fund requests with status:",
-          currentStatus
-        );
         const data = await fetchFundRequestsByStatus(currentStatus);
-        console.log("[AdminFundRequests] Received data:", data);
-        if (!cancelled) {
-          setRequests(data || []);
-        }
-      } catch (err) {
-        console.error(
-          "[AdminFundRequests] Error fetching fund requests:",
-          err
+        const raw = data || [];
+
+        // For any request that lacks a username field, fetch it from /api/v1/users/{userId}
+        const enriched = await Promise.all(
+          raw.map(async (req) => {
+            const existing = req.username || req.userIdentifier || req.userEmail;
+            if (existing) return req;
+            const uid = req.userId || req.user_id;
+            if (!uid) return req;
+            try {
+              const res = await fetch(`${API_BASE}/api/v1/users/${uid}`, { credentials: "include" });
+              if (!res.ok) return req;
+              const user = await res.json();
+              return { ...req, username: user.username || user.name || user.email || String(uid) };
+            } catch {
+              return req;
+            }
+          })
         );
+
+        if (!cancelled) setRequests(enriched);
+      } catch (err) {
         if (err.status === 401 || err.status === 403) {
-          console.error(
-            "[AdminFundRequests] Authorization failed - 403/401. User may not have admin privileges on backend."
-          );
-          setErrorMsg(
-            `Access denied (${err.status}). Your account may not have admin privileges on the server.`
-          );
+          setErrorMsg(`Access denied (${err.status}). Your account may not have admin privileges on the server.`);
           if (!cancelled) setLoading(false);
           return;
         }
-        if (!cancelled) {
-          setErrorMsg(err.message || "Failed to load fund requests.");
-        }
+        if (!cancelled) setErrorMsg(err.message || "Failed to load fund requests.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [currentStatus, navigate]);
 
   const formatAmount = (amountCents) => {
@@ -192,10 +194,8 @@ export default function AdminFundRequests() {
                     className="border-t border-slate-800 hover:bg-slate-800/60"
                   >
                     <td className="px-4 py-3 text-slate-100">{req.id}</td>
-                    <td className="px-4 py-3 text-slate-100">
-                      {req.userIdentifier ||
-                        req.username ||
-                        req.userEmail}
+                    <td className="px-4 py-3 text-slate-100 font-medium">
+                      {req.username || req.userIdentifier || req.userEmail || (req.userId ?? req.user_id) || "—"}
                     </td>
                     <td className="px-4 py-3 text-slate-100">
                       {formatAmount(req.amountCents)}

@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 
-function NavItem({ to, label, pathname }) {
+function NavItem({ to, label, pathname, onClick }) {
   const isActive = pathname === to || (to !== '/' && pathname.startsWith(to));
 
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={`relative px-3 py-1.5 text-sm font-medium transition-colors duration-150 ${
         isActive
           ? 'text-white'
@@ -33,6 +34,7 @@ export default function Navbar() {
   const nav = useNavigate();
   const { pathname } = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const roles = user?.roles ?? [];
   const isAdmin = roles.includes('ROLE_ADMIN') || roles.includes('ADMIN');
@@ -87,62 +89,78 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Right: User Menu */}
+          {/* Right: User Menu + Hamburger */}
           <div className="flex items-center gap-3">
             {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded-sm bg-white/10 border border-white/[0.08] flex items-center justify-center text-xs font-semibold text-white">
-                    {user.username.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden sm:block text-sm text-slate-300">{user.username}</span>
-                  <svg
-                    className={`w-3.5 h-3.5 text-slate-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              <>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-white/5 transition-colors"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <div className="w-6 h-6 rounded-sm bg-white/10 border border-white/[0.08] flex items-center justify-center text-xs font-semibold text-white">
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden sm:block text-sm text-slate-300">{user.username}</span>
+                    <svg
+                      className={`hidden sm:block w-3.5 h-3.5 text-slate-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  <AnimatePresence>
+                    {showUserMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-1.5 w-44 py-1 bg-[#131820] border border-white/[0.08] rounded-lg shadow-xl"
+                      >
+                        <Link
+                          to="/settings"
+                          className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          Settings
+                        </Link>
+                        <Link
+                          to="/wallet"
+                          className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          Wallet
+                        </Link>
+                        <div className="my-1 border-t border-white/[0.06]" />
+                        <button
+                          onClick={() => { setShowUserMenu(false); onLogout(); }}
+                          className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors"
+                        >
+                          Sign out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Hamburger — mobile only */}
+                <button
+                  onClick={() => setShowMobileMenu((v) => !v)}
+                  className="md:hidden p-1.5 rounded-md hover:bg-white/5 transition-colors text-slate-400 hover:text-white"
+                  aria-label="Toggle menu"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {showMobileMenu
+                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    }
                   </svg>
                 </button>
-
-                <AnimatePresence>
-                  {showUserMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-1.5 w-44 py-1 bg-[#131820] border border-white/[0.08] rounded-lg shadow-xl"
-                    >
-                      <Link
-                        to="/settings"
-                        className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        Settings
-                      </Link>
-                      <Link
-                        to="/wallet"
-                        className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        Wallet
-                      </Link>
-                      <div className="my-1 border-t border-white/[0.06]" />
-                      <button
-                        onClick={() => { setShowUserMenu(false); onLogout(); }}
-                        className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors"
-                      >
-                        Sign out
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <Link
@@ -162,6 +180,68 @@ export default function Navbar() {
           </div>
         </div>
       </nav>
+
+      {/* Mobile menu drawer */}
+      <AnimatePresence>
+        {showMobileMenu && user && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="md:hidden overflow-hidden border-t border-white/[0.06] bg-[#0d0a18]/95 backdrop-blur-xl"
+          >
+            <div className="px-4 py-3 flex flex-col gap-1">
+              {[
+                { to: '/dashboard',   label: 'Dashboard' },
+                { to: '/markets',     label: 'Markets' },
+                { to: '/portfolio',   label: 'Portfolio' },
+                { to: '/news',        label: 'News' },
+                { to: '/tournaments', label: 'Tournaments' },
+                ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
+              ].map(({ to, label }) => {
+                const isActive = pathname === to || (to !== '/' && pathname.startsWith(to));
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    onClick={() => setShowMobileMenu(false)}
+                    className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-violet-500/15 text-white border border-violet-500/20'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+              <div className="mt-2 pt-2 border-t border-white/[0.06] flex flex-col gap-1">
+                <Link
+                  to="/settings"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Settings
+                </Link>
+                <Link
+                  to="/wallet"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Wallet
+                </Link>
+                <button
+                  onClick={() => { setShowMobileMenu(false); onLogout(); }}
+                  className="text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
