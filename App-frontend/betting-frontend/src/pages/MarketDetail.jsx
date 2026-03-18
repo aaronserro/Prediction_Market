@@ -607,6 +607,33 @@ export default function MarketDetail() {
             <div className="p-6">
               <h3 className="text-xl font-black text-white mb-4">Confirm {pendingTrade.action === "BUY" ? "Buy" : "Sell"}</h3>
 
+              {/* Quantity picker — full width */}
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Shares to {pendingTrade.action === "BUY" ? "buy" : "sell"}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[10, 50, 100].map((qty) => {
+                    const isSelected = tradeQuantity === qty;
+                    const activeClass = pendingTrade.action === "BUY"
+                      ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-lg shadow-emerald-900/30"
+                      : "bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-lg shadow-amber-900/30";
+                    return (
+                      <button
+                        key={qty}
+                        onClick={() => setTradeQuantity(qty)}
+                        className={`py-3.5 rounded-xl border text-sm font-black transition-all ${
+                          isSelected
+                            ? activeClass
+                            : "bg-white/[0.03] border-white/[0.08] text-slate-500 hover:bg-white/[0.07] hover:text-slate-300"
+                        }`}
+                      >
+                        <span className="block text-xl font-black leading-none mb-0.5">{qty}</span>
+                        <span className="block text-[10px] font-semibold uppercase tracking-wider opacity-70">shares</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-3 mb-5">
                 {/* Action */}
                 <div className="flex justify-between items-center text-sm">
@@ -621,21 +648,6 @@ export default function MarketDetail() {
                   <span className="font-bold text-white">
                     {pendingTrade.outcome.label || pendingTrade.outcome.description}
                   </span>
-                </div>
-                {/* Quantity dropdown */}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">Quantity</span>
-                  <select
-                    value={tradeQuantity}
-                    onChange={(e) => setTradeQuantity(Number(e.target.value))}
-                    className="appearance-none px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.10] text-sm text-white font-bold focus:outline-none focus:border-violet-500/50 cursor-pointer transition-colors"
-                  >
-                    {[10, 50, 100].map((qty) => (
-                      <option key={qty} value={qty} className="bg-[#0e0b1c]">
-                        {qty} shares
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 {/* Price */}
                 <div className="flex justify-between items-center text-sm">
