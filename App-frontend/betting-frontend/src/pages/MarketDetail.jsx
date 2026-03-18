@@ -30,7 +30,7 @@ export default function MarketDetail() {
   const [market, setMarket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tradeQuantity, setTradeQuantity] = useState(1);
+  const [tradeQuantity, setTradeQuantity] = useState(10);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeError, setTradeError] = useState("");
   const [tradeSuccess, setTradeSuccess] = useState("");
@@ -412,18 +412,8 @@ export default function MarketDetail() {
                   className="rounded-2xl border border-white/[0.07] bg-white/[0.025] overflow-hidden"
                 >
                   {/* trade header */}
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+                  <div className="flex items-center px-6 py-4 border-b border-white/[0.06]">
                     <h2 className="text-base font-black text-white uppercase tracking-wider">Trade</h2>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xs text-slate-500 font-semibold uppercase tracking-widest">Qty</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={tradeQuantity}
-                        onChange={(e) => setTradeQuantity(parseInt(e.target.value || "1", 10))}
-                        className="w-20 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.07] text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors text-center"
-                      />
-                    </div>
                   </div>
 
                   {/* outcome rows */}
@@ -618,17 +608,42 @@ export default function MarketDetail() {
               <h3 className="text-xl font-black text-white mb-4">Confirm {pendingTrade.action === "BUY" ? "Buy" : "Sell"}</h3>
 
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-3 mb-5">
-                {[
-                  { label: "Action", value: pendingTrade.action, color: pendingTrade.action === "BUY" ? "text-emerald-400" : "text-amber-400" },
-                  { label: "Outcome", value: pendingTrade.outcome.label || pendingTrade.outcome.description },
-                  { label: "Quantity", value: `${tradeQuantity} shares` },
-                  { label: "Price", value: p !== undefined ? `${(p * 100).toFixed(0)}¢ per share` : "—" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500">{label}</span>
-                    <span className={`font-bold ${color || "text-white"}`}>{value}</span>
-                  </div>
-                ))}
+                {/* Action */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">Action</span>
+                  <span className={`font-bold ${pendingTrade.action === "BUY" ? "text-emerald-400" : "text-amber-400"}`}>
+                    {pendingTrade.action}
+                  </span>
+                </div>
+                {/* Outcome */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">Outcome</span>
+                  <span className="font-bold text-white">
+                    {pendingTrade.outcome.label || pendingTrade.outcome.description}
+                  </span>
+                </div>
+                {/* Quantity dropdown */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">Quantity</span>
+                  <select
+                    value={tradeQuantity}
+                    onChange={(e) => setTradeQuantity(Number(e.target.value))}
+                    className="appearance-none px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.10] text-sm text-white font-bold focus:outline-none focus:border-violet-500/50 cursor-pointer transition-colors"
+                  >
+                    {[10, 50, 100].map((qty) => (
+                      <option key={qty} value={qty} className="bg-[#0e0b1c]">
+                        {qty} shares
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Price */}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500">Price</span>
+                  <span className="font-bold text-white">
+                    {p !== undefined ? `${(p * 100).toFixed(0)}¢ per share` : "—"}
+                  </span>
+                </div>
                 {p !== undefined && (
                   <div className="flex justify-between items-center text-sm pt-3 border-t border-white/[0.06]">
                     <span className="text-slate-400 font-semibold">
