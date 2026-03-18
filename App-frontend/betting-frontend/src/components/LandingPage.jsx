@@ -35,6 +35,9 @@ export default function LandingPage() {
             <Link to="/login" className="text-sm text-slate-400 hover:text-white transition-colors">
               Sign In
             </Link>
+            <Link to="/signup" className="text-sm font-semibold px-4 py-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-violet-600 text-white hover:from-violet-400 hover:to-violet-500 transition-all shadow-md shadow-violet-900/30">
+              Sign Up
+            </Link>
           </div>
         </div>
       </header>
@@ -51,12 +54,20 @@ export default function LandingPage() {
           Pryzm is a closed prediction market platform where your insight has real value.
           Turn your edge on world events into measurable outcomes — politics, sports, finance, and more.
         </p>
-        <Link
-          to="/login"
-          className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
-        >
-          Sign in to start trading →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/signup"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-[#1a0a00] text-sm font-black hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-900/25"
+          >
+            Get Started Free
+          </Link>
+          <Link
+            to="/login"
+            className="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Sign in →
+          </Link>
+        </div>
       </section>
 
       {/* About */}
@@ -68,7 +79,7 @@ export default function LandingPage() {
               A smarter way to put your predictions to the test.
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              Pryzm is an invitation-only prediction market platform. Members receive access from an administrator and
+              Pryzm is a prediction market platform where anyone can sign up and start trading. Members
               use virtual currency to trade on the outcomes of real-world events — from elections and sports to
               financial markets and breaking news.
             </p>
@@ -128,7 +139,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: "01", title: "Receive access", desc: "An administrator creates your account and grants you access to the platform." },
+              { step: "01", title: "Create an account", desc: "Sign up in seconds and get access to all markets on the platform." },
               { step: "02", title: "Browse markets", desc: "Explore open markets across politics, sports, finance, and more." },
               { step: "03", title: "Trade and track", desc: "Place your positions and monitor your portfolio in real time." },
             ].map((item) => (

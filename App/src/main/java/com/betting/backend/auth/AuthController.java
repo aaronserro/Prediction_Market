@@ -14,20 +14,31 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import com.betting.backend.auth.MeResponse;
 import java.util.Set;
+import com.betting.backend.wallet.Service.WalletService;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
   private static final String AUTH_COOKIE = "betauth";
+  private static final long SIGNUP_BONUS_CENTS = 10_000L;
 
   private final UserRepository users;
   private final PasswordEncoder encoder;
   private final AuthenticationManager authMgr;
   private final JwtUtil jwt;
+  private final WalletService walletService;
 
-  public AuthController(UserRepository users, PasswordEncoder encoder, AuthenticationManager authMgr, JwtUtil jwt) {
-    this.users = users; this.encoder = encoder; this.authMgr = authMgr; this.jwt = jwt;
+  public AuthController(UserRepository users,
+                        PasswordEncoder encoder,
+                        AuthenticationManager authMgr,
+                        JwtUtil jwt,
+                        WalletService walletService) {
+    this.users = users;
+    this.encoder = encoder;
+    this.authMgr = authMgr;
+    this.jwt = jwt;
+    this.walletService = walletService;
   }
   @GetMapping("/me")
   public ResponseEntity<MeResponse> me(Authentication auth) {
@@ -59,6 +70,13 @@ public class AuthController {
     u.setEmail(req.email());
     u.setRoles(Set.of("ROLE_USER"));
     users.save(u);
+
+    // Ensure wallet exists and credit signup bonus (idempotent per user)
+    walletService.getbalance(u.getId());
+    String ideKey = "SIGNUP_BONUS:" + u.getId();
+    String refId = "SIGNUP_BONUS";
+    walletService.credit(SIGNUP_BONUS_CENTS, u.getId(), ideKey, refId);
+
     // Auto-login after signup (optional)
     String token = jwt.generate(u.getUsername());
     return ResponseEntity.ok()
