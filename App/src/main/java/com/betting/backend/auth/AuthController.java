@@ -81,7 +81,7 @@ public class AuthController {
     String token = jwt.generate(u.getUsername());
     return ResponseEntity.ok()
       .header("Set-Cookie", authCookie(token).toString())
-      .body(new AuthResponse(u.getUsername()));
+      .body(new AuthResponse(u.getUsername(), token));
   }
 
   @PostMapping("/login")
@@ -93,7 +93,7 @@ public class AuthController {
     String token = jwt.generate(req.username());
     return ResponseEntity.ok()
       .header("Set-Cookie", authCookie(token).toString())
-      .body(new AuthResponse(req.username()));
+      .body(new AuthResponse(req.username(), token));
   }
 
   @PostMapping("/logout")

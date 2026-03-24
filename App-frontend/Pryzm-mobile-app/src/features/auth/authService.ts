@@ -2,13 +2,13 @@ import { apiClient } from "../../services/api/client";
 import { saveToken } from "../../services/storage/authStorage";
 
 type LoginRequest = {
-  email: string;
+  username: string;
   password: string;
 };
 
-export async function login({ email, password }: LoginRequest) {
+export async function login({ username, password }: LoginRequest) {
   const data = await apiClient.post("/auth/login", {
-    email,
+    username,
     password,
   });
 
