@@ -23,7 +23,7 @@ public class RankQueryService {
     }
 
 
-        @Transactional
+    @Transactional
     public UserRankProfileResponse getByUserId(Long userId) {
 
         UserRankProfile profile = userRankProfileRepository.findByUser_Id(userId)

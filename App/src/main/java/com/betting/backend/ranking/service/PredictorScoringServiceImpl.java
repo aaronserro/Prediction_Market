@@ -14,7 +14,7 @@ public class PredictorScoringServiceImpl implements PredictorScoringService{
         boolean won = result.isWon();
         double p = result.getFinalMarketProbability();
 
-        // Guard probability bounds (in case pricing returns slightly out of range)
+
         if (p < 0.0) p = 0.0;
         if (p > 1.0) p = 1.0;
 

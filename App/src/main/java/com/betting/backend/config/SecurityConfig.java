@@ -78,6 +78,7 @@ public class SecurityConfig {
 
         // Public market GET endpoints - anyone can view markets
         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
 
         // Public rank profile endpoint
