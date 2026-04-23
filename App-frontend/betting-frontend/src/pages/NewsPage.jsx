@@ -2,21 +2,31 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CATEGORIES = ["FINANCE", "TECHNOLOGY", "SPORTS", "POLITICS"];
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 export default function NewsPage() {
   const [articles, setArticles] = useState([]);
   const [category, setCategory] = useState("FINANCE");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchNews = async () => {
       setLoading(true);
+      setError("");
       try {
-        const response = await fetch(`http://localhost:8080/api/v1/news/${category}`);
+        const response = await fetch(`${API_BASE}/api/v1/news/${category}`);
+        if (!response.ok) {
+          throw new Error(`News request failed (${response.status})`);
+        }
         const data = await response.json();
         setArticles(data.articles || []);
       } catch (error) {
         console.error("Error fetching news:", error);
+        setError(error?.message || "Unable to load news right now.");
+        setArticles([]);
       } finally {
         setLoading(false);
       }
@@ -53,6 +63,14 @@ export default function NewsPage() {
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-amber-500"></div>
+          </div>
+        ) : error ? (
+          <div className="text-center bg-slate-900 border border-rose-500/40 text-rose-300 rounded-xl p-6">
+            <p className="font-semibold">Could not load news</p>
+            <p className="text-sm mt-2">{error}</p>
+            <p className="text-xs text-slate-400 mt-3">
+              Check that the backend API is running and reachable at {API_BASE}.
+            </p>
           </div>
         ) : (
           <motion.div
