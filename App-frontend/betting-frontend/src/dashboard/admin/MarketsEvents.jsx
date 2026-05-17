@@ -59,7 +59,7 @@ export default function MarketsEvents() {
 
       setMarkets(data);
     } catch (err) {
-      console.error(err);
+
       setError(err.message || "Failed to load markets");
       setMarkets([]);
     } finally {

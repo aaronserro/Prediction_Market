@@ -117,13 +117,9 @@ public class PositionServiceImpl implements PositionService {
 public void settlePositions(UUID marketId, UUID winningOutcomeId) {
     final int PAYOUT_PER_WINNING_SHARE_CENTS = 100;
 
-    System.out.println("🎯 Starting settlement for market: " + marketId + ", winner: " + winningOutcomeId);
-
     var openPositions = positionRepository.findByOutcome_Market_IdAndStatus(
             marketId, PositionStatus.OPEN
     );
-
-    System.out.println("📊 Found " + openPositions.size() + " open positions to settle");
 
     // List to track payouts to process after positions are settled
     java.util.List<PayoutInfo> payoutsToProcess = new java.util.ArrayList<>();
@@ -131,16 +127,10 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
     for (Position position : openPositions) {
         int qty = position.getQuantity();
 
-        System.out.println("  Processing position " + position.getId() +
-                          " - User: " + position.getUser().getId() +
-                          ", Outcome: " + position.getOutcome().getId() +
-                          ", Qty: " + qty);
-
         // If somehow an OPEN position has 0 qty, just mark it settled so it disappears.
         if (qty <= 0) {
             position.setStatus(PositionStatus.SETTLED);
             positionRepository.save(position);
-            System.out.println(" Marked zero-qty position as SETTLED");
             continue;
         }
 
@@ -150,8 +140,6 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
         long payoutCents = isWinner
                 ? safeMultiplyToLong(qty, PAYOUT_PER_WINNING_SHARE_CENTS)
                 : 0L;
-
-        System.out.println("  Winner: " + isWinner + ", Payout: " + payoutCents + " cents");
 
         long costBasis = position.getCostBasisCents();
         position.setSettledCostBasisCents(costBasis); // <-- add this
@@ -168,7 +156,6 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
         position.setStatus(PositionStatus.SETTLED);
 
         positionRepository.save(position);
-        System.out.println("  ✅ Position marked as SETTLED");
 
         // Queue payout for processing after transaction commits
         if (payoutCents > 0) {
@@ -177,21 +164,14 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
                 payoutCents,
                 marketId
             ));
-        } else {
-            System.out.println("  ℹ️ No payout (loser or zero-qty position)");
         }
     }
 
-    System.out.println("✅ Settlement complete for market " + marketId);
-
     // Process all payouts after positions are settled
-    System.out.println("💳 Processing " + payoutsToProcess.size() + " payouts...");
     for (PayoutInfo payout : payoutsToProcess) {
         try {
             String ideKey = "SETTLEv1:" + payout.marketId + ":" + payout.userId;
             String refId  = "MARKET_SETTLEMENT:" + payout.marketId;
-
-            System.out.println("  💸 Attempting to credit " + payout.amountCents + " cents to user " + payout.userId);
 
             walletService.credit(
                     payout.amountCents,
@@ -199,15 +179,11 @@ public void settlePositions(UUID marketId, UUID winningOutcomeId) {
                     ideKey,
                     refId
             );
-
-            System.out.println("  💰 Successfully credited " + payout.amountCents + " cents to user " + payout.userId);
         } catch (Exception e) {
             System.err.println("  ❌ ERROR crediting wallet for user " + payout.userId + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
-
-    System.out.println("✅ All payouts processed for market " + marketId);
 }
 
     // Helper class to track payout information

@@ -24,7 +24,6 @@ export default function NewsPage() {
         const data = await response.json();
         setArticles(data.articles || []);
       } catch (error) {
-        console.error("Error fetching news:", error);
         setError(error?.message || "Unable to load news right now.");
         setArticles([]);
       } finally {

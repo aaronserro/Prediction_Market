@@ -113,7 +113,7 @@ export default function MarketCreation({ onMarketCreated }) {
         }, 1500); // Give user time to see success message
       }
     } catch (err) {
-      console.error(err);
+
       setErrorMessage(err.message || "Failed to create market.");
     } finally {
       setIsSubmitting(false);

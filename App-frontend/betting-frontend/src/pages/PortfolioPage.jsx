@@ -3,60 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PageShell } from "../dashboard/Dashboard";
 import { useAuth } from "../auth/AuthContext.jsx";
-import rankImages, { formatRank } from "../lib/rankImages.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
-
-/* ── rank helpers (mirrors backend thresholds) ───────────────────────── */
-const RANK_TIERS = [
-  { floor: 0,    ceil: 100  },
-  { floor: 100,  ceil: 150  },
-  { floor: 150,  ceil: 200  },
-  { floor: 200,  ceil: 300  },
-  { floor: 300,  ceil: 400  },
-  { floor: 400,  ceil: 550  },
-  { floor: 550,  ceil: 750  },
-  { floor: 750,  ceil: 1000 },
-  { floor: 1000, ceil: null },
-];
-function rankProgress(pts) {
-  const tier = [...RANK_TIERS].reverse().find((t) => pts >= t.floor) ?? RANK_TIERS[0];
-  if (tier.ceil === null) return { pct: 100, next: tier.floor, isMax: true };
-  return { pct: Math.min(((pts - tier.floor) / (tier.ceil - tier.floor)) * 100, 100), next: tier.ceil, isMax: false };
-}
-function computeRank(pts = 0) {
-  if (pts >= 1000) return "GOLD_1";
-  if (pts >= 750)  return "GOLD_2";
-  if (pts >= 550)  return "GOLD_3";
-  if (pts >= 400)  return "SILVER_1";
-  if (pts >= 300)  return "SILVER_2";
-  if (pts >= 200)  return "SILVER_3";
-  if (pts >= 150)  return "BRONZE_1";
-  if (pts >= 100)  return "BRONZE_2";
-  return "BRONZE_3";
-}
-
-const ZapIcon   = (p) => <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>;
-const FlameIcon = (p) => <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2c0 0-5 4.5-5 9a5 5 0 0 0 10 0c0-2.5-1.5-4.5-1.5-4.5S14 9 12 9c0-2 2-4 2-4s-2 1-2-3z"/></svg>;
-
-function XpBar({ pct, color = "from-violet-500 to-amber-400" }) {
-  return (
-    <div className="relative h-2 rounded-full bg-white/[0.06] overflow-hidden">
-      <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.min(pct, 100)}%` }}
-        transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
-        className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${color}`}
-      />
-      <motion.div
-        initial={{ x: "-100%" }}
-        animate={{ x: "200%" }}
-        transition={{ duration: 1.8, ease: "easeInOut", delay: 1.2 }}
-        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-      />
-    </div>
-  );
-}
 
 function StatTile({ label, value, sub, accent = "violet" }) {
   const colors = {
@@ -82,8 +30,6 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [outcomePrices, setOutcomePrices] = useState({});
-  const [rank, setRank] = useState(null);
-  const [rankLoading, setRankLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -119,21 +65,6 @@ export default function PortfolioPage() {
     })();
   }, []);
 
-  /* fetch rank */
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setRankLoading(false); return; }
-    const userId = user.id || user.userId || user.username;
-    if (!userId) { setRankLoading(false); return; }
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/ranks/${userId}`, { credentials: "include" });
-        if (res.ok) setRank(await res.json());
-      } catch (e) { console.error("[Portfolio] rank error", e); }
-      finally { setRankLoading(false); }
-    })();
-  }, [user, authLoading]);
-
   /* stats */
   const totalPositions = positions.length;
   const totalInvested = positions.reduce((s, p) => s + (p.quantity || 0) * (p.averagePrice || 0), 0);
@@ -143,11 +74,6 @@ export default function PortfolioPage() {
   }, 0);
   const totalPL = totalValue - totalInvested;
   const totalPLPct = totalInvested > 0 ? ((totalValue - totalInvested) / totalInvested) * 100 : 0;
-
-  const overallRankKey   = rank ? computeRank(rank.overallPoints   ?? 0) : null;
-  const traderRankKey    = rank ? computeRank(rank.traderPoints    ?? 0) : null;
-  const predictorRankKey = rank ? computeRank(rank.predictorPoints ?? 0) : null;
-  const overallProgress  = rank ? rankProgress(rank.overallPoints  ?? 0) : null;
 
   if (loading) {
     return (
@@ -174,85 +100,6 @@ export default function PortfolioPage() {
             <h1 className="text-3xl font-black tracking-tight text-white">Portfolio</h1>
             <p className="text-sm text-slate-500 mt-1">Track your active positions across markets</p>
           </motion.div>
-
-          {/* rank breakdown */}
-          {!rankLoading && rank && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, type: "spring", stiffness: 100 }}
-              className="mb-8"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <ZapIcon className="w-4 h-4 text-amber-400" />
-                <h2 className="text-base font-black text-white uppercase tracking-wider">Rank Breakdown</h2>
-              </div>
-              <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.03] to-violet-950/20 overflow-hidden">
-                {/* overall banner */}
-                <div className="relative px-6 py-5 border-b border-white/[0.06] flex items-center gap-5 bg-gradient-to-r from-violet-900/20 to-transparent">
-                  <motion.img
-                    initial={{ scale: 0.7, rotate: -10 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ delay: 0.4, type: "spring", stiffness: 150 }}
-                    src={rankImages[overallRankKey]}
-                    alt={overallRankKey}
-                    className="w-20 h-20 object-contain flex-shrink-0 drop-shadow-xl"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Overall</p>
-                    <p className="text-2xl font-black text-white mt-0.5">{formatRank(overallRankKey)}</p>
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-500">Progress to next rank</span>
-                        <span className="text-amber-400 font-bold">
-                          {rank.overallPoints} / {overallProgress?.isMax ? "MAX" : `${overallProgress?.next} pts`}
-                        </span>
-                      </div>
-                      <XpBar pct={overallProgress?.pct ?? 0} color="from-violet-500 via-fuchsia-500 to-amber-400" />
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 hidden sm:block">
-                    <p className="text-3xl font-black text-white">{rank.resolvedMarketsCount ?? 0}</p>
-                    <p className="text-xs text-slate-600 uppercase tracking-wider">Resolved</p>
-                  </div>
-                </div>
-                {/* trader + predictor */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/[0.05]">
-                  {[
-                    { label: "Trader",    rankKey: traderRankKey,    pts: rank.traderPoints    ?? 0, color: "from-violet-500 to-fuchsia-500", icon: <ZapIcon className="w-3.5 h-3.5" /> },
-                    { label: "Predictor", rankKey: predictorRankKey, pts: rank.predictorPoints ?? 0, color: "from-amber-400 to-orange-500",    icon: <FlameIcon className="w-3.5 h-3.5" /> },
-                  ].map(({ label, rankKey, pts, color, icon }) => (
-                    <div key={label} className="px-6 py-5 flex items-center gap-4">
-                      <motion.img
-                        initial={{ scale: 0.7, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.55, type: "spring" }}
-                        src={rankImages[rankKey]}
-                        alt={rankKey}
-                        className="w-14 h-14 object-contain flex-shrink-0 drop-shadow-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{icon}</span>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-                        </div>
-                        <p className="text-lg font-black text-white">{formatRank(rankKey)}</p>
-                        <div className="mt-2 space-y-1">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-slate-600">XP</span>
-                            <span className="text-slate-400 font-semibold">
-                              {pts} / {rankProgress(pts).isMax ? "MAX" : `${rankProgress(pts).next}`} pts
-                            </span>
-                          </div>
-                          <XpBar pct={rankProgress(pts).pct} color={color} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.section>
-          )}
 
           {/* stats */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">

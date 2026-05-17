@@ -81,9 +81,6 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
 
-        // Public rank profile endpoint
-        .requestMatchers(HttpMethod.GET, "/api/ranks/**").permitAll()
-
         // Authenticated endpoints - must be logged in
         .requestMatchers(HttpMethod.POST, "/api/v1/trades/**").authenticated()
         .requestMatchers(HttpMethod.GET, "/api/v1/trades/**").authenticated()

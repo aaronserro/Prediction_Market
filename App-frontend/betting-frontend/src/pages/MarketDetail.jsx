@@ -73,7 +73,6 @@ export default function MarketDetail() {
               );
 
               if (!priceRes.ok) {
-                console.warn(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}: ${priceRes.status} ${priceRes.statusText}`);
                 return { outcomeId: outcome.id, price: null };
               }
 
@@ -82,7 +81,7 @@ export default function MarketDetail() {
                 return { outcomeId: outcome.id, price: priceData };
               }
             } catch (err) {
-              console.error(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}:`, err);
+              // price fetch failed for outcome
             }
             return { outcomeId: outcome.id, price: null };
           });
@@ -106,13 +105,9 @@ export default function MarketDetail() {
             const finalPrice = n > 1 ? n / 100 : n;
             pricesMap[outcomeId] = finalPrice;
           });
-          console.log('[MarketDetail] Prices map:', pricesMap);
-          console.log("pricesMap keys:", Object.keys(pricesMap));
-          console.log("first outcome id:", data.outcomes[0]?.id);
           setOutcomePrices(pricesMap);
         }
       } catch (err) {
-        console.error(err);
         setError(err.message || "Failed to load market");
       } finally {
         setLoading(false);
@@ -157,7 +152,6 @@ export default function MarketDetail() {
       const priceData = await priceRes.json();
       return { outcomeId: outcome.id, price: priceData };
     } catch (err) {
-      console.error(`[MarketDetail] Failed to fetch price for outcome ${outcome.id}:`, err);
       return { outcomeId: outcome.id, price: null };
     }
   });
@@ -190,9 +184,6 @@ export default function MarketDetail() {
   const handleBuy = async (outcomeId) => {
     if (!tradeQuantity || tradeQuantity <= 0) return;
 
-    console.log('[MarketDetail] handleBuy called with outcomeId:', outcomeId);
-    console.log('[MarketDetail] Sending trade request:', { outcomeId, quantity: tradeQuantity });
-
     setTradeLoading(true);
     setTradeError("");
     setTradeSuccess("");
@@ -214,7 +205,6 @@ export default function MarketDetail() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error('[MarketDetail] Trade failed:', res.status, text);
 
         // Handle specific error cases
         if (text.includes("Insufficient balance") || text.includes("insufficient funds")) {
@@ -225,7 +215,6 @@ export default function MarketDetail() {
       }
 
       const data = await res.json();
-      console.log("[MarketDetail] Trade response:", data);
 
       setTradeSuccess(
         `Bought ${data.quantity ?? tradeQuantity} shares at ${
@@ -236,7 +225,6 @@ export default function MarketDetail() {
 
       // OPTIONAL: refresh market data after successful trade
     } catch (err) {
-      console.error(err);
       setTradeError(err.message || "Trade failed");
     } finally {
       setTradeLoading(false);
@@ -246,9 +234,6 @@ export default function MarketDetail() {
 
   const handleSell = async (outcomeId) => {
     if (!tradeQuantity || tradeQuantity <= 0) return;
-
-    console.log('[MarketDetail] handleSell called with outcomeId:', outcomeId);
-    console.log('[MarketDetail] Sending sell request:', { outcomeId, quantity: tradeQuantity });
 
     setTradeLoading(true);
     setTradeError("");
@@ -270,7 +255,6 @@ export default function MarketDetail() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error('[MarketDetail] Sell failed:', res.status, text);
 
         // Handle specific error cases
         if (text.includes("Cannot sell more than outstanding")) {
@@ -283,7 +267,6 @@ export default function MarketDetail() {
       }
 
       const data = await res.json();
-      console.log("[MarketDetail] Sell response:", data);
 
       setTradeSuccess(
         `Sold ${data.filledQuantity ?? tradeQuantity} shares at ${
@@ -293,7 +276,6 @@ export default function MarketDetail() {
 
       // OPTIONAL: refresh market data after successful trade
     } catch (err) {
-      console.error(err);
       setTradeError(err.message || "Sell failed");
     } finally {
       setTradeLoading(false);

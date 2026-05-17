@@ -2,45 +2,8 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
-import rankImages, { formatRank } from "../lib/rankImages.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
-
-/* ── rank thresholds (must mirror backend RankTier logic) ────────────── */
-const RANK_TIERS = [
-  { floor: 0,    ceil: 100  }, // BRONZE_3
-  { floor: 100,  ceil: 150  }, // BRONZE_2
-  { floor: 150,  ceil: 200  }, // BRONZE_1
-  { floor: 200,  ceil: 300  }, // SILVER_3
-  { floor: 300,  ceil: 400  }, // SILVER_2
-  { floor: 400,  ceil: 550  }, // SILVER_1
-  { floor: 550,  ceil: 750  }, // GOLD_3
-  { floor: 750,  ceil: 1000 }, // GOLD_2
-  { floor: 1000, ceil: null }, // GOLD_1 (max)
-];
-
-function rankProgress(pts) {
-  const tier = [...RANK_TIERS].reverse().find((t) => pts >= t.floor) ?? RANK_TIERS[0];
-  if (tier.ceil === null) return { pct: 100, next: tier.floor, isMax: true };
-  return {
-    pct: Math.min(((pts - tier.floor) / (tier.ceil - tier.floor)) * 100, 100),
-    next: tier.ceil,
-    isMax: false,
-  };
-}
-
-/** Mirrors backend RankTier logic exactly */
-function computeRank(pts = 0) {
-  if (pts >= 1000) return "GOLD_1";
-  if (pts >= 750)  return "GOLD_2";
-  if (pts >= 550)  return "GOLD_3";
-  if (pts >= 400)  return "SILVER_1";
-  if (pts >= 300)  return "SILVER_2";
-  if (pts >= 200)  return "SILVER_3";
-  if (pts >= 150)  return "BRONZE_1";
-  if (pts >= 100)  return "BRONZE_2";
-  return "BRONZE_3";
-}
 
 /* ── icons ───────────────────────────────────────────────────────────── */
 const WalletIcon = (p) => (
@@ -48,29 +11,15 @@ const WalletIcon = (p) => (
     <path d="M21 12V7H5a2 2 0 0 1 0-4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h16" />
   </svg>
 );
-const TrophyIcon = (p) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-    <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.81 18.75 7 19.78 7 21" />
-    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.19 18.75 17 19.78 17 21" />
-    <path d="M18 4H6v8c0 2.21 1.79 4 4 4h4c2.21 0 4-1.79 4-4V4z" />
-  </svg>
-);
 const ChevronRight = (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
     <path d="M9 5l7 7-7 7" />
   </svg>
 );
-const ZapIcon = (p) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-);
 const TargetIcon = (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
     <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
   </svg>
-);
-const FlameIcon = (p) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2c0 0-5 4.5-5 9a5 5 0 0 0 10 0c0-2.5-1.5-4.5-1.5-4.5S14 9 12 9c0-2 2-4 2-4s-2 1-2-3z"/></svg>
 );
 
 /* ── shared background ───────────────────────────────────────────────── */
@@ -133,30 +82,7 @@ export function PageShell({ children }) {
   );
 }
 
-/* ── stat card ───────────────────────────────────────────────────────── */
-function StatCard({ label, value, sub, icon, accent = "violet", loading }) {
-  const colors = {
-    violet: { bg: "bg-violet-500/10", border: "border-violet-500/20", icon: "text-violet-400", glow: "hover:shadow-violet-500/20" },
-    amber:  { bg: "bg-amber-500/10",  border: "border-amber-500/20",  icon: "text-amber-400",  glow: "hover:shadow-amber-500/20"  },
-    emerald:{ bg: "bg-emerald-500/10",border: "border-emerald-500/20",icon: "text-emerald-400",glow: "hover:shadow-emerald-500/20"},
-  };
-  const c = colors[accent] || colors.violet;
-  return (
-    <motion.div
-      whileHover={{ y: -3, scale: 1.01 }}
-      className={`rounded-2xl border ${c.border} bg-white/[0.03] p-5 flex items-center gap-4 transition-all duration-200 hover:shadow-xl ${c.glow} cursor-default`}
-    >
-      <div className={`w-12 h-12 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center flex-shrink-0`}>
-        <div className={c.icon}>{icon}</div>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{label}</p>
-        <p className="text-2xl font-bold text-white mt-0.5 tracking-tight">{loading ? "…" : value}</p>
-        {sub && <p className="text-xs text-slate-600 mt-0.5">{sub}</p>}
-      </div>
-    </motion.div>
-  );
-}
+
 
 /* ── market card ─────────────────────────────────────────────────────── */
 function MarketCard({ market, index }) {
@@ -211,26 +137,7 @@ function MarketCard({ market, index }) {
   );
 }
 
-/* ── xp bar ──────────────────────────────────────────────────────────── */
-function XpBar({ pct, color = "from-violet-500 to-amber-400" }) {
-  return (
-    <div className="relative h-2 rounded-full bg-white/[0.06] overflow-hidden">
-      <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.min(pct, 100)}%` }}
-        transition={{ duration: 1.2, ease: "easeOut", delay: 0.5 }}
-        className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${color}`}
-      />
-      {/* shimmer */}
-      <motion.div
-        initial={{ x: "-100%" }}
-        animate={{ x: "200%" }}
-        transition={{ duration: 1.8, ease: "easeInOut", delay: 1.2 }}
-        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-      />
-    </div>
-  );
-}
+
 
 /* ── main component ──────────────────────────────────────────────────── */
 export default function Home() {
@@ -239,8 +146,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeMarkets, setActiveMarkets] = useState([]);
   const [marketsLoading, setMarketsLoading] = useState(true);
-  const [rank, setRank] = useState(null);
-  const [rankLoading, setRankLoading] = useState(true);
 
   // ── announcements: edit this array to add/remove entries ────────────
   const announcements = [
@@ -260,25 +165,12 @@ export default function Home() {
       try {
         const res = await fetch(`${API_BASE}/api/v1/users/${userId}/wallet`, { credentials: "include" });
         if (res.ok) setWallet(await res.json());
-      } catch (e) { console.error("[Dashboard] wallet error", e); }
+      } catch (e) { /* wallet fetch failed */ }
       finally { setLoading(false); }
     })();
   }, [user, authLoading]);
 
-  /* fetch rank */
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setRankLoading(false); return; }
-    const userId = user.id || user.userId || user.username;
-    if (!userId) { setRankLoading(false); return; }
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/ranks/${userId}`, { credentials: "include" });
-        if (res.ok) setRank(await res.json());
-      } catch (e) { console.error("[Dashboard] rank error", e); }
-      finally { setRankLoading(false); }
-    })();
-  }, [user, authLoading]);
+
 
   /* fetch markets */
   useEffect(() => {
@@ -289,7 +181,7 @@ export default function Home() {
           const data = await res.json();
           setActiveMarkets(data.filter((m) => m.status === "ACTIVE" || m.status === "UPCOMING").slice(0, 6));
         }
-      } catch (e) { console.error("[Dashboard] markets error", e); }
+      } catch (e) { /* markets fetch failed */ }
       finally { setMarketsLoading(false); }
     })();
   }, []);
@@ -297,13 +189,6 @@ export default function Home() {
   const balance = wallet?.balanceCents ? wallet.balanceCents / 100 : 0;
   const fmtBal = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(balance);
   const username = user?.username || "User";
-  const overallProgress = rank ? rankProgress(rank.overallPoints) : null;
-  const overallPct = overallProgress?.pct ?? 0;
-
-  /* derive rank keys from points so icons/labels always match actual points */
-  const overallRankKey   = rank ? computeRank(rank.overallPoints ?? 0)   : null;
-  const traderRankKey    = rank ? computeRank(rank.traderPoints ?? 0)    : null;
-  const predictorRankKey = rank ? computeRank(rank.predictorPoints ?? 0) : null;
 
   return (
     <PageShell>
@@ -325,40 +210,17 @@ export default function Home() {
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
               {/* left: avatar + greeting */}
               <div className="flex items-center gap-5">
-                <div className="relative flex-shrink-0">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
-                    <span className="text-2xl font-black text-white">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
-                  </div>
-                  {/* rank badge overlay */}
-                  {!rankLoading && overallRankKey && (
-                    <img
-                      src={rankImages[overallRankKey]}
-                      alt={overallRankKey}
-                      className="absolute -bottom-2 -right-2 w-8 h-8 object-contain drop-shadow-lg"
-                    />
-                  )}
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-900/50">
+                  <span className="text-2xl font-black text-white">{loading ? "?" : username.charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
                   <p className="text-sm text-slate-400 font-medium">Welcome back,</p>
                   <h1 className="text-3xl font-black tracking-tight shimmer-text">{loading ? "…" : username}</h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    {!rankLoading && overallRankKey && (
-                      <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                        {formatRank(overallRankKey)}
-                      </span>
-                    )}
-                    <span className="text-xs text-slate-600">{rank?.resolvedMarketsCount ?? 0} markets resolved</span>
-                  </div>
                 </div>
               </div>
 
-              {/* right: XP bar + CTA */}
+              {/* right: CTA */}
               <div className="w-full sm:w-72 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-semibold">Overall XP</span>
-                  <span className="text-amber-400 font-bold">{rank?.overallPoints ?? 0} pts</span>
-                </div>
-                <XpBar pct={overallPct} color="from-violet-500 via-fuchsia-500 to-amber-400" />
                 <div className="flex gap-3">
                   <Link
                     to="/wallet"
@@ -384,32 +246,7 @@ export default function Home() {
             transition={{ delay: 0.15 }}
             className="grid grid-cols-1 sm:grid-cols-3 gap-4"
           >
-            <StatCard
-              label="Balance"
-              value={fmtBal}
-              sub="Available to trade"
-              icon={<WalletIcon className="w-5 h-5" />}
-              accent="violet"
-              loading={loading}
-            />
-            <StatCard
-              label="Overall Rank"
-              value={formatRank(overallRankKey)}
-              sub={`${rank?.overallPoints ?? 0} overall pts`}
-              icon={rankLoading || !overallRankKey
-                ? <TrophyIcon className="w-5 h-5" />
-                : <img src={rankImages[overallRankKey]} alt="" className="w-7 h-7 object-contain" />}
-              accent="amber"
-              loading={rankLoading}
-            />
-            <StatCard
-              label="Markets Resolved"
-              value={rank?.resolvedMarketsCount ?? "—"}
-              sub="Completed predictions"
-              icon={<TargetIcon className="w-5 h-5" />}
-              accent="emerald"
-              loading={rankLoading}
-            />
+
           </motion.div>
 
           {/* ── ANNOUNCEMENTS ────────────────────────────────────── */}

@@ -65,7 +65,6 @@ export default function AdminMarketEdit() {
         setCloseTime(data.closeTime ? data.closeTime.substring(0, 16) : "");
         setResolutionSource(data.resolutionSource || "");
       } catch (err) {
-        console.error(err);
         setError(err.message || "Failed to load market");
       } finally {
         setLoading(false);
@@ -91,11 +90,9 @@ export default function AdminMarketEdit() {
           const data = await res.json();
           setTrades(data);
         } else {
-          console.log("Trades endpoint not yet implemented");
           setTrades([]);
         }
       } catch (err) {
-        console.log("Trades endpoint not yet implemented:", err.message);
         setTrades([]);
       } finally {
         setTradesLoading(false);
@@ -142,7 +139,6 @@ export default function AdminMarketEdit() {
 
       setTimeout(() => setSaveSuccess(""), 3000);
     } catch (err) {
-      console.error(err);
       setError(err.message || "Failed to update market");
     } finally {
       setSaveLoading(false);
@@ -201,7 +197,6 @@ export default function AdminMarketEdit() {
 
       setTimeout(() => setResolveSuccess(""), 5000);
     } catch (err) {
-      console.error(err);
       setResolveError(err.message || "Failed to resolve market");
     } finally {
       setResolveLoading(false);

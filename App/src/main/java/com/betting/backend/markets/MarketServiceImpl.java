@@ -15,22 +15,18 @@ import com.betting.backend.markets.dto.UpdateMarketRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.betting.backend.positions.PositionService;
-import com.betting.backend.ranking.service.RankUpdateService;
 
 @Service
 public class MarketServiceImpl implements MarketService{
     private final MarketRepository marketRepository;
     private final OutcomeRepository outcomeRepository;
     private final PositionService positionService;
-    private final RankUpdateService rankUpdateService;
     public MarketServiceImpl(MarketRepository marketRepository,
                             OutcomeRepository outcomeRepository,
-                            PositionService positionService,
-                            RankUpdateService rankUpdateService){
+                            PositionService positionService){
         this.marketRepository = marketRepository;
         this.outcomeRepository = outcomeRepository;
         this.positionService = positionService;
-        this.rankUpdateService = rankUpdateService;
     }
     @Override
     @Transactional
@@ -284,10 +280,7 @@ public class MarketServiceImpl implements MarketService{
     market.setStatus(MarketStatus.RESOLVED);
     market.setWinningOutcomeId(winningOutcomeId); // you need this field on Market
     marketRepository.save(market);
-    System.out.println("Resolving market " + marketId + " with winner " + winningOutcomeId);
     positionService.settlePositions(marketId, winningOutcomeId);
-    System.out.println("Settlement called for market " + marketId);
-    rankUpdateService.processMarketResolution(marketId);
 
 }
 }

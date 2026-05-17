@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 import com.betting.backend.positions.Position;
 import com.betting.backend.trades.Trade;
 import com.betting.backend.wallet.model.Wallet;
-import com.betting.backend.user.UserRankProfile;
 
 @Entity
 @Table(name = "users")
@@ -45,9 +44,6 @@ public class User implements UserDetails {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
     private Wallet wallet;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
-    private UserRankProfile rankProfile;
 
     // --- Getters ---
     public Long getId() {
@@ -82,10 +78,6 @@ public class User implements UserDetails {
         return wallet;
     }
 
-    public UserRankProfile getRankProfile() {
-        return rankProfile;
-    }
-
     // --- Setters ---
     public void setId(Long id) {
         this.id = id;
@@ -117,10 +109,6 @@ public class User implements UserDetails {
 
     public void setWallet(Wallet wallet) {
         this.wallet = wallet;
-    }
-
-    public void setRankProfile(UserRankProfile rankProfile) {
-        this.rankProfile = rankProfile;
     }
 
     // --- UserDetails implementation ---

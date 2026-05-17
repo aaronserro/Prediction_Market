@@ -5,7 +5,7 @@ import { useAuth } from './AuthContext.jsx';
 const PERKS = [
   { icon: '⚡', text: 'Trade on live markets in real time' },
   { icon: '📈', text: 'Track your P&L and full portfolio' },
-  { icon: '🏆', text: 'Climb the ranks and beat the crowd' },
+  { icon: '�', text: 'Make skillful predictions to win' },
   { icon: '🔒', text: 'Virtual currency only — pure skill' },
 ];
 

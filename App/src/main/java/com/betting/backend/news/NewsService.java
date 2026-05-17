@@ -21,8 +21,6 @@ public class NewsService {
      */
     @Cacheable(value = "newsCache", key = "#category")
     public NewsResponseDTO getTopHeadlines(NewsCategory category) {
-        System.out.println("Fetching fresh news for: " + category); // To verify caching in logs
-
         try {
             // Convert Enum to lowercase string for NewsAPI (e.g., FINANCE -> "business")
             String apiCategory = mapCategory(category);
