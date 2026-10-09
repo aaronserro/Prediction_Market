@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Geist+Mono:wght@400..700&amp;display=swap" rel="stylesheet"></link>
+<style>
+body{margin:0;background:#f6f5f9}
+*{box-sizing:border-box}
+a{color:var(--pr);text-decoration:none}
+a:hover{color:var(--prh)}
+button{font-family:inherit}
+[data-theme]{font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);min-height:100vh}
+[data-theme="light"]{--bg:#f6f5f9;--sf:#ffffff;--sf2:#f1f0f5;--bd:#e6e4ec;--bd2:#d4d1de;--tx:#15121d;--tx2:#45414f;--mu:#6f6b7d;--pr:#6d3ae6;--prh:#5b2bd0;--prs:#efe9fd;--prt:#5b2bd0;--am:#f5a50b;--ams:#fdf3dc;--amt:#8f5400;--yes:#0f8a52;--yess:#e3f4ea;--no:#d43a47;--nos:#fbe9ea;--sh:0 1px 2px rgba(20,16,40,.05)}
+[data-theme="dark"]{--bg:#0b0a10;--sf:#13121a;--sf2:#1c1a25;--bd:#26232f;--bd2:#36323f;--tx:#f3f2f7;--tx2:#c6c3d1;--mu:#918da1;--pr:#8b5cf6;--prh:#a07cf8;--prs:#231b3b;--prt:#bba6fb;--am:#fbbf24;--ams:#2a2112;--amt:#fbbf24;--yes:#34c47e;--yess:#11281c;--no:#f2646f;--nos:#2d1519;--sh:none}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-screen-label="Portfolio">
+  <dc-import name="Nav" active="Portfolio" on-toggle-theme="{{ toggleTheme }}" hint-size="100%,60px"></dc-import>
+  <main style="max-width:1240px;margin:0 auto;padding:36px 24px 72px;display:flex;flex-direction:column;gap:20px">
+    <div>
+      <h1 style="margin:0;font-size:32px;font-weight:650;letter-spacing:-0.035em">Portfolio</h1>
+      <p style="margin:6px 0 0;font-size:14.5px;color:var(--mu)">Track your active positions across markets</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));background:var(--sf);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);overflow:hidden">
+      <div style="padding:20px 22px;border-right:1px solid var(--bd)">
+        <div style="font-size:13px;color:var(--mu);margin-bottom:6px">Positions</div>
+        <div style="font:600 26px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ stats.count }}</div>
+      </div>
+      <div style="padding:20px 22px;border-right:1px solid var(--bd)">
+        <div style="font-size:13px;color:var(--mu);margin-bottom:6px">Invested</div>
+        <div style="font:600 26px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ stats.invested }} <span style="font:400 13px 'Geist',sans-serif;color:var(--mu)">PZC</span></div>
+      </div>
+      <div style="padding:20px 22px;border-right:1px solid var(--bd)">
+        <div style="font-size:13px;color:var(--mu);margin-bottom:6px">Current value</div>
+        <div style="font:600 26px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ stats.value }} <span style="font:400 13px 'Geist',sans-serif;color:var(--mu)">PZC</span></div>
+      </div>
+      <div style="padding:20px 22px">
+        <div style="font-size:13px;color:var(--mu);margin-bottom:6px">Total P/L</div>
+        <div style="font:600 26px 'Geist Mono',monospace;letter-spacing:-0.04em;color:{{ stats.plColor }}">{{ stats.pl }}</div>
+        <div style="font:500 12.5px 'Geist Mono',monospace;color:{{ stats.plColor }};margin-top:2px">{{ stats.plPct }}</div>
+      </div>
+    </div>
+
+    <section style="background:var(--sf);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);overflow:hidden">
+      <div style="display:flex;gap:4px;padding:0 14px;border-bottom:1px solid var(--bd)">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.onClick }}" style="height:50px;padding:0 10px;border:0;border-bottom:2px solid {{ t.bd }};background:transparent;color:{{ t.color }};font-size:14.5px;font-weight:550;cursor:pointer;margin-bottom:-1px">{{ t.label }} <span style="font:400 12px 'Geist Mono',monospace;color:var(--mu)">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ showOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="overflow-x:auto">
+          <div style="min-width:820px">
+            <div style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) repeat(5,minmax(0,0.8fr));gap:12px;padding:10px 22px;border-bottom:1px solid var(--bd);background:var(--sf2);font-size:12px;color:var(--mu);font-weight:500">
+              <span>Market</span><span>Outcome</span><span style="text-align:right">Shares</span><span style="text-align:right">Avg</span><span style="text-align:right">Now</span><span style="text-align:right">Value</span><span style="text-align:right">P/L</span>
+            </div>
+            <sc-for list="{{ open }}" as="p" hint-placeholder-count="5">
+              <a href="Market.dc.html" style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) repeat(5,minmax(0,0.8fr));gap:12px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--bd);color:var(--tx);font-size:14px" style-hover="background:var(--sf2);color:var(--tx)">
+                <span style="min-width:0">
+                  <span style="display:block;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</span>
+                  <span style="display:block;font-size:12px;color:var(--mu);margin-top:2px">{{ p.cat }} · Closes {{ p.close }}</span>
+                </span>
+                <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;font-size:12.5px;font-weight:600;background:{{ p.sideBg }};color:{{ p.sideColor }}">{{ p.side }}</span></span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.qty }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace;color:var(--mu)">{{ p.avg }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.now }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.valueFmt }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace;font-weight:600;color:{{ p.plColor }}">{{ p.plFmt }}<span style="display:block;font-weight:400;font-size:12px">{{ p.plPct }}</span></span>
+              </a>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showResolved }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow-x:auto">
+          <div style="min-width:720px">
+            <div style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) 90px repeat(3,minmax(0,0.8fr));gap:12px;padding:10px 22px;border-bottom:1px solid var(--bd);background:var(--sf2);font-size:12px;color:var(--mu);font-weight:500">
+              <span>Market</span><span>Your pick</span><span>Result</span><span style="text-align:right">Shares</span><span style="text-align:right">Payout</span><span style="text-align:right">P/L</span>
+            </div>
+            <sc-for list="{{ resolved }}" as="p" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) 90px repeat(3,minmax(0,0.8fr));gap:12px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--bd);font-size:14px">
+                <span style="min-width:0">
+                  <span style="display:block;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</span>
+                  <span style="display:block;font-size:12px;color:var(--mu);margin-top:2px">Resolved {{ p.date }}</span>
+                </span>
+                <span style="color:var(--tx2)">{{ p.side }}</span>
+                <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:600;background:{{ p.resBg }};color:{{ p.resColor }}">{{ p.result }}</span></span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.qty }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.payoutFmt }}</span>
+                <span style="text-align:right;font-family:'Geist Mono',monospace;font-weight:600;color:{{ p.plColor }}">{{ p.plFmt }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:64px 24px;text-align:center">
+          <div style="font-size:17px;font-weight:620;margin-bottom:6px">No Positions Yet</div>
+          <p style="margin:0 auto 20px;max-width:420px;font-size:14px;line-height:1.6;color:var(--mu)">You haven't made any trades yet. Start trading on markets to build your portfolio.</p>
+          <a href="Markets.dc.html" style="display:inline-flex;align-items:center;height:42px;padding:0 18px;border-radius:10px;background:var(--am);color:#1d1300;font-size:14px;font-weight:650" style-hover="color:#1d1300;filter:brightness(1.05)">Browse Markets</a>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+  <footer style="border-top:1px solid var(--bd)">
+    <div style="max-width:1240px;margin:0 auto;padding:22px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--mu)">
+      <span>© 2026 Pryzm</span>
+      <div style="display:flex;gap:20px"><a href="#" style="color:var(--mu)">Terms</a><a href="#" style="color:var(--mu)">Privacy</a><a href="#" style="color:var(--mu)">Support</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;empty&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const OPEN = [
+  { title: 'Will the Bank of Canada cut rates in December?', cat: 'Finance', close: 'Dec 10', side: 'Yes', qty: 120, avg: 52, now: 64 },
+  { title: 'Stanley Cup 2027 champion', cat: 'Sports', close: 'Jun 2027', side: 'Edmonton', qty: 200, avg: 14, now: 17 },
+  { title: 'Will Bitcoin close 2026 above $150K?', cat: 'Finance', close: 'Dec 31', side: 'No', qty: 80, avg: 71, now: 77 },
+  { title: 'Will the Raptors make the 2027 playoffs?', cat: 'Sports', close: 'Apr 12, 2027', side: 'Yes', qty: 150, avg: 44, now: 38 },
+  { title: 'Next Canadian federal election: largest party', cat: 'Politics', close: 'Oct 2029', side: 'Conservative', qty: 60, avg: 41, now: 44 },
+];
+const RESOLVED = [
+  { title: 'Will the Leafs win the season opener?', date: 'Oct 7', side: 'Yes', won: true, qty: 40, avg: 55 },
+  { title: 'Will Canada CPI be above 3% in September?', date: 'Oct 4', side: 'No', won: true, qty: 25, avg: 62 },
+  { title: 'Will the Blue Jays make the 2026 postseason?', date: 'Sep 28', side: 'Yes', won: false, qty: 60, avg: 48 },
+  { title: 'Will gas average under $1.50/L in Toronto in September?', date: 'Sep 30', side: 'Yes', won: true, qty: 30, avg: 70 },
+];
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const sign = n => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
+
+class Component extends DCLogic {
+  state = { theme: this.initTheme(), tab: 'Open' };
+  initTheme() { let t; try { t = localStorage.getItem('pryzm-theme'); } catch (e) {} return t || this.props.theme || 'light'; }
+  componentDidUpdate(pp) { if (pp.theme !== this.props.theme && this.props.theme) this.setTheme(this.props.theme); }
+  setTheme(t) { try { localStorage.setItem('pryzm-theme', t); } catch (e) {} this.setState({ theme: t }); }
+  renderVals() {
+    const s = this.state;
+    const empty = !!this.props.empty;
+    const open = empty ? [] : OPEN, resolved = empty ? [] : RESOLVED;
+    const invested = open.reduce((a, p) => a + p.qty * p.avg, 0);
+    const value = open.reduce((a, p) => a + p.qty * p.now, 0);
+    const pl = value - invested;
+    return {
+      theme: s.theme,
+      toggleTheme: () => this.setTheme(s.theme === 'dark' ? 'light' : 'dark'),
+      stats: { count: open.length, invested: fmt(invested), value: fmt(value), pl: empty ? '0' : sign(pl), plPct: invested ? (pl >= 0 ? '+' : '') + (pl / invested * 100).toFixed(2) + '%' : '0.00%', plColor: pl > 0 ? 'var(--yes)' : pl < 0 ? 'var(--no)' : 'var(--tx)' },
+      tabs: [['Open', open.length], ['Resolved', resolved.length]].map(([label, count]) => {
+        const on = label === s.tab;
+        return { label, count, onClick: () => this.setState({ tab: label }), bd: on ? 'var(--pr)' : 'transparent', color: on ? 'var(--tx)' : 'var(--mu)' };
+      }),
+      showOpen: !empty && s.tab === 'Open', showResolved: !empty && s.tab === 'Resolved', showEmpty: empty,
+      open: open.map(p => {
+        const d = p.qty * (p.now - p.avg), pct = (p.now - p.avg) / p.avg * 100;
+        const side = p.side === 'Yes' ? ['var(--yess)', 'var(--yes)'] : p.side === 'No' ? ['var(--nos)', 'var(--no)'] : ['var(--prs)', 'var(--prt)'];
+        return { ...p, sideBg: side[0], sideColor: side[1], valueFmt: fmt(p.qty * p.now), plFmt: sign(d), plPct: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', plColor: d >= 0 ? 'var(--yes)' : 'var(--no)' };
+      }),
+      resolved: resolved.map(p => {
+        const payout = p.won ? p.qty * 100 : 0, d = payout - p.qty * p.avg;
+        return { ...p, result: p.won ? 'Won' : 'Lost', resBg: p.won ? 'var(--yess)' : 'var(--nos)', resColor: p.won ? 'var(--yes)' : 'var(--no)', payoutFmt: fmt(payout), plFmt: sign(d), plColor: d >= 0 ? 'var(--yes)' : 'var(--no)' };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Geist+Mono:wght@400..700&amp;display=swap" rel="stylesheet"></link>
+<style>
+body{margin:0;background:#f6f5f9}
+*{box-sizing:border-box}
+a{color:var(--pr);text-decoration:none}
+a:hover{color:var(--prh)}
+button{font-family:inherit}
+[data-theme]{font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);min-height:100vh}
+[data-theme="light"]{--bg:#f6f5f9;--sf:#ffffff;--sf2:#f1f0f5;--bd:#e6e4ec;--bd2:#d4d1de;--tx:#15121d;--tx2:#45414f;--mu:#6f6b7d;--pr:#6d3ae6;--prh:#5b2bd0;--prs:#efe9fd;--prt:#5b2bd0;--am:#f5a50b;--ams:#fdf3dc;--amt:#8f5400;--yes:#0f8a52;--yess:#e3f4ea;--no:#d43a47;--nos:#fbe9ea;--sh:0 1px 2px rgba(20,16,40,.05)}
+[data-theme="dark"]{--bg:#0b0a10;--sf:#13121a;--sf2:#1c1a25;--bd:#26232f;--bd2:#36323f;--tx:#f3f2f7;--tx2:#c6c3d1;--mu:#918da1;--pr:#8b5cf6;--prh:#a07cf8;--prs:#231b3b;--prt:#bba6fb;--am:#fbbf24;--ams:#2a2112;--amt:#fbbf24;--yes:#34c47e;--yess:#11281c;--no:#f2646f;--nos:#2d1519;--sh:none}
+@keyframes pzpulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-screen-label="Dashboard">
+  <dc-import name="Nav" active="Dashboard" on-toggle-theme="{{ toggleTheme }}" hint-size="100%,60px"></dc-import>
+  <main style="max-width:1240px;margin:0 auto;padding:36px 24px 72px;display:flex;flex-direction:column;gap:28px">
+
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+      <div>
+        <div style="font-size:14px;color:var(--mu);margin-bottom:4px">Welcome back,</div>
+        <h1 style="margin:0;font-size:32px;font-weight:650;letter-spacing:-0.035em">aaron</h1>
+      </div>
+      <div style="display:flex;gap:8px">
+        <a href="Wallet.dc.html" style="height:40px;padding:0 16px;border-radius:10px;background:var(--am);color:#1d1300;font-size:14px;font-weight:650;display:flex;align-items:center" style-hover="filter:brightness(1.05);color:#1d1300">+ Add Funds</a>
+        <a href="Markets.dc.html" style="height:40px;padding:0 16px;border-radius:10px;background:var(--sf);border:1px solid var(--bd);color:var(--tx);font-size:14px;font-weight:550;display:flex;align-items:center" style-hover="border-color:var(--bd2);color:var(--tx)">Trade →</a>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">
+      <div style="flex:2 1 560px;min-width:0;background:var(--sf);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);display:flex;flex-direction:column">
+        <div style="padding:22px 22px 0;display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px">
+          <div>
+            <div style="font-size:13px;color:var(--mu);margin-bottom:6px">Portfolio value</div>
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+              <span style="font:600 38px 'Geist Mono',monospace;letter-spacing:-0.05em">{{ totalFmt }}</span>
+              <span style="font-size:14px;color:var(--mu)">PZC</span>
+            </div>
+            <div style="font:500 13.5px 'Geist Mono',monospace;color:var(--yes);margin-top:4px">{{ rangeChange }} <span style="font-family:'Geist',sans-serif;color:var(--mu)">{{ rangeLabel }}</span></div>
+          </div>
+          <div style="display:flex;gap:2px;padding:3px;border-radius:9px;background:var(--sf2)">
+            <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="4">
+              <button onClick="{{ r.onClick }}" style="height:28px;padding:0 11px;border:0;border-radius:7px;background:{{ r.bg }};color:{{ r.color }};box-shadow:{{ r.sh }};font:500 12.5px 'Geist Mono',monospace;cursor:pointer">{{ r.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="position:relative;height:170px;margin:18px 22px 0">
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between">
+            <div style="border-top:1px dashed var(--bd)"></div><div style="border-top:1px dashed var(--bd)"></div><div style="border-top:1px dashed var(--bd)"></div>
+          </div>
+          <svg viewBox="0 0 600 170" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+            <path d="{{ chartArea }}" style="fill:var(--prs);opacity:.7"></path>
+            <path d="{{ chartPath }}" style="fill:none;stroke:var(--pr);stroke-width:2.25px;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+          </svg>
+        </div>
+        <div style="margin-top:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));border-top:1px solid var(--bd);margin-top:20px">
+          <div style="padding:16px 22px;border-right:1px solid var(--bd)">
+            <div style="font-size:12.5px;color:var(--mu);margin-bottom:4px">Cash balance</div>
+            <div style="font:600 18px 'Geist Mono',monospace;letter-spacing:-0.03em">12,480</div>
+          </div>
+          <div style="padding:16px 22px;border-right:1px solid var(--bd)">
+            <div style="font-size:12.5px;color:var(--mu);margin-bottom:4px">In positions</div>
+            <div style="font:600 18px 'Geist Mono',monospace;letter-spacing:-0.03em">{{ posValueFmt }}</div>
+          </div>
+          <div style="padding:16px 22px;border-right:1px solid var(--bd)">
+            <div style="font-size:12.5px;color:var(--mu);margin-bottom:4px">Open P/L</div>
+            <div style="font:600 18px 'Geist Mono',monospace;letter-spacing:-0.03em;color:var(--yes)">{{ plFmt }}</div>
+          </div>
+          <div style="padding:16px 22px">
+            <div style="font-size:12.5px;color:var(--mu);margin-bottom:4px">Win rate</div>
+            <div style="font:600 18px 'Geist Mono',monospace;letter-spacing:-0.03em">61%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 300px;min-width:0;background:var(--sf);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);padding:22px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;color:var(--mu)">Your rank</span>
+          <a href="#" style="font-size:13px;font-weight:500">Leaderboard →</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px">
+          <img src="{{ rankSrc }}" alt="{{ rankLabel }}" style="width:72px;display:block;flex:none"></img>
+          <div style="min-width:0">
+            <div style="font-size:24px;font-weight:650;letter-spacing:-0.03em">{{ rankLabel }}</div>
+            <div style="font-size:13.5px;color:var(--mu);margin-top:2px">{{ rankSub }}</div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--mu);margin-bottom:7px">
+            <span>Progress to {{ nextLabel }}</span>
+            <span style="font-family:'Geist Mono',monospace;color:var(--tx2)">{{ xpText }}</span>
+          </div>
+          <div style="height:8px;border-radius:99px;background:var(--sf2);overflow:hidden">
+            <div style="height:100%;width:{{ xpPct }};border-radius:99px;background:linear-gradient(90deg,var(--pr),var(--am))"></div>
+          </div>
+        </div>
+        <div style="margin-top:auto;display:flex;align-items:flex-end;gap:4px;padding-top:16px;border-top:1px solid var(--bd)">
+          <sc-for list="{{ ladder }}" as="r" hint-placeholder-count="9">
+            <img src="{{ r.src }}" alt="{{ r.key }}" title="{{ r.key }}" style="flex:1 1 0;min-width:0;width:100%;opacity:{{ r.op }};filter:{{ r.filter }};display:block"></img>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <section id="positions" style="background:var(--sf);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px">
+        <h2 style="margin:0;font-size:17px;font-weight:620;letter-spacing:-0.02em">Open positions <span style="font:500 13px 'Geist Mono',monospace;color:var(--mu);margin-left:6px">{{ posCount }}</span></h2>
+        <a href="Portfolio.dc.html" style="font-size:13px;font-weight:500">Full portfolio →</a>
+      </div>
+      <div style="overflow-x:auto">
+        <div style="min-width:760px">
+          <div style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) repeat(4,minmax(0,0.8fr)) minmax(0,1fr);gap:12px;padding:10px 22px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--sf2);font-size:12px;color:var(--mu);font-weight:500">
+            <span>Market</span><span>Outcome</span><span style="text-align:right">Shares</span><span style="text-align:right">Avg</span><span style="text-align:right">Now</span><span style="text-align:right">Value</span><span style="text-align:right">P/L</span>
+          </div>
+          <sc-for list="{{ positions }}" as="p" hint-placeholder-count="5">
+            <a href="Market.dc.html" style="display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1.1fr) repeat(4,minmax(0,0.8fr)) minmax(0,1fr);gap:12px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--bd);color:var(--tx);font-size:14px" style-hover="background:var(--sf2);color:var(--tx)">
+              <span style="font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.title }}</span>
+              <span><span style="display:inline-block;padding:3px 9px;border-radius:6px;font-size:12.5px;font-weight:600;background:{{ p.sideBg }};color:{{ p.sideColor }}">{{ p.side }}</span></span>
+              <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.qty }}</span>
+              <span style="text-align:right;font-family:'Geist Mono',monospace;color:var(--mu)">{{ p.avg }}</span>
+              <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.now }}</span>
+              <span style="text-align:right;font-family:'Geist Mono',monospace">{{ p.valueFmt }}</span>
+              <span style="text-align:right;font-family:'Geist Mono',monospace;font-weight:600;color:{{ p.plColor }}">{{ p.plFmt }} <span style="font-weight:400;font-size:12px">{{ p.plPct }}</span></span>
+            </a>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+        <h2 style="margin:0;font-size:20px;font-weight:650;letter-spacing:-0.025em;display:flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:50%;background:var(--yes);animation:pzpulse 1.8s ease-in-out infinite"></span>Live markets</h2>
+        <div style="display:flex;gap:6px;overflow-x:auto">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="6">
+            <button onClick="{{ c.onClick }}" style="flex:none;height:32px;padding:0 13px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.color }};font-size:13px;font-weight:500;cursor:pointer">{{ c.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px">
+        <sc-for list="{{ markets }}" as="m" hint-placeholder-count="6">
+          <a href="Market.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;color:var(--tx);box-shadow:var(--sh)" style-hover="border-color:var(--bd2);color:var(--tx)">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;color:var(--mu);font-weight:500;margin-bottom:5px">{{ m.cat }}</div>
+                <div style="font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-0.01em;text-wrap:pretty">{{ m.title }}</div>
+              </div>
+              <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+                <div style="text-align:right;flex:none">
+                  <div style="font:600 22px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ m.yes }}%</div>
+                  <div style="font-size:11px;color:var(--mu)">chance</div>
+                </div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto">
+                <div style="height:38px;border-radius:9px;background:var(--yess);color:var(--yes);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">Yes <span style="font-family:'Geist Mono',monospace">{{ m.yes }}</span></div>
+                <div style="height:38px;border-radius:9px;background:var(--nos);color:var(--no);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">No <span style="font-family:'Geist Mono',monospace">{{ m.no }}</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isMulti }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:7px;margin-top:auto">
+                <sc-for list="{{ m.rows }}" as="o" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
+                    <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx2)">{{ o.label }}</span>
+                    <span style="font:600 13.5px 'Geist Mono',monospace;width:38px;text-align:right">{{ o.pct }}%</span>
+                    <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--yess);color:var(--yes);font-size:12px;font-weight:600;display:flex;align-items:center">Yes</span>
+                    <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--nos);color:var(--no);font-size:12px;font-weight:600;display:flex;align-items:center">No</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--bd);font-size:12px;color:var(--mu)">
+              <span style="width:6px;height:6px;border-radius:50%;background:var(--yes)"></span>
+              <span><span style="font-family:'Geist Mono',monospace;color:var(--tx2)">{{ m.vol }}</span> PZC vol</span>
+              <span style="margin-left:auto">Closes {{ m.close }}</span>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  <footer style="border-top:1px solid var(--bd)">
+    <div style="max-width:1240px;margin:0 auto;padding:22px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--mu)">
+      <span>© 2026 Pryzm</span>
+      <div style="display:flex;gap:20px"><a href="#" style="color:var(--mu)">Terms</a><a href="#" style="color:var(--mu)">Privacy</a><a href="#" style="color:var(--mu)">Support</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;rank&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;BRONZE_3&quot;,&quot;BRONZE_2&quot;,&quot;BRONZE_1&quot;,&quot;SILVER_3&quot;,&quot;SILVER_2&quot;,&quot;SILVER_1&quot;,&quot;GOLD_3&quot;,&quot;GOLD_2&quot;,&quot;GOLD_1&quot;],&quot;default&quot;:&quot;SILVER_2&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const MK = [
+  { cat: 'Finance', title: 'Will the Bank of Canada cut rates in December?', yes: 64, vol: '182K', close: 'Dec 10' },
+  { cat: 'Politics', title: 'Next Canadian federal election: largest party', vol: '1.2M', close: 'Oct 2029', outcomes: [['Liberal', 46], ['Conservative', 44], ['NDP', 5]] },
+  { cat: 'Sports', title: 'Stanley Cup 2027 champion', vol: '640K', close: 'Jun 2027', outcomes: [['Edmonton', 17], ['Florida', 13], ['Toronto', 11]] },
+  { cat: 'Finance', title: 'Will Bitcoin close 2026 above $150K?', yes: 23, vol: '410K', close: 'Dec 31' },
+  { cat: 'Technology', title: 'Will Apple announce a foldable iPhone before October 2027?', yes: 57, vol: '96K', close: 'Sep 30, 2027' },
+  { cat: 'Sports', title: 'Will the Raptors make the 2027 playoffs?', yes: 38, vol: '71K', close: 'Apr 12, 2027' },
+  { cat: 'Entertainment', title: 'Will a streaming-first film win Best Picture in 2027?', yes: 31, vol: '54K', close: 'Mar 14, 2027' },
+];
+const POS = [
+  { title: 'Will the Bank of Canada cut rates in December?', side: 'Yes', qty: 120, avg: 52, now: 64 },
+  { title: 'Stanley Cup 2027 champion', side: 'Edmonton', qty: 200, avg: 14, now: 17 },
+  { title: 'Will Bitcoin close 2026 above $150K?', side: 'No', qty: 80, avg: 71, now: 77 },
+  { title: 'Will the Raptors make the 2027 playoffs?', side: 'Yes', qty: 150, avg: 44, now: 38 },
+  { title: 'Next Canadian federal election: largest party', side: 'Conservative', qty: 60, avg: 41, now: 44 },
+];
+const RANKS = ['BRONZE_3', 'BRONZE_2', 'BRONZE_1', 'SILVER_3', 'SILVER_2', 'SILVER_1', 'GOLD_3', 'GOLD_2', 'GOLD_1'];
+const CHIPS = ['All', 'Politics', 'Sports', 'Finance', 'Technology', 'Entertainment'];
+const RANGES = { '1D': [3, 0.4, 'today'], '1W': [11, 1.6, 'past week'], '1M': [23, 4.9, 'past month'], 'ALL': [41, 18.4, 'all time'] };
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const rankSrc = k => 'assets/ranks/' + k.toLowerCase().replace('_', '') + '.svg';
+const rankLabel = k => k.split('_').map(s => s[0] + s.slice(1).toLowerCase()).join(' ');
+
+function series(seed, n) {
+  let x = seed; const r = () => { x = (x * 9301 + 49297) % 233280; return x / 233280; };
+  let v = 30; const pts = [];
+  for (let i = 0; i < n; i++) { v += (r() - 0.42) * 9; v = Math.max(5, Math.min(95, v)); pts.push(v); }
+  const lo = Math.min(...pts), hi = Math.max(...pts);
+  return pts.map(p => 8 + (p - lo) / (hi - lo || 1) * 84);
+}
+const toPath = (pts, w, h) => pts.map((v, i) => (i ? 'L' : 'M') + (i / (pts.length - 1) * w).toFixed(1) + ' ' + (h - v / 100 * h).toFixed(1)).join(' ');
+
+class Component extends DCLogic {
+  state = { theme: this.initTheme(), range: '1M', cat: 'All' };
+  initTheme() { let t; try { t = localStorage.getItem('pryzm-theme'); } catch (e) {} return t || this.props.theme || 'light'; }
+  componentDidUpdate(pp) { if (pp.theme !== this.props.theme && this.props.theme) this.setTheme(this.props.theme); }
+  setTheme(t) { try { localStorage.setItem('pryzm-theme', t); } catch (e) {} this.setState({ theme: t }); }
+  renderVals() {
+    const posValue = POS.reduce((s, p) => s + p.qty * p.now, 0);
+    const pl = POS.reduce((s, p) => s + p.qty * (p.now - p.avg), 0);
+    const total = 12480 + posValue;
+    const [seed, chg, lbl] = RANGES[this.state.range];
+    const path = toPath(series(seed, 60), 600, 170);
+    const rank = this.props.rank || 'SILVER_2';
+    const ri = Math.max(0, RANKS.indexOf(rank));
+    const next = RANKS[Math.min(ri + 1, RANKS.length - 1)];
+    const xp = 1240, need = 2000;
+    const c = this.state.cat;
+    const list = c === 'All' ? MK.slice(0, 6) : MK.filter(m => m.cat === c);
+    return {
+      theme: this.state.theme,
+      toggleTheme: () => this.setTheme(this.state.theme === 'dark' ? 'light' : 'dark'),
+      totalFmt: fmt(total), posValueFmt: fmt(posValue), plFmt: (pl >= 0 ? '+' : '') + fmt(pl),
+      rangeChange: '+' + fmt(total * chg / 100) + ' (+' + chg.toFixed(1) + '%)', rangeLabel: lbl,
+      chartPath: path, chartArea: path + ' L600 170 L0 170 Z',
+      ranges: Object.keys(RANGES).map(k => {
+        const on = k === this.state.range;
+        return { label: k, onClick: () => this.setState({ range: k }), bg: on ? 'var(--sf)' : 'transparent', color: on ? 'var(--tx)' : 'var(--mu)', sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none' };
+      }),
+      rankSrc: rankSrc(rank), rankLabel: rankLabel(rank), nextLabel: ri === RANKS.length - 1 ? 'top rank' : rankLabel(next),
+      rankSub: '38 markets resolved · top 22%',
+      xpText: ri === RANKS.length - 1 ? 'Max' : fmt(xp) + ' / ' + fmt(need) + ' XP', xpPct: ri === RANKS.length - 1 ? '100%' : (xp / need * 100) + '%',
+      ladder: RANKS.map((k, i) => ({ key: rankLabel(k), src: rankSrc(k), op: i === ri ? 1 : i < ri ? 0.55 : 0.28, filter: i > ri ? 'grayscale(1)' : 'none' })),
+      posCount: POS.length,
+      positions: POS.map(p => {
+        const v = p.qty * p.now, d = p.qty * (p.now - p.avg), pct = (p.now - p.avg) / p.avg * 100;
+        const side = p.side === 'Yes' ? ['var(--yess)', 'var(--yes)'] : p.side === 'No' ? ['var(--nos)', 'var(--no)'] : ['var(--prs)', 'var(--prt)'];
+        return { ...p, sideBg: side[0], sideColor: side[1], valueFmt: fmt(v), plFmt: (d >= 0 ? '+' : '') + fmt(d), plPct: (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', plColor: d >= 0 ? 'var(--yes)' : 'var(--no)' };
+      }),
+      chips: CHIPS.map(label => {
+        const on = label === c;
+        return { label, onClick: () => this.setState({ cat: label }), bg: on ? 'var(--tx)' : 'var(--sf)', color: on ? 'var(--bg)' : 'var(--tx2)', bd: on ? 'var(--tx)' : 'var(--bd)' };
+      }),
+      markets: list.map(m => ({ ...m, isBinary: !m.outcomes, isMulti: !!m.outcomes, no: m.yes != null ? 100 - m.yes : 0, rows: (m.outcomes || []).map(([label, pct]) => ({ label, pct })) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,10 +1,36 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { Chips, ErrorNote, Page, Spinner } from "../components/ui.jsx";
+import { API_BASE } from "../lib/markets.js";
+import { catLabel, fmtDate } from "../lib/format.js";
 
 const CATEGORIES = ["FINANCE", "TECHNOLOGY", "SPORTS", "POLITICS"];
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
+const CHIPS = CATEGORIES.map((c) => ({ value: c, label: catLabel(c) }));
+const PLACEHOLDER = "repeating-linear-gradient(135deg, var(--sf2) 0 10px, var(--bg) 10px 20px)";
+
+function ArticleImage({ article, className }) {
+  const [failed, setFailed] = useState(false);
+  if (!article.urlToImage || failed) {
+    return <div className={className} style={{ background: PLACEHOLDER }} />;
+  }
+  return (
+    <img
+      src={article.urlToImage}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={`${className} object-cover w-full`}
+    />
+  );
+}
+
+function Meta({ article, size = "text-xs" }) {
+  return (
+    <div className={`flex justify-between gap-3 ${size}`}>
+      <span className="font-semibold text-amt truncate">{article.source?.name}</span>
+      <span className="text-mu flex-none">{fmtDate(article.publishedAt)}</span>
+    </div>
+  );
+}
 
 export default function NewsPage() {
   const [articles, setArticles] = useState([]);
@@ -13,110 +39,76 @@ export default function NewsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchNews = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const response = await fetch(`${API_BASE}/api/v1/news/${category}`);
-        if (!response.ok) {
-          throw new Error(`News request failed (${response.status})`);
-        }
-        const data = await response.json();
-        setArticles(data.articles || []);
-      } catch (error) {
-        setError(error?.message || "Unable to load news right now.");
-        setArticles([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNews();
+    let alive = true;
+    setLoading(true);
+    setError("");
+    fetch(`${API_BASE}/api/v1/news/${category}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`News request failed (${res.status})`);
+        return res.json();
+      })
+      .then((data) => alive && setArticles(data?.articles || []))
+      .catch((e) => { if (alive) { setError(e?.message || "Unable to load news right now."); setArticles([]); } })
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
   }, [category]);
 
-  return (
-    <div className="min-h-screen bg-slate-950 pt-24 pb-16 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">Market News</h1>
+  const [lead, ...rest] = articles;
 
-          {/* Category Chips */}
-          <div className="flex flex-wrap justify-center gap-3">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  category === cat
-                    ? "bg-amber-500 text-black"
-                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                }`}
+  return (
+    <Page>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <h1 className="m-0 text-[32px] font-[650] tracking-[-0.035em] leading-tight">Market News</h1>
+        <Chips options={CHIPS} value={category} onChange={setCategory} wrap />
+      </div>
+
+      {loading ? (
+        <Spinner />
+      ) : error ? (
+        <ErrorNote>
+          <p className="font-semibold">Could not load news</p>
+          <p className="mt-1">{error}</p>
+        </ErrorNote>
+      ) : !lead ? (
+        <div className="py-16 px-6 text-center border border-dashed border-bd2 rounded-2xl text-mu text-[14.5px]">
+          No articles in this category right now.
+        </div>
+      ) : (
+        <>
+          <a
+            href={lead.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] bg-sf border border-bd hover:border-bd2 rounded-[18px] shadow-sh overflow-hidden text-tx mb-5 transition-colors"
+          >
+            <ArticleImage article={lead} className="min-h-[280px] h-full" />
+            <div className="p-[clamp(22px,3vw,36px)] flex flex-col justify-center gap-3">
+              <Meta article={lead} size="text-[12.5px]" />
+              <h2 className="m-0 text-[clamp(22px,2.6vw,30px)] font-[650] tracking-[-0.03em] leading-[1.2]">{lead.title}</h2>
+              {lead.description && <p className="m-0 text-[15px] leading-[1.6] text-tx2">{lead.description}</p>}
+            </div>
+          </a>
+
+          <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))]">
+            {rest.map((a) => (
+              <a
+                key={a.url}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col bg-sf border border-bd hover:border-bd2 rounded-[14px] shadow-sh overflow-hidden text-tx transition-colors"
               >
-                {cat}
-              </button>
+                <ArticleImage article={a} className="aspect-video" />
+                <div className="px-[18px] pt-4 pb-[18px] flex flex-col gap-2">
+                  <Meta article={a} />
+                  <h3 className="m-0 text-[16px] font-semibold tracking-[-0.015em] leading-[1.35]">{a.title}</h3>
+                  {a.description && <p className="m-0 text-[13.5px] leading-[1.55] text-tx2 line-clamp-3">{a.description}</p>}
+                </div>
+              </a>
             ))}
           </div>
-        </div>
-
-        {/* News Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-amber-500"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center bg-slate-900 border border-rose-500/40 text-rose-300 rounded-xl p-6">
-            <p className="font-semibold">Could not load news</p>
-            <p className="text-sm mt-2">{error}</p>
-            <p className="text-xs text-slate-400 mt-3">
-              Check that the backend API is running and reachable at {API_BASE}.
-            </p>
-          </div>
-        ) : (
-          <motion.div
-            layout
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            <AnimatePresence>
-              {articles.map((article, index) => (
-                <motion.a
-                  key={article.url}
-                  href={article.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden hover:border-amber-500/50 transition-all"
-                >
-                  <div className="aspect-video overflow-hidden">
-                    <img
-                      src={article.urlToImage || 'https://via.placeholder.com/400x225?text=Pryzm+News'}
-                      alt={article.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
-                        {article.source.name}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        {new Date(article.publishedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
-                      {article.title}
-                    </h3>
-                    <p className="text-slate-400 text-sm line-clamp-3">
-                      {article.description}
-                    </p>
-                  </div>
-                </motion.a>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </Page>
   );
 }

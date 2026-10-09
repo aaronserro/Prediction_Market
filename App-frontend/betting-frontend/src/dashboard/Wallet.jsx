@@ -1,335 +1,308 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { PageShell } from "./Dashboard.jsx";
+import { useWallet, userIdOf } from "../lib/wallet.jsx";
+import { getJSON } from "../lib/markets.js";
+import { fmt, fmtDate, fmtDateTime } from "../lib/format.js";
+import { Coin, ErrorNote, Page, PageHeader, Segmented, card } from "../components/ui.jsx";
+import { totals } from "../lib/positions.js";
 
-/**
- * Wallet.jsx — drop-in page
- * - Uses /api/v1/users/:userId/wallet endpoints
- * - Sends cookies (credentials: 'include') for JWT auth
- * - Robust fetch helper that surfaces non-JSON errors clearly
- * - Tailwind UI
- */
+// Amounts are PZC; the API stores them as cents (1 PZC = 1 cent).
+const PRESETS = [100, 500, 1000, 5000];
+const REASONS = ["Account top-up", "Tournament entry", "Promotional credit", "Referral reward", "Other"];
+const TX_TABS = ["All", "Trades", "Payouts", "Funding"];
 
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
-
-// ===== Small fetch helper (robust JSON + good error messages) =====
-async function http(path, opts = {}) {
-  const url = `${API_BASE}${path}`.replace(/\n/g, "");
-  const hasBody = opts.body != null && opts.method && opts.method !== "GET";
-
-  const res = await fetch(url, {
-    credentials: "include", // send cookies (JWT)
-    ...opts,
-    headers: {
-      Accept: "application/json",
-      ...(hasBody ? { "Content-Type": "application/json" } : {}),
-      ...(opts.headers || {}),
-    },
-  });
-
-  // read text once so we can parse or show HTML error
-  const contentType = res.headers.get("content-type") || "";
-  const text = await res.text();
-
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText} :: ${text.slice(0, 400)}`);
-  }
-  if (!contentType.includes("application/json")) {
-    throw new Error(`Expected JSON but got ${contentType} :: ${text.slice(0, 400)}`);
-  }
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    throw new Error(`Failed to parse JSON :: ${text.slice(0, 400)}`);
-  }
-}
-
-// ===== Currency helpers =====
-const fmtCAD = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
-const centsToCAD = (cents) => fmtCAD.format((Number(cents) || 0) / 100);
-
-// ===== API (consistent, all under /api/v1) =====
-const api = {
-  getWallet: (userId) => http(`/api/v1/users/${userId}/wallet`),
-  listFundRequests: (userId) =>
-    http(`/api/v1/users/${userId}/wallet/fund-requests`),
-
-  createFundRequest: (userId, amountCents, reason) =>
-    http(`/api/v1/users/${userId}/wallet/fund-requests`, {
-      method: "POST",
-      body: JSON.stringify({ amountCents, reason }),
-    }),
-
-  // Adjust these if your backend uses different paths:
-  //listFundRequests: (userId) => http(`/api/v1/users/${userId}/wallet/fund-requests`),
-  /*
-  createFundRequest: (userId, amountCents, reason) =>
-    http(`/api/v1/users/${userId}/wallet/fund-requests`, {
-      method: "POST",
-      body: JSON.stringify({ amountCents, reason }),
-    }),
-    */
+const PILL = {
+  PENDING: "bg-ams text-amt",
+  APPROVED: "bg-yess text-yes",
+  REJECTED: "bg-nos text-no",
 };
+const Pill = ({ status }) => (
+  <span className={`px-[9px] py-[3px] rounded-md text-xs font-semibold flex-none ${PILL[status] || "bg-sf2 text-mu"}`}>{status}</span>
+);
+
+function Stepper({ request }) {
+  const st = request.status;
+  const done = { dot: "bg-pr border-pr", inner: "bg-white", title: "text-tx" };
+  const cur = { dot: "bg-sf border-am", inner: "bg-am", title: "text-tx" };
+  const todo = { dot: "bg-sf border-bd2", inner: "bg-transparent", title: "text-mu" };
+  const bad = { dot: "bg-no border-no", inner: "bg-white", title: "text-no" };
+  const pending = st === "PENDING";
+  const rejected = st === "REJECTED";
+
+  const steps = [
+    { ...done, label: "Submitted", sub: fmtDateTime(request.createdAt), line: pending ? "var(--bd)" : "var(--pr)" },
+    {
+      ...(pending ? cur : done),
+      label: "Under review",
+      sub: pending ? "Usually within 24 hours" : "Reviewed by admin",
+      line: pending ? "var(--bd)" : rejected ? "var(--no)" : "var(--pr)",
+    },
+    {
+      ...(pending ? todo : rejected ? bad : done),
+      label: rejected ? "Rejected" : "Credited to wallet",
+      sub: pending ? "Pending" : rejected ? "Not credited · contact support" : `${fmt(request.amountCents)} PZC added`,
+      line: "transparent",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3">
+      {steps.map((s) => (
+        <div key={s.label} className="flex flex-col gap-2.5 min-w-0">
+          <div className="flex items-center">
+            <div className={`w-[22px] h-[22px] rounded-full flex-none border-2 flex items-center justify-center ${s.dot}`}>
+              <div className={`w-2 h-2 rounded-full ${s.inner}`} />
+            </div>
+            <div className="flex-1 h-0.5 mx-2" style={{ background: s.line }} />
+          </div>
+          <div className="pr-3">
+            <div className={`text-[14px] font-semibold ${s.title}`}>{s.label}</div>
+            <div className="text-[12.5px] text-mu mt-0.5">{s.sub}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Wallet() {
   const { user } = useAuth();
-  const userId = user?.userId || user?.id || 1;
+  const userId = userIdOf(user);
+  const { wallet, balance, refresh: refreshWallet } = useWallet();
 
-  // Wallet state
-  const [wallet, setWallet] = useState(null);
-  const [loadingWallet, setLoadingWallet] = useState(false);
-
-  // Fund requests state
   const [requests, setRequests] = useState([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
-
-  // Form state
+  const [positions, setPositions] = useState([]);
   const [amount, setAmount] = useState("");
-  const [reason, setReason] = useState("Account top-up");
+  const [reason, setReason] = useState(REASONS[0]);
   const [submitting, setSubmitting] = useState(false);
-
-  // UX state
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [txTab, setTxTab] = useState("All");
 
-  const refreshWallet = useCallback(async () => {
+  const refreshRequests = useCallback(async () => {
+    if (!userId) return;
     try {
-      setLoadingWallet(true);
-      setError(null);
-      const w = await api.getWallet(userId);
-      setWallet(w);
+      const list = await getJSON(`/api/v1/users/${userId}/wallet/fund-requests`);
+      setRequests(
+        (Array.isArray(list) ? list : []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      );
     } catch (e) {
       setError(e.message || String(e));
-    } finally {
-      setLoadingWallet(false);
     }
   }, [userId]);
 
-const refreshRequests = useCallback(async () => {
-  try {
-    setLoadingRequests(true);
+  useEffect(() => { refreshRequests(); }, [refreshRequests]);
+  useEffect(() => {
+    getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
+  const amt = parseFloat(amount);
+  const canSubmit = amt > 0 && !submitting;
+
+  async function submit() {
+    if (!canSubmit) return;
+    const amountCents = Math.round(amt);
+    setSubmitting(true);
     setError(null);
-    const list = await api.listFundRequests(userId);
-    setRequests(Array.isArray(list) ? list : []);
-  } catch (e) {
-    setError(e.message || String(e));
-  } finally {
-    setLoadingRequests(false);
-  }
-}, [userId]);
-
-  useEffect(() => {
-    refreshWallet();
-  }, [refreshWallet]);
-
-  useEffect(() => {
-    refreshRequests();
-  }, [refreshRequests]);
-
-  const balancePretty = useMemo(
-    () => centsToCAD(wallet?.balanceCents || 0),
-    [wallet]
-  );
-
-  async function onRequestFunds() {
+    // Optimistically show the new request at the top of the list.
+    const optimistic = { id: `tmp-${Date.now()}`, amountCents, reason, status: "PENDING", createdAt: new Date().toISOString() };
+    setRequests((r) => [optimistic, ...r]);
     try {
-      setSubmitting(true);
-      setError(null);
-      setSuccess(null);
-
-      const cents = Math.round(parseFloat(amount || "0") * 100);
-      if (!Number.isFinite(cents) || cents <= 0) throw new Error("Enter a positive amount.");
-      if (!reason.trim()) throw new Error("Please provide a reason for this request.");
-
-      await api.createFundRequest(userId, cents, reason);
-
+      await getJSON(`/api/v1/users/${userId}/wallet/fund-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountCents, reason }),
+      });
       setAmount("");
-      setReason("Account top-up");
-      setSuccess("Fund request submitted! You’ll receive an email when it’s processed.");
-
+      setReason(REASONS[0]);
+      setSuccess(true);
       await Promise.all([refreshWallet(), refreshRequests()]);
     } catch (e) {
+      setRequests((r) => r.filter((x) => x.id !== optimistic.id));
       setError(e.message || String(e));
     } finally {
       setSubmitting(false);
     }
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "APPROVED": return "#34d399";
-      case "REJECTED": return "#f87171";
-      case "PENDING":  return "#fbbf24";
-      default:         return "#9ca3af";
-    }
-  };
+  const inPositions = totals(positions).value;
+  const pending = requests.filter((r) => r.status === "PENDING").reduce((s, r) => s + (Number(r.amountCents) || 0), 0);
+  const latest = requests[0];
 
-  const getStatusBg = (status) => {
-    switch (status) {
-      case "APPROVED": return "#064e3b";
-      case "REJECTED": return "#7f1d1d";
-      case "PENDING":  return "#78350f";
-      default:         return "#1f2937";
-    }
-  };
+  // No transaction-history endpoint yet: funding rows are derived from approved requests.
+  const txs = useMemo(
+    () =>
+      requests
+        .filter((r) => r.status === "APPROVED")
+        .map((r) => ({ id: r.id, date: r.processedAt || r.createdAt, type: "Funding", desc: r.reason || "Fund request", amt: Number(r.amountCents) || 0 })),
+    [requests]
+  );
+  const shownTxs = txTab === "All" || txTab === "Funding" ? txs : [];
 
   return (
-    <PageShell>
-      <div className="mx-auto max-w-5xl px-4 pt-24 pb-16">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-white">Wallet</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Request funds to add to your account balance
-          </p>
+    <Page className="flex flex-col gap-5">
+      <PageHeader title="Wallet" subtitle="Your PZC balance, fund requests and transaction history" />
+
+      {success && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3.5 rounded-xl bg-yess text-yes text-[14px]">
+          <span className="font-semibold">Request submitted.</span>
+          <span className="text-tx2">You’ll receive an email when it’s processed.</span>
+          <button onClick={() => setSuccess(false)} className="ml-auto border-0 bg-transparent text-mu text-[13px] cursor-pointer hover:text-tx">
+            Dismiss
+          </button>
         </div>
+      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
 
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/[0.06] p-4">
-            <p className="text-sm font-semibold text-red-400 mb-1">Error</p>
-            <p className="whitespace-pre-wrap text-sm text-red-300/80">{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
-            <p className="text-sm font-semibold text-emerald-400 mb-1">Success</p>
-            <p className="text-sm text-emerald-300/80">{success}</p>
-          </div>
-        )}
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          {/* Balance card */}
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.05] p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M21 12V7H5a2 2 0 010-4h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2v-1a2 2 0 012-2h16" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Current Balance</p>
-                <p className="text-3xl font-black text-white mt-0.5 tracking-tight">
-                  {loadingWallet ? "…" : balancePretty}
-                </p>
-              </div>
+      <div className="flex flex-wrap gap-4 items-stretch">
+        <div className={`${card} flex-[1_1_380px] min-w-0 p-6 flex flex-col gap-[22px]`}>
+          <div>
+            <div className="text-[13px] text-mu mb-2">Available balance</div>
+            <div className="flex items-center gap-3">
+              <Coin size={30} ring={4} />
+              <span className="font-mono text-[44px] font-semibold tracking-[-0.05em] leading-none">{balance === null ? "—" : fmt(balance)}</span>
+              <span className="text-[15px] text-mu self-end pb-1">PZC</span>
             </div>
-            {wallet?.updatedAt && (
-              <p className="text-xs text-slate-600">
-                Last updated: {new Date(wallet.updatedAt).toLocaleString()}
-              </p>
-            )}
           </div>
-
-          {/* Request funds card */}
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <h2 className="text-base font-black text-white uppercase tracking-wider">Request Funds</h2>
+          <div className="flex flex-col border-t border-bd">
+            <div className="flex justify-between py-3 border-b border-bd text-[14px]">
+              <span className="text-tx2">In open positions</span><span className="font-mono">{fmt(inPositions)}</span>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400 uppercase tracking-widest">Amount (CAD)</label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    placeholder="100.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full rounded-xl border border-white/[0.07] bg-white/[0.04] py-3 pl-8 pr-4 text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none focus:bg-white/[0.06] transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400 uppercase tracking-widest">Reason</label>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full rounded-xl border border-white/[0.07] bg-[#0d0a1a] py-3 px-4 text-white focus:border-violet-500/50 focus:outline-none focus:bg-[#110d20] transition-colors appearance-none cursor-pointer"
-                >
-                  <option value="Account top-up">Account top-up</option>
-                  <option value="Tournament entry">Tournament entry</option>
-                  <option value="Promotional credit">Promotional credit</option>
-                  <option value="Referral reward">Referral reward</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <button
-                onClick={onRequestFunds}
-                disabled={submitting}
-                className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 font-black text-[#1a0a00] text-sm transition-all hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-900/20 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {submitting ? "Submitting…" : "Submit Request"}
-              </button>
-
-              <p className="text-xs text-slate-600">
-                An admin will review your request. You'll be notified once it's processed.
-              </p>
+            <div className="flex justify-between py-3 border-b border-bd text-[14px]">
+              <span className="text-tx2">Pending requests</span><span className="font-mono text-amt">{fmt(pending)}</span>
             </div>
+            <div className="flex justify-between py-3 text-[14px] font-semibold">
+              <span>Total account value</span><span className="font-mono">{fmt((balance ?? 0) + inPositions)}</span>
+            </div>
+          </div>
+          <div className="mt-auto text-[12.5px] text-mu">
+            {wallet?.updatedAt ? `Last updated ${fmtDateTime(wallet.updatedAt)} · ` : ""}1 share pays 100 PZC on a correct outcome
           </div>
         </div>
 
-        {/* History */}
-        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6">
-          <div className="mb-5 flex items-center gap-2">
-            <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <h2 className="text-base font-black text-white uppercase tracking-wider">Request History</h2>
+        <div className={`${card} flex-[1_1_380px] min-w-0 p-6 flex flex-col gap-[18px]`}>
+          <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Request funds</h2>
+          <div>
+            <label className="block text-[13px] text-tx2 font-medium mb-[7px]" htmlFor="pz-amount">Amount</label>
+            <div className="flex items-center h-[50px] rounded-[11px] border border-bd2 bg-sf px-3.5 gap-2.5 focus-within:border-pr">
+              <Coin size={16} />
+              <input
+                id="pz-amount"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="flex-1 min-w-0 border-0 outline-none bg-transparent text-tx font-mono text-[20px] font-semibold tracking-[-0.03em] placeholder:text-mu"
+              />
+              <span className="text-[13px] text-mu">PZC</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 mt-2">
+              {PRESETS.map((v) => {
+                const on = amt === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setAmount(String(v))}
+                    className={`h-[34px] rounded-lg border font-mono text-[13px] font-medium cursor-pointer transition-colors ${
+                      on ? "bg-prs border-pr text-prt" : "bg-sf border-bd text-tx2 hover:border-bd2"
+                    }`}
+                  >
+                    {fmt(v)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-
-          {loadingRequests ? (
-            <div className="flex justify-center py-10">
-              <div className="w-8 h-8 border-2 border-violet-900 border-t-amber-400 rounded-full animate-spin" />
-            </div>
-          ) : requests.length === 0 ? (
-            <div className="py-10 text-center text-sm text-slate-500">No fund requests yet</div>
-          ) : (
-            <div className="space-y-3">
-              {requests.map((req) => (
-                <div key={req.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-lg font-black text-white">
-                          {centsToCAD(req.amountCents)}
-                        </span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${
-                          req.status === "APPROVED" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
-                          req.status === "REJECTED" ? "text-red-400 bg-red-500/10 border-red-500/20" :
-                          req.status === "PENDING"  ? "text-amber-400 bg-amber-500/10 border-amber-500/20" :
-                          "text-slate-400 bg-white/[0.04] border-white/[0.06]"
-                        }`}>
-                          {req.status}
-                        </span>
-                      </div>
-                      {req.reason && <p className="mt-2 text-sm text-slate-400">{req.reason}</p>}
-                      <div className="mt-2 text-xs text-slate-600">
-                        Requested: {req.createdAt ? new Date(req.createdAt).toLocaleString() : "—"}
-                      </div>
-                      {req.processedAt && (
-                        <div className="text-xs text-slate-600">
-                          Processed: {new Date(req.processedAt).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div>
+            <label className="block text-[13px] text-tx2 font-medium mb-[7px]" htmlFor="pz-reason">Reason</label>
+            <select
+              id="pz-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full h-[46px] rounded-[11px] border border-bd2 bg-sf text-tx px-3 text-[14.5px] cursor-pointer outline-none focus:border-pr"
+            >
+              {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            className="h-12 border-0 rounded-[11px] bg-am text-[#1d1300] text-[15px] font-[650] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 enabled:hover:brightness-105"
+          >
+            {submitting ? "Submitting…" : "Submit Request"}
+          </button>
+          <p className="m-0 text-[12.5px] text-mu">An admin will review your request. You'll be notified once it's processed.</p>
         </div>
       </div>
-    </PageShell>
+
+      {latest && (
+        <div className={`${card} px-6 py-[22px]`}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 mb-[22px]">
+            <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Latest request</h2>
+            <span className="font-mono text-[14px] font-semibold">{fmt(latest.amountCents)} PZC</span>
+            <span className="text-[13.5px] text-mu">{latest.reason}</span>
+            <span className="ml-auto"><Pill status={latest.status} /></span>
+          </div>
+          <Stepper request={latest} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-4 items-start">
+        <section className={`${card} flex-[2_1_560px] min-w-0 overflow-hidden`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-[22px] py-[18px]">
+            <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Transactions</h2>
+            <Segmented options={TX_TABS} value={txTab} onChange={setTxTab} />
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[600px]">
+              <div className="grid grid-cols-[110px_86px_minmax(0,1fr)_100px_100px] gap-3 px-[22px] py-2.5 border-y border-bd bg-sf2 text-xs text-mu font-medium">
+                <span>Date</span><span>Type</span><span>Details</span><span className="text-right">Amount</span><span className="text-right">Balance</span>
+              </div>
+              {shownTxs.length ? (
+                shownTxs.map((x) => (
+                  <div key={x.id} className="grid grid-cols-[110px_86px_minmax(0,1fr)_100px_100px] gap-3 items-center px-[22px] py-[13px] border-b border-bd last:border-b-0 text-[14px]">
+                    <span className="text-[13px] text-mu">{fmtDate(x.date)}</span>
+                    <span className="text-[13px] text-tx2">{x.type}</span>
+                    <span className="truncate">{x.desc}</span>
+                    <span className={`text-right font-mono font-semibold ${x.amt > 0 ? "text-yes" : "text-tx"}`}>
+                      {x.amt > 0 ? "+" : "−"}{fmt(Math.abs(x.amt))}
+                    </span>
+                    <span className="text-right font-mono text-mu">—</span>
+                  </div>
+                ))
+              ) : (
+                <div className="px-[22px] py-10 text-center text-[14px] text-mu">
+                  {txTab === "Trades" || txTab === "Payouts" ? `${txTab} history isn’t available yet.` : "No transactions yet."}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className={`${card} flex-[1_1_320px] min-w-0 overflow-hidden`}>
+          <div className="px-[22px] py-[18px] border-b border-bd">
+            <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Request history</h2>
+          </div>
+          {requests.length ? (
+            requests.map((r) => (
+              <div key={r.id} className="flex items-start gap-3 px-[22px] py-3.5 border-b border-bd last:border-b-0">
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-[15px] font-semibold tracking-[-0.02em]">
+                    {fmt(r.amountCents)} <span className="font-sans font-normal text-[12.5px] text-mu">PZC</span>
+                  </div>
+                  {r.reason && <div className="text-[13px] text-tx2 mt-[3px]">{r.reason}</div>}
+                  <div className="text-xs text-mu mt-[3px]">{fmtDateTime(r.createdAt)}</div>
+                </div>
+                <Pill status={r.status} />
+              </div>
+            ))
+          ) : (
+            <div className="px-[22px] py-10 text-center text-[14px] text-mu">No fund requests yet</div>
+          )}
+        </section>
+      </div>
+    </Page>
   );
 }

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Geist+Mono:wght@400..700&amp;display=swap" rel="stylesheet"></link>
+<style>
+body{margin:0;background:#f6f5f9}
+*{box-sizing:border-box}
+a{color:var(--pr);text-decoration:none}
+a:hover{color:var(--prh)}
+button,input{font-family:inherit}
+[data-theme]{font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);min-height:100vh}
+[data-theme="light"]{--bg:#f6f5f9;--sf:#ffffff;--sf2:#f1f0f5;--bd:#e6e4ec;--bd2:#d4d1de;--tx:#15121d;--tx2:#45414f;--mu:#6f6b7d;--pr:#6d3ae6;--prh:#5b2bd0;--prs:#efe9fd;--prt:#5b2bd0;--am:#f5a50b;--ams:#fdf3dc;--amt:#8f5400;--yes:#0f8a52;--yess:#e3f4ea;--no:#d43a47;--nos:#fbe9ea;--sh:0 1px 2px rgba(20,16,40,.05)}
+[data-theme="dark"]{--bg:#0b0a10;--sf:#13121a;--sf2:#1c1a25;--bd:#26232f;--bd2:#36323f;--tx:#f3f2f7;--tx2:#c6c3d1;--mu:#918da1;--pr:#8b5cf6;--prh:#a07cf8;--prs:#231b3b;--prt:#bba6fb;--am:#fbbf24;--ams:#2a2112;--amt:#fbbf24;--yes:#34c47e;--yess:#11281c;--no:#f2646f;--nos:#2d1519;--sh:none}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-screen-label="Markets">
+  <dc-import name="Nav" active="Markets" on-toggle-theme="{{ toggleTheme }}" hint-size="100%,60px"></dc-import>
+  <main style="max-width:1240px;margin:0 auto;padding:36px 24px 72px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px">
+      <div>
+        <h1 style="margin:0;font-size:32px;font-weight:650;letter-spacing:-0.035em">Markets</h1>
+        <p style="margin:6px 0 0;font-size:14.5px;color:var(--mu)">Trade on the outcome of real-world events.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;height:42px;width:min(100%,340px);padding:0 14px;border-radius:11px;background:var(--sf);border:1px solid var(--bd2);color:var(--mu)">
+        <div style="width:12px;height:12px;border:1.6px solid currentColor;border-radius:50%;flex:none"></div>
+        <input placeholder="Search markets…" value="{{ search }}" onChange="{{ onSearch }}" style="flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--tx);font-size:14.5px"></input>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--bd)">
+      <div style="display:flex;gap:6px;overflow-x:auto;min-width:0">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="7">
+          <button onClick="{{ c.onClick }}" style="flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.color }};font-size:13.5px;font-weight:500;cursor:pointer">{{ c.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:2px;padding:3px;border-radius:9px;background:var(--sf2)">
+        <sc-for list="{{ sorts }}" as="s" hint-placeholder-count="3">
+          <button onClick="{{ s.onClick }}" style="height:28px;padding:0 12px;border:0;border-radius:7px;background:{{ s.bg }};color:{{ s.color }};box-shadow:{{ s.sh }};font-size:13px;font-weight:500;cursor:pointer">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ hasMarkets }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px">
+        <sc-for list="{{ markets }}" as="m" hint-placeholder-count="9">
+          <a href="Market.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;color:var(--tx);box-shadow:var(--sh)" style-hover="border-color:var(--bd2);color:var(--tx)">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mu);font-weight:500;margin-bottom:5px">
+                  <span>{{ m.cat }}</span>
+                  <sc-if value="{{ m.upcoming }}" hint-placeholder-val="{{ false }}"><span style="padding:1px 6px;border-radius:5px;background:var(--ams);color:var(--amt);font-weight:600;font-size:11px">UPCOMING</span></sc-if>
+                </div>
+                <div style="font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-0.01em;text-wrap:pretty">{{ m.title }}</div>
+              </div>
+              <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+                <div style="text-align:right;flex:none">
+                  <div style="font:600 22px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ m.yes }}%</div>
+                  <div style="font-size:11px;color:var(--mu)">chance</div>
+                </div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto">
+                <div style="height:38px;border-radius:9px;background:var(--yess);color:var(--yes);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">Yes <span style="font-family:'Geist Mono',monospace">{{ m.yes }}</span></div>
+                <div style="height:38px;border-radius:9px;background:var(--nos);color:var(--no);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">No <span style="font-family:'Geist Mono',monospace">{{ m.no }}</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ m.isMulti }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:7px;margin-top:auto">
+                <sc-for list="{{ m.rows }}" as="o" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
+                    <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx2)">{{ o.label }}</span>
+                    <span style="font:600 13.5px 'Geist Mono',monospace;width:38px;text-align:right">{{ o.pct }}%</span>
+                    <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--yess);color:var(--yes);font-size:12px;font-weight:600;display:flex;align-items:center">Yes</span>
+                    <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--nos);color:var(--no);font-size:12px;font-weight:600;display:flex;align-items:center">No</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--bd);font-size:12px;color:var(--mu)">
+              <span style="width:6px;height:6px;border-radius:50%;background:{{ m.dot }}"></span>
+              <span><span style="font-family:'Geist Mono',monospace;color:var(--tx2)">{{ m.volFmt }}</span> PZC vol</span>
+              <span style="margin-left:auto">Closes {{ m.close }}</span>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+      <p style="margin:28px 0 0;text-align:center;font-size:13px;color:var(--mu)">{{ countText }}</p>
+    </sc-if>
+    <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:64px 24px;text-align:center;border:1px dashed var(--bd2);border-radius:16px;color:var(--mu);font-size:14.5px">
+        <div>No markets match your filters.</div>
+        <button onClick="{{ clear }}" style="margin-top:14px;height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--bd2);background:var(--sf);color:var(--tx);font-size:13.5px;font-weight:500;cursor:pointer">Clear filters</button>
+      </div>
+    </sc-if>
+  </main>
+  <footer style="border-top:1px solid var(--bd)">
+    <div style="max-width:1240px;margin:0 auto;padding:22px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--mu)">
+      <span>© 2026 Pryzm</span>
+      <div style="display:flex;gap:20px"><a href="#" style="color:var(--mu)">Terms</a><a href="#" style="color:var(--mu)">Privacy</a><a href="#" style="color:var(--mu)">Support</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+const MK = [
+  { cat: 'Finance', title: 'Will the Bank of Canada cut rates in December?', yes: 64, vol: 182430, close: 'Dec 10', days: 62, trend: 9 },
+  { cat: 'Politics', title: 'Next Canadian federal election: largest party', vol: 1204880, close: 'Oct 2029', days: 1100, trend: 10, outcomes: [['Liberal', 46], ['Conservative', 44], ['NDP', 5]] },
+  { cat: 'Sports', title: 'Stanley Cup 2027 champion', vol: 640200, close: 'Jun 2027', days: 250, trend: 8, outcomes: [['Edmonton', 17], ['Florida', 13], ['Toronto', 11]] },
+  { cat: 'Finance', title: 'Will Bitcoin close 2026 above $150K?', yes: 23, vol: 410900, close: 'Dec 31', days: 83, trend: 7 },
+  { cat: 'Technology', title: 'Will Apple announce a foldable iPhone before October 2027?', yes: 57, vol: 96100, close: 'Sep 30, 2027', days: 356, trend: 5 },
+  { cat: 'Sports', title: 'Will the Raptors make the 2027 playoffs?', yes: 38, vol: 71300, close: 'Apr 12, 2027', days: 185, trend: 6 },
+  { cat: 'Entertainment', title: 'Will a streaming-first film win Best Picture in 2027?', yes: 31, vol: 54800, close: 'Mar 14, 2027', days: 156, trend: 4 },
+  { cat: 'Finance', title: 'Will Canada CPI be above 2.5% in November?', yes: 41, vol: 38700, close: 'Dec 16', days: 68, trend: 3 },
+  { cat: 'Sports', title: 'Who wins the 2026 Grey Cup?', vol: 122500, close: 'Nov 15', days: 37, trend: 6, outcomes: [['Montreal', 34], ['Saskatchewan', 27], ['Winnipeg', 18]] },
+  { cat: 'Technology', title: 'Will Canada pass a federal AI regulation bill in 2026?', yes: 12, vol: 22400, close: 'Dec 31', days: 83, trend: 2 },
+  { cat: 'Entertainment', title: 'Will Drake release a new studio album in 2026?', yes: 44, vol: 31900, close: 'Dec 31', days: 83, trend: 3 },
+  { cat: 'Other', title: 'Will Toronto get a white Christmas?', yes: 52, vol: 18600, close: 'Dec 25', days: 77, trend: 2, upcoming: true },
+  { cat: 'Politics', title: 'Will the US Fed cut rates in December?', yes: 72, vol: 204300, close: 'Dec 9', days: 61, trend: 7 },
+];
+const CATS = ['All', 'Sports', 'Politics', 'Finance', 'Entertainment', 'Technology', 'Other'];
+const SORTS = ['Trending', 'Volume', 'Closing soon'];
+const fmtVol = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : String(n);
+
+class Component extends DCLogic {
+  state = { theme: this.initTheme(), cat: 'All', sort: 'Trending', search: '' };
+  initTheme() { let t; try { t = localStorage.getItem('pryzm-theme'); } catch (e) {} return t || this.props.theme || 'light'; }
+  componentDidUpdate(pp) { if (pp.theme !== this.props.theme && this.props.theme) this.setTheme(this.props.theme); }
+  setTheme(t) { try { localStorage.setItem('pryzm-theme', t); } catch (e) {} this.setState({ theme: t }); }
+  renderVals() {
+    const s = this.state;
+    const q = s.search.trim().toLowerCase();
+    let list = MK.filter(m => (s.cat === 'All' || m.cat === s.cat) && (!q || m.title.toLowerCase().includes(q)));
+    const key = { Trending: m => -m.trend, Volume: m => -m.vol, 'Closing soon': m => m.days }[s.sort];
+    list = [...list].sort((a, b) => key(a) - key(b));
+    const pill = (label, on, onClick) => ({ label, onClick, bg: on ? 'var(--tx)' : 'var(--sf)', color: on ? 'var(--bg)' : 'var(--tx2)', bd: on ? 'var(--tx)' : 'var(--bd)' });
+    return {
+      theme: s.theme,
+      toggleTheme: () => this.setTheme(s.theme === 'dark' ? 'light' : 'dark'),
+      search: s.search, onSearch: e => this.setState({ search: e.target.value }),
+      chips: CATS.map(c => pill(c, c === s.cat, () => this.setState({ cat: c }))),
+      sorts: SORTS.map(k => {
+        const on = k === s.sort;
+        return { label: k, onClick: () => this.setState({ sort: k }), bg: on ? 'var(--sf)' : 'transparent', color: on ? 'var(--tx)' : 'var(--mu)', sh: on ? '0 1px 2px rgba(0,0,0,.1)' : 'none' };
+      }),
+      markets: list.map(m => ({
+        ...m, isBinary: !m.outcomes, isMulti: !!m.outcomes, no: m.yes != null ? 100 - m.yes : 0, volFmt: fmtVol(m.vol),
+        upcoming: !!m.upcoming, dot: m.upcoming ? 'var(--am)' : 'var(--yes)',
+        rows: (m.outcomes || []).map(([label, pct]) => ({ label, pct })),
+      })),
+      hasMarkets: list.length > 0, empty: list.length === 0,
+      countText: list.length + ' market' + (list.length !== 1 ? 's' : '') + (list.length !== MK.length ? ' (filtered from ' + MK.length + ' total)' : ''),
+      clear: () => this.setState({ cat: 'All', search: '' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

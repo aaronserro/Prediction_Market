@@ -1,13 +1,15 @@
 // src/dashboard/admin/AdminMarketEdit.jsx
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
+import { ErrorNote, Field, Notice, Page, Spinner, StatusPill, btnAmber, btnPrimary, btnSecondary, card, inputCls, tdCls, textareaCls, thCls } from "../../components/ui.jsx";
+import { catLabel, fmt, fmtDate, fmtDateTime } from "../../lib/format.js";
+import { loadPrices } from "../../lib/markets.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_OPTIONS = ["SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
-const STATUS_OPTIONS = ["ACTIVE", "PENDING", "CLOSED", "RESOLVED"];
+const STATUS_OPTIONS = ["UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"];
 
 export default function AdminMarketEdit() {
   const { marketId } = useParams();
@@ -34,7 +36,9 @@ export default function AdminMarketEdit() {
   const [closeTime, setCloseTime] = useState("");
   const [resolutionSource, setResolutionSource] = useState("");
 
-  // Trades data (shell)
+  const [prices, setPrices] = useState({});
+
+  // Trades data
   const [trades, setTrades] = useState([]);
   const [tradesLoading, setTradesLoading] = useState(false);
 
@@ -56,13 +60,14 @@ export default function AdminMarketEdit() {
 
         const data = await res.json();
         setMarket(data);
+        loadPrices(data, { force: true }).then(setPrices).catch(() => {});
 
         // Populate form fields
         setTitle(data.title || "");
         setDescription(data.description || "");
         setCategory(data.category || "SPORTS");
         setStatus(data.status || "ACTIVE");
-        setCloseTime(data.closeTime ? data.closeTime.substring(0, 16) : "");
+        setCloseTime(data.endDate ? data.endDate.substring(0, 16) : "");
         setResolutionSource(data.resolutionSource || "");
       } catch (err) {
         setError(err.message || "Failed to load market");
@@ -88,11 +93,11 @@ export default function AdminMarketEdit() {
 
         if (res.ok) {
           const data = await res.json();
-          setTrades(data);
+          setTrades((Array.isArray(data) ? data : []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         } else {
           setTrades([]);
         }
-      } catch (err) {
+      } catch {
         setTrades([]);
       } finally {
         setTradesLoading(false);
@@ -203,445 +208,221 @@ export default function AdminMarketEdit() {
     }
   };
 
+  const back = (
+    <Link to="/admin/markets-events" className="inline-block text-[13px] text-mu hover:text-tx mb-[18px]">← Markets</Link>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen">
         <AdminNavbar />
-        <div className="flex items-center justify-center py-20">
-          <div className="w-16 h-16 border-4 border-slate-700 border-t-violet-500 rounded-full animate-spin" />
-        </div>
+        <Page><Spinner /></Page>
       </div>
     );
   }
 
   if (error && !market) {
     return (
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen">
         <AdminNavbar />
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          <button
-            onClick={() => navigate("/admin/markets-events")}
-            className="mb-4 text-sm text-slate-400 hover:text-violet-400 transition-colors"
-          >
-            ← Back to Markets
-          </button>
-          <div className="rounded-2xl border border-red-500/50 bg-red-500/10 p-6 text-red-200">
-            {error}
-          </div>
-        </div>
+        <Page>{back}<ErrorNote>{error}</ErrorNote></Page>
       </div>
     );
   }
 
+  const volume = trades.reduce((sum, t) => sum + (Number(t.totalAmount) || 0), 0);
+
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen">
       <AdminNavbar />
-
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate("/admin/markets-events")}
-          className="mb-6 flex items-center gap-2 text-sm text-slate-400 hover:text-violet-400 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Markets
-        </button>
-
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Edit Market</h1>
-          <p className="text-slate-400">
-            Update market information and view trading activity
-          </p>
+      <Page className="!pt-6">
+        {back}
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <h1 className="m-0 mb-3 text-[clamp(24px,3vw,30px)] font-[650] tracking-[-0.035em] leading-[1.2]">{market.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-mu">
+              <span className="px-[9px] py-[3px] rounded-md bg-prs text-prt font-semibold">{catLabel(market.category)}</span>
+              <StatusPill status={market.status} />
+              <span><span className="font-mono text-tx2">{fmt(volume)}</span> PZC vol</span>
+              <span><span className="font-mono text-tx2">{trades.length}</span> trades</span>
+            </div>
+          </div>
+          <Link to={`/markets/${market.id}`} className={btnSecondary}>View public page</Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Edit Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Market Edit Form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
-            >
-              <h2 className="text-xl font-bold text-white mb-4">Market Details</h2>
+        <div className="flex flex-wrap gap-5 items-start">
+          {/* Left column */}
+          <div className="flex-[2_1_620px] min-w-0 flex flex-col gap-4">
+            <form onSubmit={handleSave} className={`${card} p-6 flex flex-col gap-4`}>
+              <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Market details</h2>
 
-              <form onSubmit={handleSave} className="space-y-4">
-                {/* Title */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    required
-                  />
-                </div>
+              <Field label="Title" htmlFor="me-title">
+                <input id="me-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} required />
+              </Field>
+              <Field label="Description" htmlFor="me-desc">
+                <textarea id="me-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className={textareaCls} />
+              </Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Category" htmlFor="me-cat">
+                  <select id="me-cat" value={category} onChange={(e) => setCategory(e.target.value)} className={`${inputCls} cursor-pointer`}>
+                    {CATEGORY_OPTIONS.map((cat) => <option key={cat} value={cat}>{catLabel(cat)}</option>)}
+                  </select>
+                </Field>
+                <Field label="Status" htmlFor="me-status">
+                  <select id="me-status" value={status} onChange={(e) => setStatus(e.target.value)} className={`${inputCls} cursor-pointer`}>
+                    {STATUS_OPTIONS.map((st) => <option key={st} value={st}>{catLabel(st)}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Closes" htmlFor="me-close">
+                <input id="me-close" type="datetime-local" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className={inputCls} />
+              </Field>
+              <Field label="Resolution source" htmlFor="me-src">
+                <input
+                  id="me-src"
+                  type="text"
+                  value={resolutionSource}
+                  onChange={(e) => setResolutionSource(e.target.value)}
+                  placeholder="e.g. ESPN, official results"
+                  className={inputCls}
+                />
+              </Field>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Description
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
-                  />
-                </div>
+              {saveSuccess && <Notice kind="ok">{saveSuccess}</Notice>}
+              {error && <Notice kind="err">{error}</Notice>}
 
-                {/* Category and Status */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Category
-                    </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    >
-                      {CATEGORY_OPTIONS.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={saveLoading} className={btnPrimary}>{saveLoading ? "Saving…" : "Save changes"}</button>
+                <button type="button" onClick={() => navigate("/admin/markets-events")} className={btnSecondary}>Cancel</button>
+              </div>
+            </form>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Status
-                    </label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    >
-                      {STATUS_OPTIONS.map((stat) => (
-                        <option key={stat} value={stat}>
-                          {stat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Close Time */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Close Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={closeTime}
-                    onChange={(e) => setCloseTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Resolution Source */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                    Resolution Source
-                  </label>
-                  <input
-                    type="text"
-                    value={resolutionSource}
-                    onChange={(e) => setResolutionSource(e.target.value)}
-                    placeholder="e.g., ESPN, Official Results, etc."
-                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                  />
-                </div>
-
-                {/* Success/Error Messages */}
-                {saveSuccess && (
-                  <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-300">
-                    {saveSuccess}
-                  </div>
-                )}
-                {error && (
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
-                    {error}
-                  </div>
-                )}
-
-                {/* Submit Button */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="submit"
-                    disabled={saveLoading}
-                    className="px-6 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saveLoading ? "Saving..." : "Save Changes"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/admin/markets-events")}
-                    className="px-6 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-
-            {/* Trades Section (Shell) */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
-            >
-              <h2 className="text-xl font-bold text-white mb-4">Market Trades</h2>
-
+            <section className={`${card} overflow-hidden`}>
+              <div className="px-[22px] py-[18px]">
+                <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">
+                  Trades <span className="font-mono text-[13px] font-medium text-mu ml-1.5">{trades.length}</span>
+                </h2>
+              </div>
               {tradesLoading ? (
-                <div className="py-8 text-center text-slate-400">
-                  Loading trades...
-                </div>
+                <Spinner />
               ) : trades.length === 0 ? (
-                <div className="py-8 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 mb-3">
-                    <svg
-                      className="w-6 h-6 text-slate-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-slate-400 text-sm">
-                    No trades yet or backend endpoint not implemented.
-                  </p>
-                  <p className="text-slate-500 text-xs mt-1">
-                    Endpoint: GET /api/v1/trades/{marketId}
-                  </p>
-                </div>
+                <div className="py-10 text-center text-[14px] text-mu border-t border-bd">No trades yet.</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[640px] border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-800 text-left">
-                        <th className="py-2 px-3 font-semibold text-slate-300">User</th>
-                        <th className="py-2 px-3 font-semibold text-slate-300">Outcome</th>
-                        <th className="py-2 px-3 font-semibold text-slate-300">Type</th>
-                        <th className="py-2 px-3 font-semibold text-slate-300">Quantity</th>
-                        <th className="py-2 px-3 font-semibold text-slate-300">Price</th>
-                        <th className="py-2 px-3 font-semibold text-slate-300">Date</th>
+                      <tr>
+                        <th className={thCls}>User</th>
+                        <th className={thCls}>Outcome</th>
+                        <th className={thCls}>Side</th>
+                        <th className={`${thCls} !text-right`}>Shares</th>
+                        <th className={`${thCls} !text-right`}>Price</th>
+                        <th className={thCls}>Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {trades.map((trade, idx) => (
-                        <tr key={idx} className="border-b border-slate-800/50">
-                          <td className="py-2 px-3 text-slate-100">{trade.user || "—"}</td>
-                          <td className="py-2 px-3 text-slate-300">{trade.outcomeName || "—"}</td>
-                          <td className="py-2 px-3">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                trade.side === "BUY"
-                                  ? "bg-emerald-500/20 text-emerald-300"
-                                  : "bg-red-500/20 text-red-300"
-                              }`}
-                            >
-                              {trade.side || "—"}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-slate-300">{trade.quantity || "—"}</td>
-                          <td className="py-2 px-3 text-slate-300">
-                            {trade.pricePerShare ? `${trade.pricePerShare}¢` : "—"}
-                          </td>
-                          <td className="py-2 px-3 text-slate-400 text-xs">
-                            {trade.createdAt
-                              ? new Date(trade.createdAt).toLocaleString()
-                              : "—"}
-                          </td>
+                        <tr key={trade.id ?? idx} className="hover:bg-sf2 transition-colors">
+                          <td className={`${tdCls} font-[550]`}>{trade.user || "—"}</td>
+                          <td className={`${tdCls} text-tx2`}>{trade.outcomeName || "—"}</td>
+                          <td className={tdCls}>{trade.side ? <StatusPill status={trade.side} /> : "—"}</td>
+                          <td className={`${tdCls} text-right font-mono`}>{trade.quantity ?? "—"}</td>
+                          <td className={`${tdCls} text-right font-mono`}>{trade.pricePerShare ?? "—"}</td>
+                          <td className={`${tdCls} text-mu whitespace-nowrap`}>{trade.createdAt ? fmtDateTime(trade.createdAt) : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-            </motion.div>
+            </section>
           </div>
 
-          {/* Right Column - Market Info */}
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
-            >
-              <h3 className="text-sm font-semibold text-white mb-4">Market Info</h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-slate-500 mb-0.5">Market ID</p>
-                  <p className="text-slate-300 font-mono text-xs break-all">{market.id}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 mb-0.5">Created</p>
-                  <p className="text-slate-300">
-                    {market.createdAt
-                      ? new Date(market.createdAt).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-500 mb-0.5">Outcomes</p>
-                  <p className="text-slate-300">{market.outcomes?.length || 0} configured</p>
-                </div>
+          {/* Right column */}
+          <aside className="flex-[1_1_300px] min-w-0 flex flex-col gap-4">
+            <div className={`${card} p-5 flex flex-col gap-3 text-[13.5px]`}>
+              <div className="text-[14px] font-semibold">Market info</div>
+              <div className="flex justify-between gap-3"><span className="text-mu">Created</span><span>{fmtDate(market.createdAt)}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-mu">Closes</span><span>{fmtDate(market.endDate)}</span></div>
+              <div>
+                <div className="text-mu mb-1">Market ID</div>
+                <div className="font-mono text-xs break-all text-tx2">{market.id}</div>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Outcomes List */}
             {market.outcomes && market.outcomes.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
-              >
-                <h3 className="text-sm font-semibold text-white mb-4">Outcomes</h3>
-                <div className="space-y-2">
-                  {market.outcomes.map((outcome, idx) => (
-                    <div
-                      key={outcome.id || idx}
-                      className="rounded-lg bg-slate-950/50 border border-slate-800 p-3"
-                    >
-                      <p className="text-sm font-medium text-slate-100">
-                        {outcome.label || outcome.description || `Outcome ${idx + 1}`}
-                      </p>
-                      {outcome.currentPrice && (
-                        <p className="text-xs text-slate-400 mt-1">
-                          Current: {(outcome.currentPrice * 100).toFixed(0)}¢
-                        </p>
-                      )}
-                    </div>
-                  ))}
+              <div className={`${card} overflow-hidden`}>
+                <div className="px-[18px] py-3.5 text-[14px] font-semibold border-b border-bd">
+                  Outcomes <span className="font-mono text-[13px] font-medium text-mu ml-1">{market.outcomes.length}</span>
                 </div>
-              </motion.div>
+                {market.outcomes.map((outcome, idx) => (
+                  <div key={outcome.id || idx} className="flex items-center gap-3 px-[18px] py-3 border-b border-bd last:border-b-0 text-[14px]">
+                    <span className="flex-1 min-w-0 truncate font-[550]">{outcome.label || outcome.description || `Outcome ${idx + 1}`}</span>
+                    <span className="font-mono font-semibold">{prices[outcome.id] != null ? `${prices[outcome.id]}%` : "—"}</span>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {/* Resolve Market Section */}
             {market.status !== "RESOLVED" && market.outcomes && market.outcomes.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-2xl border border-amber-800 bg-amber-900/20 p-6"
-              >
-                <h3 className="text-sm font-semibold text-amber-300 mb-4">Resolve Market</h3>
-
-                {resolveSuccess && (
-                  <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-sm text-emerald-300">
-                    {resolveSuccess}
-                  </div>
-                )}
-
-                {resolveError && (
-                  <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-sm text-red-300">
-                    {resolveError}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-amber-200 mb-2">
-                      Select Winning Outcome
-                    </label>
-                    <select
-                      value={selectedWinningOutcome}
-                      onChange={(e) => setSelectedWinningOutcome(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-amber-700 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                      disabled={resolveLoading}
-                    >
-                      <option value="">-- Select Outcome --</option>
-                      {market.outcomes.map((outcome) => (
-                        <option key={outcome.id} value={outcome.id}>
-                          {outcome.label || outcome.description || `Outcome ${outcome.id}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {!showResolveConfirm ? (
-                    <button
-                      onClick={() => setShowResolveConfirm(true)}
-                      disabled={!selectedWinningOutcome || resolveLoading}
-                      className="w-full px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      Resolve Market
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="rounded-lg bg-amber-950/50 border border-amber-700 p-3">
-                        <p className="text-xs text-amber-200 mb-2">
-                          ⚠️ Are you sure? This action cannot be undone.
-                        </p>
-                        <p className="text-xs text-amber-300">
-                          This will resolve the market and distribute payouts to winners.
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleResolveMarket}
-                          disabled={resolveLoading}
-                          className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                        >
-                          {resolveLoading ? "Resolving..." : "Confirm"}
-                        </button>
-                        <button
-                          onClick={() => setShowResolveConfirm(false)}
-                          disabled={resolveLoading}
-                          className="flex-1 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors text-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <p className="text-xs text-amber-400/60">
-                    Resolving will set the market status to RESOLVED and trigger payouts.
-                  </p>
+              <div className="bg-sf border border-bd rounded-2xl shadow-trade p-5 flex flex-col gap-4">
+                <div>
+                  <div className="text-[14px] font-semibold">Resolve market</div>
+                  <p className="m-0 mt-1 text-[13px] text-mu">Sets the status to Resolved and pays 100 PZC per winning share.</p>
                 </div>
-              </motion.div>
+
+                {resolveSuccess && <Notice kind="ok">{resolveSuccess}</Notice>}
+                {resolveError && <Notice kind="err">{resolveError}</Notice>}
+
+                <Field label="Winning outcome" htmlFor="me-winner">
+                  <select
+                    id="me-winner"
+                    value={selectedWinningOutcome}
+                    onChange={(e) => setSelectedWinningOutcome(e.target.value)}
+                    className={`${inputCls} cursor-pointer`}
+                    disabled={resolveLoading}
+                  >
+                    <option value="">Select an outcome</option>
+                    {market.outcomes.map((outcome) => (
+                      <option key={outcome.id} value={outcome.id}>
+                        {outcome.label || outcome.description || `Outcome ${outcome.id}`}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {!showResolveConfirm ? (
+                  <button
+                    onClick={() => setShowResolveConfirm(true)}
+                    disabled={!selectedWinningOutcome || resolveLoading}
+                    className={`${btnAmber} w-full !h-[46px] !rounded-[11px]`}
+                  >
+                    Resolve market
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Notice kind="warn">
+                      <span className="font-semibold">This can’t be undone.</span> Payouts go to holders of the winning outcome.
+                    </Notice>
+                    <div className="grid grid-cols-[1fr_1.4fr] gap-2">
+                      <button onClick={() => setShowResolveConfirm(false)} disabled={resolveLoading} className={`${btnSecondary} !h-[46px]`}>Cancel</button>
+                      <button onClick={handleResolveMarket} disabled={resolveLoading} className={`${btnPrimary} !h-[46px]`}>
+                        {resolveLoading ? "Resolving…" : "Confirm resolve"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {market.status === "RESOLVED" && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="rounded-2xl border border-emerald-800 bg-emerald-900/20 p-6"
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <div>
-                    <h3 className="text-sm font-semibold text-emerald-300">Market Resolved</h3>
-                    <p className="text-xs text-emerald-400/80 mt-0.5">
-                      This market has been resolved and payouts have been distributed.
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
+              <Notice kind="ok">
+                <span className="font-semibold">Market resolved.</span> Payouts have been distributed.
+              </Notice>
             )}
-          </div>
+          </aside>
         </div>
-      </div>
+      </Page>
     </div>
   );
 }

@@ -1,13 +1,18 @@
 // src/dashboard/admin/MarketsEvents.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import MarketCreation from "./MarketCreation";
+import { Chips, ErrorNote, Page, PageHeader, Segmented, Spinner, StatusPill, Tabs, card, tdCls, thCls } from "../../components/ui.jsx";
+import { catLabel, fmtShortDate } from "../../lib/format.js";
+
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_OPTIONS = ["ALL", "SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
-const STATUS_OPTIONS = ["ALL", "ACTIVE", "PENDING", "CLOSED", "RESOLVED"];
+const STATUS_OPTIONS = ["ALL", "UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"];
+const CATEGORY_CHIPS = CATEGORY_OPTIONS.map((c) => ({ value: c, label: c === "ALL" ? "All" : catLabel(c) }));
+const STATUS_LABELS = STATUS_OPTIONS.map((s) => (s === "ALL" ? "All" : catLabel(s)));
 
 export default function MarketsEvents() {
   const navigate = useNavigate();
@@ -88,211 +93,110 @@ export default function MarketsEvents() {
     setStatusFilter("ALL");
   };
 
+  const statusLabel = statusFilter === "ALL" ? "All" : catLabel(statusFilter);
+  const filtersOn = titleFilter || categoryFilter !== "ALL" || statusFilter !== "ALL";
+
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen">
       <AdminNavbar />
+      <Page className="flex flex-col gap-5">
+        <PageHeader title="Markets" subtitle="Create new prediction markets and manage existing ones." />
 
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        {/* Tab Navigation */}
-        <div className="mb-6 flex items-center gap-2 border-b border-slate-800">
-          <button
-            onClick={() => setActiveTab("create")}
-            className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-              activeTab === "create"
-                ? "text-violet-400"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Create Market
-            {activeTab === "create" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-sky-400" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("manage")}
-            className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-              activeTab === "manage"
-                ? "text-violet-400"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Manage Markets
-            {activeTab === "manage" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-sky-400" />
-            )}
-          </button>
-        </div>
+        <div className={`${card} overflow-hidden`}>
+          <Tabs
+            value={activeTab}
+            onChange={setActiveTab}
+            tabs={[
+              { value: "create", label: "Create market" },
+              { value: "manage", label: "Manage markets", count: activeTab === "manage" && !loading ? markets.length : "" },
+            ]}
+          />
 
-        {/* Tab Content */}
-        {activeTab === "create" && <MarketCreation onMarketCreated={handleMarketCreated} />}
-        {activeTab === "manage" && (
-          <div className="w-full text-slate-50">
-            {/* Header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-50 mb-1">
-                Manage Markets
-              </h2>
-              <p className="text-sm text-slate-400">
-                View, filter, and manage all prediction markets
-              </p>
+          {activeTab === "create" && (
+            <div className="p-6">
+              <MarketCreation onMarketCreated={handleMarketCreated} />
             </div>
+          )}
 
-            {/* Filters */}
-            <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Title Filter */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-2">
-                    Search by Title
+          {activeTab === "manage" && (
+            <>
+              <div className="flex flex-col gap-3 px-[22px] py-[18px]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <label className="flex items-center gap-2.5 h-[42px] w-[min(100%,340px)] px-3.5 rounded-[11px] bg-sf border border-bd2 text-mu">
+                    <span className="block w-3 h-3 rounded-full border-[1.6px] border-current flex-none" />
+                    <input
+                      type="text"
+                      placeholder="Search by title…"
+                      className="flex-1 min-w-0 border-0 outline-none bg-transparent text-tx text-[14.5px] placeholder:text-mu"
+                      value={titleFilter}
+                      onChange={(e) => setTitleFilter(e.target.value)}
+                    />
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Type to filter..."
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    value={titleFilter}
-                    onChange={(e) => setTitleFilter(e.target.value)}
+                  <Segmented
+                    options={STATUS_LABELS}
+                    value={statusLabel}
+                    onChange={(l) => setStatusFilter(STATUS_OPTIONS[STATUS_LABELS.indexOf(l)])}
                   />
                 </div>
-
-                {/* Category Filter */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-2">
-                    Filter by Category
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                  >
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat === "ALL" ? "All Categories" : cat.charAt(0) + cat.slice(1).toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Status Filter */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-2">
-                    Filter by Status
-                  </label>
-                  <select
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>
-                        {status === "ALL" ? "All Statuses" : status.charAt(0) + status.slice(1).toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <Chips options={CATEGORY_CHIPS} value={categoryFilter} onChange={setCategoryFilter} small />
               </div>
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                {error}
-              </div>
-            )}
+              {error && <div className="px-[22px] pb-4"><ErrorNote>{error}</ErrorNote></div>}
 
-            {/* Markets Table */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl overflow-hidden">
               {loading ? (
-                <div className="p-8 text-center text-slate-400">
-                  Loading markets...
-                </div>
+                <Spinner />
               ) : filteredMarkets.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
-                    <svg
-                      className="w-8 h-8 text-slate-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-200 mb-2">
-                    No Markets Found
-                  </h3>
-                  <p className="text-slate-400 max-w-md mx-auto">
-                    {titleFilter || categoryFilter !== "ALL" || statusFilter !== "ALL"
+                <div className="mx-[22px] mb-[22px] py-14 px-6 text-center border border-dashed border-bd2 rounded-2xl">
+                  <div className="text-[16px] font-[620] mb-1.5">No markets found</div>
+                  <p className="m-0 mx-auto max-w-md text-[14px] text-mu">
+                    {filtersOn
                       ? "Try adjusting your filters to see more results."
-                      : "No markets have been created yet. Create your first market using the Create Market tab."}
+                      : "No markets have been created yet. Create your first market using the Create market tab."}
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-800 bg-slate-950/50">
-                        <th className="text-left py-3 px-4 font-semibold text-slate-300">Title</th>
-                        <th className="text-left py-3 px-4 font-semibold text-slate-300">Description</th>
-                        <th className="text-left py-3 px-4 font-semibold text-slate-300">Category</th>
-                        <th className="text-left py-3 px-4 font-semibold text-slate-300">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredMarkets.map((market) => (
-                        <tr
-                          key={market.id}
-                          onClick={() => navigate(`/admin/markets/${market.id}`)}
-                          className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors cursor-pointer"
-                        >
-                          <td className="py-3 px-4 text-slate-100 font-medium">
-                            {market.title}
-                          </td>
-                          <td className="py-3 px-4 text-slate-400 max-w-xs truncate">
-                            {market.description || "—"}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                              {market.category}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${
-                                market.status === "ACTIVE"
-                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                                  : market.status === "PENDING"
-                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                  : market.status === "CLOSED"
-                                  ? "bg-slate-500/20 text-slate-300 border border-slate-500/30"
-                                  : "bg-violet-500/20 text-violet-300 border border-violet-500/30"
-                              }`}
-                            >
-                              {market.status}
-                            </span>
-                          </td>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px] border-collapse">
+                      <thead>
+                        <tr>
+                          <th className={thCls}>Title</th>
+                          <th className={thCls}>Category</th>
+                          <th className={thCls}>Status</th>
+                          <th className={thCls}>Outcomes</th>
+                          <th className={thCls}>Closes</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredMarkets.map((market) => (
+                          <tr
+                            key={market.id}
+                            onClick={() => navigate(`/admin/markets/${market.id}`)}
+                            className="hover:bg-sf2 transition-colors cursor-pointer"
+                          >
+                            <td className={`${tdCls} max-w-[420px]`}>
+                              <div className="font-[550] truncate">{market.title}</div>
+                              {market.description && <div className="text-xs text-mu mt-0.5 truncate">{market.description}</div>}
+                            </td>
+                            <td className={`${tdCls} text-tx2`}>{catLabel(market.category)}</td>
+                            <td className={tdCls}><StatusPill status={market.status} /></td>
+                            <td className={`${tdCls} font-mono`}>{market.outcomes?.length ?? 0}</td>
+                            <td className={`${tdCls} text-mu whitespace-nowrap`}>{fmtShortDate(market.endDate)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="m-0 py-4 text-center text-[13px] text-mu">
+                    Showing {filteredMarkets.length} market{filteredMarkets.length !== 1 ? "s" : ""}
+                    {markets.length !== filteredMarkets.length && ` (filtered from ${markets.length} total)`}
+                  </p>
+                </>
               )}
-            </div>
-
-            {/* Results Count */}
-            {!loading && filteredMarkets.length > 0 && (
-              <div className="mt-4 text-sm text-slate-400 text-center">
-                Showing {filteredMarkets.length} market{filteredMarkets.length !== 1 ? "s" : ""}
-                {markets.length !== filteredMarkets.length && ` (filtered from ${markets.length} total)`}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            </>
+          )}
+        </div>
+      </Page>
     </div>
   );
 }

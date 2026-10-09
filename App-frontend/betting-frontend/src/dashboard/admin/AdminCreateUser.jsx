@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AdminNavbar from "./AdminNavbar.jsx";
+import { Field, Modal, Notice, Page, PageHeader, Spinner, StatusPill, btnDanger, btnPrimary, btnSecondary, btnSmall, card, inputCls, tdCls, thCls } from "../../components/ui.jsx";
+import { fmt, fmtDate, fmtDateTime } from "../../lib/format.js";
+
+const roleOf = (u) => u?.role ?? (u?.roles?.includes("ROLE_ADMIN") || u?.roles?.includes("ADMIN") ? "ADMIN" : "USER");
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 const ROLES = ["USER", "ADMIN"];
@@ -147,196 +151,106 @@ export default function AdminCreateUser() {
     );
   });
 
+  const closeView = () => { setViewUser(null); setViewError(""); };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen">
       <AdminNavbar />
+      <Page className="flex flex-col gap-5">
+        <PageHeader title="Users" subtitle="Provision new accounts and manage existing ones." />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+        {/* ── Create user ── */}
+        <section className={`${card} p-6`}>
+          <h2 className="m-0 mb-1 text-[17px] font-[620] tracking-[-0.02em]">Create user</h2>
+          <p className="m-0 mb-5 text-[13.5px] text-mu">Manually provision a new account. Users access the platform by invitation only.</p>
 
-        {/* ── Section 1: Create User ── */}
-        <section>
-          <div className="mb-6 pb-5 border-b border-slate-800">
-            <h1 className="text-xl font-semibold text-slate-100">Create User</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Manually provision a new account. Users access the platform by invitation only.
-            </p>
-          </div>
-
-          <form onSubmit={handleCreate} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
-                <input
-                  name="username"
-                  type="text"
-                  value={form.username}
-                  onChange={handleChange}
-                  placeholder="e.g. john_doe"
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
-                <input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="e.g. john@example.com"
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-                />
-              </div>
+          <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Username" htmlFor="cu-username">
+                <input id="cu-username" name="username" type="text" value={form.username} onChange={handleChange} placeholder="e.g. john_doe" className={inputCls} />
+              </Field>
+              <Field label="Email" htmlFor="cu-email">
+                <input id="cu-email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g. john@example.com" className={inputCls} />
+              </Field>
+              <Field label="Password" htmlFor="cu-password">
+                <input id="cu-password" name="password" type="password" value={form.password} onChange={handleChange} placeholder="Min. 6 characters" className={inputCls} />
+              </Field>
+              <Field label="Confirm password" htmlFor="cu-confirm">
+                <input id="cu-confirm" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Repeat password" className={inputCls} />
+              </Field>
+            </div>
+            <div className="sm:max-w-[calc(50%-8px)]">
+              <Field label="Role" htmlFor="cu-role">
+                <select id="cu-role" name="role" value={form.role} onChange={handleChange} className={`${inputCls} cursor-pointer`}>
+                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </Field>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
-                <input
-                  name="password"
-                  type="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Min. 6 characters"
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Confirm Password</label>
-                <input
-                  name="confirmPassword"
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Repeat password"
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-                />
-              </div>
-            </div>
+            {createError && <Notice kind="err">{createError}</Notice>}
+            {createSuccess && <Notice kind="ok">{createSuccess}</Notice>}
 
-            <div className="max-w-xs">
-              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Role</label>
-              <select
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-md text-sm text-white focus:outline-none focus:border-violet-500/60 transition-colors"
-              >
-                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-
-            {createError && (
-              <div className="p-3 rounded-md bg-red-500/[0.08] border border-red-500/20">
-                <p className="text-sm text-red-400">{createError}</p>
-              </div>
-            )}
-            {createSuccess && (
-              <div className="p-3 rounded-md bg-emerald-500/[0.08] border border-emerald-500/20">
-                <p className="text-sm text-emerald-400">{createSuccess}</p>
-              </div>
-            )}
-
-            <div className="pt-1 flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={creating}
-                className="px-5 py-2.5 rounded-md bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {creating ? "Creating…" : "Create User"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setForm(EMPTY_FORM); setCreateError(""); setCreateSuccess(""); }}
-                className="px-5 py-2.5 rounded-md border border-slate-700 text-slate-400 text-sm font-medium hover:text-white hover:border-slate-500 transition-colors"
-              >
+            <div className="flex items-center gap-2 pt-1">
+              <button type="submit" disabled={creating} className={btnPrimary}>{creating ? "Creating…" : "Create user"}</button>
+              <button type="button" onClick={() => { setForm(EMPTY_FORM); setCreateError(""); setCreateSuccess(""); }} className={btnSecondary}>
                 Clear
               </button>
             </div>
           </form>
         </section>
 
-        {/* ── Section 2: All Users ── */}
-        <section>
-          <div className="mb-6 pb-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* ── All users ── */}
+        <section className={`${card} overflow-hidden`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-[22px] py-[18px]">
             <div>
-              <h2 className="text-xl font-semibold text-slate-100">All Users</h2>
-              <p className="text-sm text-slate-500 mt-1">
-                {usersLoading ? "Loading…" : `${users.length} user${users.length !== 1 ? "s" : ""} registered`}
-              </p>
+              <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">
+                All users <span className="font-mono text-[13px] font-medium text-mu ml-1.5">{usersLoading ? "" : users.length}</span>
+              </h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Search by name, email, role…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-64 px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+                className={`${inputCls} !h-[38px] !w-64 !text-[14px]`}
               />
-              <button
-                onClick={fetchUsers}
-                className="px-3 py-2 rounded-md border border-slate-700 text-slate-400 text-sm hover:text-white hover:border-slate-500 transition-colors"
-                title="Refresh"
-              >
-                ↻
-              </button>
+              <button onClick={fetchUsers} title="Refresh" className={`${btnSecondary} !h-[38px] !w-[38px] !px-0`}>↻</button>
             </div>
           </div>
 
-          {usersError && (
-            <div className="p-3 rounded-md bg-red-500/[0.08] border border-red-500/20 mb-4">
-              <p className="text-sm text-red-400">{usersError}</p>
-            </div>
-          )}
+          {usersError && <div className="px-[22px] pb-4"><Notice kind="err">{usersError}</Notice></div>}
 
           {usersLoading ? (
-            <div className="py-16 flex justify-center">
-              <div className="w-6 h-6 border-2 border-slate-700 border-t-violet-500 rounded-full animate-spin" />
-            </div>
+            <Spinner />
           ) : filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm text-slate-500">{search ? "No users match your search." : "No users found."}</p>
-            </div>
+            <div className="py-12 text-center text-[14px] text-mu border-t border-bd">{search ? "No users match your search." : "No users found."}</div>
           ) : (
-            <div className="rounded-lg border border-slate-800 overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/60">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">Joined</th>
-                    <th className="px-4 py-3" />
+                  <tr>
+                    <th className={thCls}>Username</th>
+                    <th className={`${thCls} hidden sm:table-cell`}>Email</th>
+                    <th className={thCls}>Role</th>
+                    <th className={`${thCls} hidden md:table-cell`}>Joined</th>
+                    <th className={thCls} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody>
                   {filtered.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="px-4 py-3 text-slate-200 font-medium">{u.username}</td>
-                      <td className="px-4 py-3 text-slate-400 hidden sm:table-cell">{u.email || "—"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                          u.role === "ADMIN" || u.roles?.includes("ROLE_ADMIN") || u.roles?.includes("ADMIN")
-                            ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
-                            : "bg-slate-700/40 text-slate-400 border-slate-700"
-                        }`}>
-                          {u.role ?? (u.roles?.includes("ROLE_ADMIN") ? "ADMIN" : "USER")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleView(u.id)}
-                            className="px-3 py-1.5 rounded text-xs font-medium border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-                          >
-                            View
-                          </button>
+                    <tr key={u.id} className="hover:bg-sf2 transition-colors">
+                      <td className={`${tdCls} font-[550]`}>{u.username}</td>
+                      <td className={`${tdCls} text-tx2 hidden sm:table-cell`}>{u.email || "—"}</td>
+                      <td className={tdCls}><StatusPill status={roleOf(u)} /></td>
+                      <td className={`${tdCls} text-mu hidden md:table-cell`}>{u.createdAt ? fmtDate(u.createdAt) : "—"}</td>
+                      <td className={`${tdCls} text-right`}>
+                        <div className="inline-flex gap-2">
+                          <button onClick={() => handleView(u.id)} className={`${btnSecondary} ${btnSmall}`}>View</button>
                           <button
                             onClick={() => setConfirmDelete(u)}
                             disabled={deletingId === u.id}
-                            className="px-3 py-1.5 rounded text-xs font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 disabled:opacity-40 transition-colors"
+                            className="h-8 px-3 rounded-lg border-0 bg-nos text-no text-[13px] font-semibold cursor-pointer disabled:opacity-50"
                           >
                             {deletingId === u.id ? "Deleting…" : "Delete"}
                           </button>
@@ -349,84 +263,54 @@ export default function AdminCreateUser() {
             </div>
           )}
         </section>
-      </div>
+      </Page>
 
       {/* ── View user modal ── */}
       {(viewLoading || viewUser !== null) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold text-white">User Details</h3>
-              <button
-                onClick={() => { setViewUser(null); setViewError(""); }}
-                className="text-slate-500 hover:text-white transition-colors text-xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-
-            {viewLoading ? (
-              <div className="py-8 flex justify-center">
-                <div className="w-6 h-6 border-2 border-slate-700 border-t-violet-500 rounded-full animate-spin" />
-              </div>
-            ) : viewError ? (
-              <p className="text-sm text-red-400 py-4">{viewError}</p>
-            ) : viewUser && (
-              <div className="space-y-3 text-sm">
-                {[
-                  ["ID",       viewUser.id],
-                  ["Username", viewUser.username],
-                  ["Email",    viewUser.email],
-                  ["Role",     viewUser.role ?? (viewUser.roles?.includes("ROLE_ADMIN") ? "ADMIN" : "USER")],
-                  ["Joined",   viewUser.createdAt ? new Date(viewUser.createdAt).toLocaleString() : "—"],
-                  ["Balance",  viewUser.balanceCents != null ? `$${(viewUser.balanceCents / 100).toFixed(2)}` : "—"],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between gap-4 border-b border-slate-800 pb-2 last:border-0">
-                    <span className="text-slate-500 flex-shrink-0">{label}</span>
-                    <span className="text-slate-200 text-right break-all">{value ?? "—"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => { setViewUser(null); setViewError(""); }}
-                className="px-4 py-2 rounded-md border border-slate-700 text-slate-400 text-sm hover:text-white hover:border-slate-500 transition-colors"
-              >
-                Close
-              </button>
-            </div>
+        <Modal onClose={closeView}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="m-0 text-[19px] font-[650] tracking-[-0.025em]">User details</h3>
+            <button onClick={closeView} aria-label="Close" className="border-0 bg-transparent text-mu hover:text-tx text-xl leading-none cursor-pointer">×</button>
           </div>
-        </div>
+          {viewLoading ? (
+            <Spinner />
+          ) : viewError ? (
+            <Notice kind="err">{viewError}</Notice>
+          ) : viewUser && (
+            <div className="flex flex-col gap-2.5 px-4 py-3.5 rounded-xl bg-sf2 text-[14px]">
+              {[
+                ["ID", viewUser.id, true],
+                ["Username", viewUser.username],
+                ["Email", viewUser.email],
+                ["Role", roleOf(viewUser)],
+                ["Joined", viewUser.createdAt ? fmtDateTime(viewUser.createdAt) : "—"],
+                ["Balance", viewUser.balanceCents != null ? `${fmt(viewUser.balanceCents)} PZC` : "—", true],
+              ].map(([label, value, mono]) => (
+                <div key={label} className="flex justify-between gap-4">
+                  <span className="text-mu flex-none">{label}</span>
+                  <span className={`text-right break-all ${mono ? "font-mono" : "font-[550]"}`}>{value ?? "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-5 flex justify-end">
+            <button onClick={closeView} className={btnSecondary}>Close</button>
+          </div>
+        </Modal>
       )}
 
       {/* ── Delete confirmation modal ── */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-base font-semibold text-white mb-2">Delete user?</h3>
-            <p className="text-sm text-slate-400 mb-6">
-              This will permanently delete{" "}
-              <span className="text-white font-medium">{confirmDelete.username}</span>.
-              This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="px-4 py-2 rounded-md border border-slate-700 text-slate-400 text-sm hover:text-white hover:border-slate-500 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
+        <Modal onClose={() => setConfirmDelete(null)} maxWidth={400}>
+          <h3 className="m-0 mb-2 text-[19px] font-[650] tracking-[-0.025em]">Delete user?</h3>
+          <p className="m-0 mb-5 text-[14px] leading-[1.6] text-tx2">
+            This will permanently delete <span className="text-tx font-semibold">{confirmDelete.username}</span>. This action cannot be undone.
+          </p>
+          <div className="grid grid-cols-[1fr_1.4fr] gap-2">
+            <button onClick={() => setConfirmDelete(null)} className={`${btnSecondary} !h-[46px]`}>Cancel</button>
+            <button onClick={handleDeleteConfirm} className={`${btnDanger} !h-[46px]`}>Delete</button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

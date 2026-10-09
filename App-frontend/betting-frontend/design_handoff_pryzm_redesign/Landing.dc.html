@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Geist+Mono:wght@400..700&amp;display=swap" rel="stylesheet"></link>
+<style>
+body{margin:0;background:#f6f5f9}
+*{box-sizing:border-box}
+a{color:var(--pr);text-decoration:none}
+a:hover{color:var(--prh)}
+button{font-family:inherit}
+[data-theme]{font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);min-height:100vh}
+[data-theme="light"]{--bg:#f6f5f9;--sf:#ffffff;--sf2:#f1f0f5;--bd:#e6e4ec;--bd2:#d4d1de;--tx:#15121d;--tx2:#45414f;--mu:#6f6b7d;--pr:#6d3ae6;--prh:#5b2bd0;--prs:#efe9fd;--prt:#5b2bd0;--am:#f5a50b;--ams:#fdf3dc;--amt:#8f5400;--yes:#0f8a52;--yess:#e3f4ea;--no:#d43a47;--nos:#fbe9ea;--sh:0 1px 2px rgba(20,16,40,.05)}
+[data-theme="dark"]{--bg:#0b0a10;--sf:#13121a;--sf2:#1c1a25;--bd:#26232f;--bd2:#36323f;--tx:#f3f2f7;--tx2:#c6c3d1;--mu:#918da1;--pr:#8b5cf6;--prh:#a07cf8;--prs:#231b3b;--prt:#bba6fb;--am:#fbbf24;--ams:#2a2112;--amt:#fbbf24;--yes:#34c47e;--yess:#11281c;--no:#f2646f;--nos:#2d1519;--sh:none}
+@keyframes pzpulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-screen-label="Landing">
+  <dc-import name="Nav" active="" logged-in="{{ false }}" on-toggle-theme="{{ toggleTheme }}" hint-size="100%,60px"></dc-import>
+
+  <section style="max-width:1240px;margin:0 auto;padding:72px 24px 64px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:56px;align-items:center">
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 10px;border-radius:999px;background:var(--sf);border:1px solid var(--bd);font-size:13px;color:var(--tx2);margin-bottom:28px">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--yes);animation:pzpulse 1.8s ease-in-out infinite"></span>
+        Prediction markets · Free to play with PZC
+      </div>
+      <h1 style="margin:0 0 22px;font-size:clamp(44px,6vw,68px);line-height:1.02;font-weight:650;letter-spacing:-0.045em;text-wrap:balance"><span style="display:block">Trade on what</span><span style="display:block;color:var(--pr)">you know.</span></h1>
+      <p style="margin:0 0 34px;font-size:18px;line-height:1.6;color:var(--tx2);max-width:520px;text-wrap:pretty">Pryzm is a prediction market platform where your insight has real value. Turn your edge on world events into measurable outcomes.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <a href="Dashboard.dc.html" style="height:48px;padding:0 22px;border-radius:11px;background:var(--pr);color:#fff;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px" style-hover="background:var(--prh);color:#fff">Start Trading Free <span>→</span></a>
+        <a href="Dashboard.dc.html" style="height:48px;padding:0 20px;border-radius:11px;background:var(--sf);border:1px solid var(--bd);color:var(--tx);font-size:15px;font-weight:500;display:flex;align-items:center" style-hover="border-color:var(--bd2);color:var(--tx)">Sign in to your account</a>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:36px;font-size:13px;color:var(--mu)">
+        <span style="display:flex;align-items:center;gap:7px"><span style="width:12px;height:12px;border-radius:50%;background:var(--am);box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)"></span>Virtual currency only, no real money</span>
+        <span style="display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;background:var(--pr);transform:rotate(45deg)"></span>Ranked from Bronze to Gold</span>
+      </div>
+    </div>
+
+    <a href="Market.dc.html" style="display:block;background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:22px;color:var(--tx);box-shadow:0 1px 2px rgba(20,16,40,.04),0 12px 40px -12px rgba(60,30,140,.18)" style-hover="color:var(--tx);border-color:var(--bd2)">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mu);margin-bottom:10px">
+        <span style="font-weight:600;color:var(--amt);background:var(--ams);padding:3px 8px;border-radius:6px">Featured</span>
+        <span>Finance</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--yes);font-weight:600"><span style="width:6px;height:6px;border-radius:50%;background:var(--yes);animation:pzpulse 1.8s ease-in-out infinite"></span>LIVE</span>
+      </div>
+      <div style="font-size:21px;font-weight:620;letter-spacing:-0.02em;line-height:1.3;margin-bottom:18px;text-wrap:pretty">Will the Bank of Canada cut rates in December?</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+        <span style="font:600 40px 'Geist Mono',monospace;letter-spacing:-0.05em;color:var(--pr)">64%</span>
+        <span style="font-size:14px;color:var(--mu)">chance</span>
+        <span style="font:500 13px 'Geist Mono',monospace;color:var(--yes)">▲ 5.2</span>
+      </div>
+      <div style="position:relative;height:150px;margin:6px 0 18px">
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between">
+          <div style="border-top:1px dashed var(--bd)"></div><div style="border-top:1px dashed var(--bd)"></div><div style="border-top:1px dashed var(--bd)"></div>
+        </div>
+        <svg viewBox="0 0 600 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+          <path d="{{ heroArea }}" style="fill:var(--prs);opacity:.7"></path>
+          <path d="{{ heroPath }}" style="fill:none;stroke:var(--pr);stroke-width:2.25px;vector-effect:non-scaling-stroke;stroke-linejoin:round"></path>
+        </svg>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="height:46px;border-radius:11px;background:var(--yess);color:var(--yes);font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px">Buy Yes <span style="font-family:'Geist Mono',monospace">64</span></div>
+        <div style="height:46px;border-radius:11px;background:var(--nos);color:var(--no);font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px">Buy No <span style="font-family:'Geist Mono',monospace">36</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--mu)">
+        <span><span style="font-family:'Geist Mono',monospace;color:var(--tx2)">182K</span> PZC vol</span>
+        <span>Closes Dec 10</span>
+      </div>
+    </a>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:8px 24px 72px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:24px;font-weight:650;letter-spacing:-0.03em">Trending markets</h2>
+      <a href="Markets.dc.html" style="font-size:14px;font-weight:500">View all markets →</a>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px">
+      <sc-for list="{{ chips }}" as="c" hint-placeholder-count="8">
+        <button onClick="{{ c.onClick }}" style="flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.color }};font-size:13.5px;font-weight:500;cursor:pointer">{{ c.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px">
+      <sc-for list="{{ markets }}" as="m" hint-placeholder-count="6">
+        <a href="Market.dc.html" style="display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--sf);border:1px solid var(--bd);border-radius:14px;color:var(--tx);box-shadow:var(--sh)" style-hover="border-color:var(--bd2);color:var(--tx)">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:var(--mu);font-weight:500;margin-bottom:5px">{{ m.cat }}</div>
+              <div style="font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-0.01em;text-wrap:pretty">{{ m.title }}</div>
+            </div>
+            <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+              <div style="text-align:right;flex:none">
+                <div style="font:600 22px 'Geist Mono',monospace;letter-spacing:-0.04em">{{ m.yes }}%</div>
+                <div style="font-size:11px;color:var(--mu)">chance</div>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ m.isBinary }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto">
+              <div style="height:38px;border-radius:9px;background:var(--yess);color:var(--yes);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">Yes <span style="font-family:'Geist Mono',monospace">{{ m.yes }}</span></div>
+              <div style="height:38px;border-radius:9px;background:var(--nos);color:var(--no);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px">No <span style="font-family:'Geist Mono',monospace">{{ m.no }}</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ m.isMulti }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:7px;margin-top:auto">
+              <sc-for list="{{ m.rows }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;font-size:13.5px">
+                  <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tx2)">{{ o.label }}</span>
+                  <span style="font:600 13.5px 'Geist Mono',monospace;width:38px;text-align:right">{{ o.pct }}%</span>
+                  <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--yess);color:var(--yes);font-size:12px;font-weight:600;display:flex;align-items:center">Yes</span>
+                  <span style="height:26px;padding:0 10px;border-radius:7px;background:var(--nos);color:var(--no);font-size:12px;font-weight:600;display:flex;align-items:center">No</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--bd);font-size:12px;color:var(--mu)">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--yes)"></span>
+            <span><span style="font-family:'Geist Mono',monospace;color:var(--tx2)">{{ m.vol }}</span> PZC vol</span>
+            <span style="margin-left:auto">Closes {{ m.close }}</span>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="border-top:1px solid var(--bd);background:var(--sf)">
+    <div style="max-width:1240px;margin:0 auto;padding:72px 24px">
+      <h2 style="margin:0 0 36px;font-size:28px;font-weight:650;letter-spacing:-0.03em">Get up and running in minutes</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:36px">
+        <div style="display:flex;flex-direction:column;gap:10px;padding-top:18px;border-top:2px solid var(--pr)">
+          <span style="font:500 13px 'Geist Mono',monospace;color:var(--amt)">01</span>
+          <h3 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.01em">Create an account</h3>
+          <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--tx2)">Sign up in seconds and get access to all markets on the platform. No credit card required.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding-top:18px;border-top:2px solid var(--bd2)">
+          <span style="font:500 13px 'Geist Mono',monospace;color:var(--amt)">02</span>
+          <h3 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.01em">Browse markets</h3>
+          <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--tx2)">Explore open markets across politics, sports, finance, and more. Filter by category or trending.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding-top:18px;border-top:2px solid var(--bd2)">
+          <span style="font:500 13px 'Geist Mono',monospace;color:var(--amt)">03</span>
+          <h3 style="margin:0;font-size:17px;font-weight:600;letter-spacing:-0.01em">Trade and track</h3>
+          <p style="margin:0;font-size:14.5px;line-height:1.6;color:var(--tx2)">Place your positions and monitor your portfolio in real time. Watch your insight pay off.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:72px 24px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:40px;align-items:center">
+      <div>
+        <h2 style="margin:0 0 14px;font-size:28px;font-weight:650;letter-spacing:-0.03em;text-wrap:balance">Earn your rank with accurate predictions.</h2>
+        <p style="margin:0;font-size:15.5px;line-height:1.65;color:var(--tx2);max-width:460px">Every resolved market counts toward your reputation. Start at Bronze 3 and climb to Gold 1 as your calls prove out.</p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end;justify-content:space-between;padding:22px;border-radius:16px;background:var(--sf);border:1px solid var(--bd)">
+        <sc-for list="{{ ranks }}" as="r" hint-placeholder-count="9">
+          <img src="{{ r.src }}" alt="{{ r.label }}" title="{{ r.label }}" style="width:{{ r.w }};flex:0 1 auto;min-width:0;display:block"></img>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:0 24px 80px">
+    <div style="border-radius:22px;background:var(--pr);color:#fff;padding:clamp(36px,6vw,64px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:28px">
+      <div>
+        <h2 style="margin:0 0 10px;font-size:clamp(28px,4vw,40px);font-weight:650;letter-spacing:-0.035em;line-height:1.1"><span style="display:block">Your edge is worth something.</span><span style="display:block">Start proving it.</span></h2>
+        <p style="margin:0;font-size:15.5px;color:#fff">Join thousands of traders making their predictions count.</p>
+      </div>
+      <a href="Dashboard.dc.html" style="height:50px;padding:0 24px;border-radius:12px;background:#fbbf24;color:#1d1300;font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px" style-hover="background:#fcd34d;color:#1d1300">Create Free Account →</a>
+    </div>
+  </section>
+
+  <footer style="border-top:1px solid var(--bd)">
+    <div style="max-width:1240px;margin:0 auto;padding:48px 24px 36px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:40px">
+      <div style="max-width:260px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+          <img src="assets/pryzm-icon.svg" alt="" style="width:24px;height:24px"></img>
+          <span style="font-size:16px;font-weight:650;letter-spacing:-0.02em">Pryzm</span>
+        </div>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:var(--mu)">The future of prediction markets. Trade on what you know.</p>
+      </div>
+      <div style="display:flex;gap:56px;flex-wrap:wrap;font-size:14px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:600;color:var(--mu)">Product</span>
+          <a href="Markets.dc.html" style="color:var(--tx2)">Markets</a>
+          <a href="Dashboard.dc.html" style="color:var(--tx2)">Dashboard</a>
+          <a href="Portfolio.dc.html" style="color:var(--tx2)">Portfolio</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:600;color:var(--mu)">Company</span>
+          <a href="mailto:pryzmcompany@gmail.com" style="color:var(--tx2)">Contact</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="font-size:12px;font-weight:600;color:var(--mu)">Legal</span>
+          <a href="#" style="color:var(--tx2)">Terms</a>
+          <a href="#" style="color:var(--tx2)">Privacy</a>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1240px;margin:0 auto;padding:20px 24px 32px;border-top:1px solid var(--bd);font-size:12.5px;color:var(--mu)">© 2026 Pryzm. All rights reserved. Pryzm uses virtual currency only.</div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+const MK = [
+  { cat: 'Finance', title: 'Will the Bank of Canada cut rates in December?', yes: 64, vol: '182K', close: 'Dec 10' },
+  { cat: 'Politics', title: 'Next Canadian federal election: largest party', vol: '1.2M', close: 'Oct 2029', outcomes: [['Liberal', 46], ['Conservative', 44], ['NDP', 5]] },
+  { cat: 'Sports', title: 'Stanley Cup 2027 champion', vol: '640K', close: 'Jun 2027', outcomes: [['Edmonton', 17], ['Florida', 13], ['Toronto', 11]] },
+  { cat: 'Finance', title: 'Will Bitcoin close 2026 above $150K?', yes: 23, vol: '410K', close: 'Dec 31' },
+  { cat: 'Technology', title: 'Will Apple announce a foldable iPhone before October 2027?', yes: 57, vol: '96K', close: 'Sep 30, 2027' },
+  { cat: 'Sports', title: 'Will the Raptors make the 2027 playoffs?', yes: 38, vol: '71K', close: 'Apr 12, 2027' },
+  { cat: 'Entertainment', title: 'Will a streaming-first film win Best Picture in 2027?', yes: 31, vol: '54K', close: 'Mar 14, 2027' },
+];
+const CHIPS = ['Trending', 'New', 'Politics', 'Sports', 'Finance', 'Technology', 'Entertainment', 'World'];
+const RANKS = ['bronze3', 'bronze2', 'bronze1', 'silver3', 'silver2', 'silver1', 'gold3', 'gold2', 'gold1'];
+
+function series(seed, end, n) {
+  let x = seed; const r = () => { x = (x * 9301 + 49297) % 233280; return x / 233280; };
+  let v = end - 18 + r() * 10; const pts = [];
+  for (let i = 0; i < n; i++) { v += (r() - 0.5) * 7 + (end - v) * 0.05; v = Math.max(4, Math.min(96, v)); pts.push(v); }
+  pts[n - 1] = end; return pts;
+}
+function toPath(pts, w, h) {
+  return pts.map((v, i) => (i ? 'L' : 'M') + (i / (pts.length - 1) * w).toFixed(1) + ' ' + (h - (v / 100) * h).toFixed(1)).join(' ');
+}
+
+class Component extends DCLogic {
+  state = { theme: this.initTheme(), cat: 'Trending' };
+  initTheme() { let t; try { t = localStorage.getItem('pryzm-theme'); } catch (e) {} return t || this.props.theme || 'light'; }
+  componentDidUpdate(pp) { if (pp.theme !== this.props.theme && this.props.theme) this.setTheme(this.props.theme); }
+  setTheme(t) { try { localStorage.setItem('pryzm-theme', t); } catch (e) {} this.setState({ theme: t }); }
+  renderVals() {
+    if (!this._hero) { const p = series(7, 64, 70); this._hero = toPath(p, 600, 150); }
+    const c = this.state.cat;
+    const list = (c === 'Trending' || c === 'New') ? MK.slice(0, 6) : MK.filter(m => m.cat === c);
+    const markets = (list.length ? list : MK.slice(0, 6)).map(m => ({
+      ...m, isBinary: !m.outcomes, isMulti: !!m.outcomes, no: m.yes != null ? 100 - m.yes : 0,
+      rows: (m.outcomes || []).map(([label, pct]) => ({ label, pct })),
+    }));
+    return {
+      theme: this.state.theme,
+      toggleTheme: () => this.setTheme(this.state.theme === 'dark' ? 'light' : 'dark'),
+      heroPath: this._hero, heroArea: this._hero + ' L600 150 L0 150 Z',
+      chips: CHIPS.map(label => {
+        const on = label === c;
+        return { label, onClick: () => this.setState({ cat: label }), bg: on ? 'var(--tx)' : 'var(--sf)', color: on ? 'var(--bg)' : 'var(--tx2)', bd: on ? 'var(--tx)' : 'var(--bd)' };
+      }),
+      markets,
+      ranks: RANKS.map((k, i) => ({ src: 'assets/ranks/' + k + '.svg', label: k.replace(/\d/, m => ' ' + m), w: (40 + i * 4) + 'px' })),
+    };
+  }
+}
+</script>
+</body>
+</html>

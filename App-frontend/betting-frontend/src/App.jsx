@@ -21,6 +21,8 @@ import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import MarketDetail from './pages/MarketDetail.jsx';
+import { ThemeProvider } from './lib/theme.jsx';
+import { WalletProvider } from './lib/wallet.jsx';
 
 function HomeRoute() {
   const { user, loading } = useAuth();
@@ -37,7 +39,9 @@ function HomeRoute() {
 }
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
+    <WalletProvider>
       <div style={{ minHeight: '100vh', width: '100%' }}>
         <Navbar />
         <Routes>
@@ -67,6 +71,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
+    </WalletProvider>
     </AuthProvider>
+    </ThemeProvider>
   );
 }

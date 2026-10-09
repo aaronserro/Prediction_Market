@@ -1,5 +1,6 @@
 // src/admin/MarketCreation.jsx
-import React, { useState } from "react";
+import { useState } from "react";
+import { Field, Notice, btnPrimary, btnSecondary, btnSmall, inputCls, textareaCls } from "../../components/ui.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
@@ -121,193 +122,102 @@ export default function MarketCreation({ onMarketCreated }) {
   };
 
   return (
-    <div className="w-full text-slate-50">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-50 mb-1">
-          Create New Market
-        </h2>
-        <p className="text-sm text-slate-400">
-          Configure a new market with outcomes, dates, and resolution
-          criteria. This will appear on the user-facing Markets page.
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 max-w-[760px]">
+      <div>
+        <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">New market</h2>
+        <p className="m-0 mt-1 text-[13.5px] text-mu">
+          Configure outcomes, dates and resolution criteria. The market appears on the Markets page once it starts.
         </p>
       </div>
 
-        {/* Status messages */}
-        {successMessage && (
-          <div className="mb-4 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {successMessage}
-          </div>
-        )}
-        {errorMessage && (
-          <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {errorMessage}
-          </div>
-        )}
+      {successMessage && <Notice kind="ok">{successMessage}</Notice>}
+      {errorMessage && <Notice kind="err">{errorMessage}</Notice>}
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-xl shadow-slate-950/40"
-        >
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">
-              Market Title
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-              placeholder='e.g. "Will the Raptors win their next game?"'
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+      <Field label="Market title" htmlFor="mc-title">
+        <input
+          id="mc-title"
+          type="text"
+          className={inputCls}
+          placeholder='e.g. "Will the Raptors win their next game?"'
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </Field>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">
-              Description (optional)
-            </label>
-            <textarea
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-              rows={3}
-              placeholder="Add any extra context for this market..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
+      <Field label="Description (optional)" htmlFor="mc-desc">
+        <textarea
+          id="mc-desc"
+          className={textareaCls}
+          rows={3}
+          placeholder="Add any extra context for this market…"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </Field>
 
-          {/* Category + Dates */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">
-                Category
-              </label>
-              <select
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt.charAt(0) + opt.slice(1).toLowerCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">
-                Start Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">
-                End Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Resolution Source */}
-          <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1">
-              Resolution Source
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-              placeholder='e.g. "NBA official box score", "Elections Canada results"'
-              value={resolutionSource}
-              onChange={(e) => setResolutionSource(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              This explains how Pryzm will objectively resolve the market.
-            </p>
-          </div>
-
-          {/* Outcomes */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-200">
-                Outcomes
-              </label>
-              <button
-                type="button"
-                onClick={handleAddOutcome}
-                className="text-xs rounded-lg border border-violet-600 bg-violet-600/10 px-2 py-1 font-medium text-violet-200 hover:bg-violet-600/20 transition"
-              >
-                + Add Outcome
-              </button>
-            </div>
-            <div className="space-y-2">
-              {outcomes.map((value, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                    placeholder={
-                      index === 0
-                        ? "Yes"
-                        : index === 1
-                        ? "No"
-                        : `Outcome ${index + 1}`
-                    }
-                    value={value}
-                    onChange={(e) =>
-                      handleOutcomeChange(index, e.target.value)
-                    }
-                  />
-                  {outcomes.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveOutcome(index)}
-                      className="rounded-lg border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/20 transition"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              You must define at least two outcomes (e.g., Yes/No or multiple
-              candidates).
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800 transition"
-              disabled={isSubmitting}
-            >
-              Reset
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-lg bg-gradient-to-r from-violet-500 to-sky-400 px-5 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-violet-500/40 disabled:opacity-60"
-            >
-              {isSubmitting ? "Creating..." : "Create Market"}
-            </button>
-          </div>
-        </form>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Field label="Category" htmlFor="mc-cat">
+          <select id="mc-cat" className={`${inputCls} cursor-pointer`} value={category} onChange={(e) => setCategory(e.target.value)}>
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt.charAt(0) + opt.slice(1).toLowerCase()}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Starts" htmlFor="mc-start">
+          <input id="mc-start" type="datetime-local" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </Field>
+        <Field label="Closes" htmlFor="mc-end">
+          <input id="mc-end" type="datetime-local" className={inputCls} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </Field>
       </div>
+
+      <Field label="Resolution source" htmlFor="mc-src" hint="How Pryzm will objectively resolve the market.">
+        <input
+          id="mc-src"
+          type="text"
+          className={inputCls}
+          placeholder='e.g. "NBA official box score", "Elections Canada results"'
+          value={resolutionSource}
+          onChange={(e) => setResolutionSource(e.target.value)}
+        />
+      </Field>
+
+      <div>
+        <div className="flex items-center justify-between mb-[7px]">
+          <span className="text-[13px] text-tx2 font-medium">Outcomes</span>
+          <button type="button" onClick={handleAddOutcome} className={`${btnSecondary} ${btnSmall}`}>+ Add outcome</button>
+        </div>
+        <div className="flex flex-col gap-2">
+          {outcomes.map((value, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <input
+                type="text"
+                className={inputCls}
+                placeholder={index === 0 ? "Yes" : index === 1 ? "No" : `Outcome ${index + 1}`}
+                value={value}
+                onChange={(e) => handleOutcomeChange(index, e.target.value)}
+              />
+              {outcomes.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveOutcome(index)}
+                  className="h-[46px] px-3.5 rounded-[11px] border-0 bg-nos text-no text-[13.5px] font-semibold cursor-pointer flex-none"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-mu">At least two outcomes (e.g. Yes / No, or several candidates).</p>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button type="button" onClick={resetForm} className={btnSecondary} disabled={isSubmitting}>Reset</button>
+        <button type="submit" disabled={isSubmitting} className={btnPrimary}>
+          {isSubmitting ? "Creating…" : "Create market"}
+        </button>
+      </div>
+    </form>
   );
 }

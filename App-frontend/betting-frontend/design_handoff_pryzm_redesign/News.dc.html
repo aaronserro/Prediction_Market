@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Geist+Mono:wght@400..700&amp;display=swap" rel="stylesheet"></link>
+<style>
+body{margin:0;background:#f6f5f9}
+*{box-sizing:border-box}
+a{color:var(--pr);text-decoration:none}
+a:hover{color:var(--prh)}
+button{font-family:inherit}
+[data-theme]{font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--tx);min-height:100vh}
+[data-theme="light"]{--bg:#f6f5f9;--sf:#ffffff;--sf2:#f1f0f5;--bd:#e6e4ec;--bd2:#d4d1de;--tx:#15121d;--tx2:#45414f;--mu:#6f6b7d;--pr:#6d3ae6;--prh:#5b2bd0;--prs:#efe9fd;--prt:#5b2bd0;--am:#f5a50b;--ams:#fdf3dc;--amt:#8f5400;--yes:#0f8a52;--yess:#e3f4ea;--no:#d43a47;--nos:#fbe9ea;--sh:0 1px 2px rgba(20,16,40,.05)}
+[data-theme="dark"]{--bg:#0b0a10;--sf:#13121a;--sf2:#1c1a25;--bd:#26232f;--bd2:#36323f;--tx:#f3f2f7;--tx2:#c6c3d1;--mu:#918da1;--pr:#8b5cf6;--prh:#a07cf8;--prs:#231b3b;--prt:#bba6fb;--am:#fbbf24;--ams:#2a2112;--amt:#fbbf24;--yes:#34c47e;--yess:#11281c;--no:#f2646f;--nos:#2d1519;--sh:none}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-screen-label="News">
+  <dc-import name="Nav" active="News" on-toggle-theme="{{ toggleTheme }}" hint-size="100%,60px"></dc-import>
+  <main style="max-width:1240px;margin:0 auto;padding:36px 24px 72px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px">
+      <h1 style="margin:0;font-size:32px;font-weight:650;letter-spacing:-0.035em">Market News</h1>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+          <button onClick="{{ c.onClick }}" style="height:34px;padding:0 15px;border-radius:999px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.color }};font-size:13.5px;font-weight:500;cursor:pointer">{{ c.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <a href="#" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));background:var(--sf);border:1px solid var(--bd);border-radius:18px;box-shadow:var(--sh);overflow:hidden;color:var(--tx);margin-bottom:20px" style-hover="border-color:var(--bd2);color:var(--tx)">
+      <div style="min-height:280px;background:repeating-linear-gradient(135deg,var(--sf2) 0 10px,var(--bg) 10px 20px);display:flex;align-items:center;justify-content:center;font:500 12px 'Geist Mono',monospace;color:var(--mu)">article image</div>
+      <div style="padding:clamp(22px,3vw,36px);display:flex;flex-direction:column;justify-content:center;gap:12px">
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size:12.5px">
+          <span style="font-weight:600;color:var(--amt)">{{ lead.source }}</span>
+          <span style="color:var(--mu)">{{ lead.date }}</span>
+        </div>
+        <h2 style="margin:0;font-size:clamp(22px,2.6vw,30px);font-weight:650;letter-spacing:-0.03em;line-height:1.2;text-wrap:balance">{{ lead.title }}</h2>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:var(--tx2);text-wrap:pretty">{{ lead.desc }}</p>
+      </div>
+    </a>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px">
+      <sc-for list="{{ articles }}" as="a" hint-placeholder-count="6">
+        <a href="#" style="display:flex;flex-direction:column;background:var(--sf);border:1px solid var(--bd);border-radius:14px;box-shadow:var(--sh);overflow:hidden;color:var(--tx)" style-hover="border-color:var(--bd2);color:var(--tx)">
+          <div style="aspect-ratio:16/9;background:repeating-linear-gradient(135deg,var(--sf2) 0 10px,var(--bg) 10px 20px);display:flex;align-items:center;justify-content:center;font:500 11.5px 'Geist Mono',monospace;color:var(--mu)">article image</div>
+          <div style="padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px">
+              <span style="font-weight:600;color:var(--amt)">{{ a.source }}</span>
+              <span style="color:var(--mu)">{{ a.date }}</span>
+            </div>
+            <h3 style="margin:0;font-size:16px;font-weight:600;letter-spacing:-0.015em;line-height:1.35;text-wrap:pretty">{{ a.title }}</h3>
+            <p style="margin:0;font-size:13.5px;line-height:1.55;color:var(--tx2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ a.desc }}</p>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+  </main>
+  <footer style="border-top:1px solid var(--bd)">
+    <div style="max-width:1240px;margin:0 auto;padding:22px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px;font-size:12.5px;color:var(--mu)">
+      <span>© 2026 Pryzm</span>
+      <div style="display:flex;gap:20px"><a href="#" style="color:var(--mu)">Terms</a><a href="#" style="color:var(--mu)">Privacy</a><a href="#" style="color:var(--mu)">Support</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;}}">
+const NEWS = {
+  Finance: [
+    ['Financial Wire', 'Oct 9', 'Bank of Canada signals openness to further easing as inflation cools', 'Officials pointed to two consecutive months of core inflation below target, while noting the labour market remains a key input for the December decision.'],
+    ['Capital Report', 'Oct 9', 'Loonie slips against the US dollar after soft jobs data', 'Currency traders priced in a higher chance of a rate cut following weaker-than-expected employment numbers.'],
+    ['Market Desk', 'Oct 8', 'Bitcoin swings 6% in a session as ETF flows reverse', 'Analysts say volatility is likely to persist through year-end as institutional positioning shifts.'],
+    ['Financial Wire', 'Oct 8', 'TSX closes at a record high led by energy and banks', 'Gains were broad-based, with financials adding the most points to the index.'],
+    ['Capital Report', 'Oct 7', 'Housing starts fall for a third straight month', 'Builders cited financing costs and slower presales in major metro areas.'],
+    ['Market Desk', 'Oct 6', 'Oil holds near $80 as supply talks continue', 'Prices were steady ahead of a scheduled producer meeting later this month.'],
+    ['Financial Wire', 'Oct 5', 'Canadian CPI preview: economists expect 2.3% annual rate', 'A consensus survey suggests shelter costs continue to moderate.'],
+  ],
+  Technology: [
+    ['Tech Desk', 'Oct 9', 'Ottawa tables updated framework for AI oversight', 'The proposal outlines risk tiers for automated systems and a timeline for consultation.'],
+    ['Circuit', 'Oct 8', 'Reports point to a foldable phone in testing at a major manufacturer', 'Supply chain sources describe early production runs, though no launch date has been confirmed.'],
+    ['Tech Desk', 'Oct 7', 'Chipmakers rally on stronger data centre demand', 'Quarterly guidance from several suppliers came in above analyst expectations.'],
+    ['Circuit', 'Oct 6', 'Streaming platforms raise prices again in Canada', 'Subscribers face increases of between one and three dollars per month.'],
+  ],
+  Sports: [
+    ['Sports Daily', 'Oct 9', 'Oilers open the season with a statement win', 'Edmonton controlled possession for most of the night and finished with a three-goal margin.'],
+    ['Box Score', 'Oct 8', 'Grey Cup picture tightens with three weeks left', 'Montreal and Saskatchewan remain the favourites as the playoff race narrows.'],
+    ['Sports Daily', 'Oct 7', 'Raptors finalize roster ahead of opening night', 'The team confirmed its starting lineup and two late additions to the bench.'],
+    ['Box Score', 'Oct 6', 'Leafs top line combines for five points in opener', 'Toronto fans got an early look at a reworked power play.'],
+  ],
+  Politics: [
+    ['Capital Report', 'Oct 9', 'New poll shows Liberals and Conservatives within two points', 'The national survey suggests seat counts would depend heavily on Ontario and Quebec.'],
+    ['Hill Times Wire', 'Oct 8', 'Parliament returns with the budget implementation bill first on the agenda', 'Opposition parties have signalled they will seek amendments at committee.'],
+    ['Capital Report', 'Oct 7', 'US Fed officials split on the pace of rate cuts', 'Minutes from the last meeting show disagreement over how quickly to ease.'],
+    ['Hill Times Wire', 'Oct 6', 'Provincial premiers meet to discuss health transfers', 'Leaders called for a multi-year funding agreement with Ottawa.'],
+  ],
+};
+
+class Component extends DCLogic {
+  state = { theme: this.initTheme(), cat: 'Finance' };
+  initTheme() { let t; try { t = localStorage.getItem('pryzm-theme'); } catch (e) {} return t || this.props.theme || 'light'; }
+  componentDidUpdate(pp) { if (pp.theme !== this.props.theme && this.props.theme) this.setTheme(this.props.theme); }
+  setTheme(t) { try { localStorage.setItem('pryzm-theme', t); } catch (e) {} this.setState({ theme: t }); }
+  renderVals() {
+    const s = this.state;
+    const list = NEWS[s.cat].map(([source, date, title, desc]) => ({ source, date, title, desc }));
+    return {
+      theme: s.theme,
+      toggleTheme: () => this.setTheme(s.theme === 'dark' ? 'light' : 'dark'),
+      chips: Object.keys(NEWS).map(label => {
+        const on = label === s.cat;
+        return { label, onClick: () => this.setState({ cat: label }), bg: on ? 'var(--tx)' : 'var(--sf)', color: on ? 'var(--bg)' : 'var(--tx2)', bd: on ? 'var(--tx)' : 'var(--bd)' };
+      }),
+      lead: list[0], articles: list.slice(1),
+    };
+  }
+}
+</script>
+</body>
+</html>
