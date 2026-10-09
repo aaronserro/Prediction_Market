@@ -12,6 +12,13 @@ const LINKS = [
   { to: "/portfolio", label: "Portfolio" },
   { to: "/news", label: "News" },
   { to: "/tournaments", label: "Tournaments" },
+  { to: "/blog", label: "Blog" },
+];
+
+// What signed-out visitors can open without an account.
+const GUEST_LINKS = [
+  { to: "/markets", label: "Markets" },
+  { to: "/blog", label: "Blog" },
 ];
 
 const isActive = (pathname, to) => pathname === to || pathname.startsWith(to + "/");
@@ -123,9 +130,9 @@ export default function Navbar() {
 
         <SearchBox />
 
-        {user && (
-          <nav className="hidden lg:flex items-center flex-none">
-            {LINKS.map(({ to, label }) => {
+        {(
+          <nav className={`${user ? "hidden lg:flex" : "hidden sm:flex"} items-center flex-none`}>
+            {(user ? LINKS : GUEST_LINKS).map(({ to, label }) => {
               const on = isActive(pathname, to);
               return (
                 <Link

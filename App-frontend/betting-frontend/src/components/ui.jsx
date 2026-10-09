@@ -182,10 +182,27 @@ export function LineChart({ lines, height, area = false, gridLines = 3 }) {
 }
 
 /* ── market card ────────────────────────────────────────────────────── */
-export function MarketCard({ market, summary }) {
+/**
+ * Market card. When `onTrade(market, outcome, "YES" | "NO")` is passed, the
+ * Yes/No buttons call it instead of navigating (used to prompt sign-up).
+ */
+export function MarketCard({ market, summary, onTrade }) {
   const upcoming = market.status === "UPCOMING";
   const s = summary || {};
   const pct = (v) => (v === null || v === undefined ? "—" : v);
+  const byLabel = (l) => (market.outcomes || []).find((o) => (o.label || "").trim().toLowerCase() === l);
+
+  // Buttons are spans inside the card link; intercept the click when gating.
+  const trade = (outcome, side, price) => (e) => {
+    if (!onTrade) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onTrade(market, { ...outcome, price }, side);
+  };
+  const tradeable = onTrade && !upcoming;
+  const big = "h-[38px] rounded-[9px] font-semibold text-[14px] flex items-center justify-center gap-1.5 transition-[filter]";
+  const small = "h-[26px] px-2.5 rounded-[7px] text-xs font-semibold flex items-center transition-[filter]";
+  const hover = tradeable ? "hover:brightness-95 cursor-pointer" : "";
 
   return (
     <Link
@@ -210,12 +227,12 @@ export function MarketCard({ market, summary }) {
 
       {s.binary ? (
         <div className="grid grid-cols-2 gap-2 mt-auto">
-          <div className="h-[38px] rounded-[9px] bg-yess text-yes font-semibold text-[14px] flex items-center justify-center gap-1.5">
+          <span role={tradeable ? "button" : undefined} onClick={tradeable ? trade(byLabel("yes"), "YES", s.yes) : undefined} className={`${big} bg-yess text-yes ${hover}`}>
             Yes <span className="font-mono">{pct(s.yes)}</span>
-          </div>
-          <div className="h-[38px] rounded-[9px] bg-nos text-no font-semibold text-[14px] flex items-center justify-center gap-1.5">
+          </span>
+          <span role={tradeable ? "button" : undefined} onClick={tradeable ? trade(byLabel("no"), "NO", s.no) : undefined} className={`${big} bg-nos text-no ${hover}`}>
             No <span className="font-mono">{pct(s.no)}</span>
-          </div>
+          </span>
         </div>
       ) : (
         <div className="flex flex-col gap-[7px] mt-auto">
@@ -223,8 +240,8 @@ export function MarketCard({ market, summary }) {
             <div key={o.id} className="flex items-center gap-2.5 text-[13.5px]">
               <span className="flex-1 min-w-0 truncate text-tx2">{o.label}</span>
               <span className="font-mono font-semibold w-[38px] text-right">{pct(o.pct)}%</span>
-              <span className="h-[26px] px-2.5 rounded-[7px] bg-yess text-yes text-xs font-semibold flex items-center">Yes</span>
-              <span className="h-[26px] px-2.5 rounded-[7px] bg-nos text-no text-xs font-semibold flex items-center">No</span>
+              <span role={tradeable ? "button" : undefined} onClick={tradeable ? trade(o, "YES", o.pct) : undefined} className={`${small} bg-yess text-yes ${hover}`}>Yes</span>
+              <span role={tradeable ? "button" : undefined} onClick={tradeable ? trade(o, "NO", o.pct == null ? null : 100 - o.pct) : undefined} className={`${small} bg-nos text-no ${hover}`}>No</span>
             </div>
           ))}
         </div>

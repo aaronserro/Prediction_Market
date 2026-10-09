@@ -21,6 +21,8 @@ import RootRedirect from './components/RootRedirect.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import MarketDetail from './pages/MarketDetail.jsx';
+import BlogPage from './pages/BlogPage.jsx';
+import BlogPost from './pages/BlogPost.jsx';
 import { ThemeProvider } from './lib/theme.jsx';
 import { WalletProvider } from './lib/wallet.jsx';
 
@@ -58,7 +60,10 @@ export default function App() {
           />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-          <Route path="/markets" element={<ProtectedRoute><Markets /></ProtectedRoute>} />
+          {/* Public: signed-out visitors browse fixture markets (see FIXTURES.md). */}
+          <Route path="/markets" element={<Markets />} />
+          <Route path="/blog" element={<BlogPage />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/portfolio" element={<ProtectedRoute><PortfolioPage /></ProtectedRoute>} />
           <Route path="/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
           <Route path="/tournaments" element={<ProtectedRoute><TournamentsPage /></ProtectedRoute>} />
@@ -67,7 +72,7 @@ export default function App() {
           <Route path="/admin/create-user" element={<AdminRoute><AdminCreateUser /></AdminRoute>} />
           <Route path="/admin/markets-events" element={<AdminRoute><MarketsEvents /></AdminRoute>} />
           <Route path="/admin/markets/:marketId" element={<AdminRoute><AdminMarketEdit /></AdminRoute>} />
-          <Route path="/markets/:marketId" element={<ProtectedRoute><MarketDetail /></ProtectedRoute>} />
+          <Route path="/markets/:marketId" element={<MarketDetail />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

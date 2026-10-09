@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Chips, ErrorNote, MarketCard, MarketGrid, Page, PageHeader, Segmented, Spinner } from "../components/ui.jsx";
-import { CATEGORIES, fetchMarkets, isOpenListing, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { CATEGORIES, isOpenListing, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { useDataSource } from "../lib/dataSource.js";
+import { useAuth } from "../auth/AuthContext.jsx";
+import SignupGate from "../components/SignupGate.jsx";
 import { catLabel } from "../lib/format.js";
 
 const CHIPS = [{ value: "ALL", label: "All" }, ...CATEGORIES.map((c) => ({ value: c, label: catLabel(c) }))];
@@ -15,6 +18,10 @@ export default function Markets() {
   const [error, setError] = useState("");
   const [category, setCategory] = useState("ALL");
   const [sort, setSort] = useState("Trending");
+  const [gate, setGate] = useState(null);
+  const { user } = useAuth();
+  // Signed in: real API. Signed out: fixtures (see FIXTURES.md).
+  const source = useDataSource();
 
   const setSearch = (q) => setParams(q ? { q } : {}, { replace: true });
 
@@ -22,15 +29,15 @@ export default function Markets() {
     let alive = true;
     setLoading(true);
     setError("");
-    fetchMarkets(category)
+    source.fetchMarkets(category)
       .then((data) => alive && setMarkets(Array.isArray(data) ? data : []))
       .catch((e) => { if (alive) { setError(e.message); setMarkets([]); } })
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [category]);
+  }, [category, source]);
 
   const open = useMemo(() => markets.filter(isOpenListing), [markets]);
-  const { prices, trades } = useMarketData(open, { trades: true });
+  const { prices, trades } = useMarketData(open, { trades: true, source });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -85,7 +92,7 @@ export default function Markets() {
       ) : (
         <>
           <MarketGrid>
-            {filtered.map((m) => <MarketCard key={m.id} market={m} summary={summarize(m, prices[m.id], trades[m.id])} />)}
+            {filtered.map((m) => <MarketCard key={m.id} market={m} summary={summarize(m, prices[m.id], trades[m.id])} onTrade={user ? undefined : (market, outcome, side) => setGate({ market, outcome, side })} />)}
           </MarketGrid>
           <p className="mt-7 text-center text-[13px] text-mu">
             {filtered.length} market{filtered.length !== 1 ? "s" : ""}
@@ -93,6 +100,7 @@ export default function Markets() {
           </p>
         </>
       )}
+      <SignupGate intent={gate} onClose={() => setGate(null)} />
     </Page>
   );
 }

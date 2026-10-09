@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ErrorNote, LiveDot, Page, Segmented, Spinner, Tabs, card } from "../components/ui.jsx";
-import { API_BASE, fetchMarkets, getJSON, isBinary, loadPrices, loadTrades, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { API_BASE, getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { fixtureSource, useDataSource } from "../lib/dataSource.js";
+import SignupGate from "../components/SignupGate.jsx";
 import { buildHistory, toPath, xTicks } from "../lib/history.js";
 import { catLabel, fmt, fmtDate, fmtDateTime, fmtShortDate, timeAgo } from "../lib/format.js";
 import { useWallet } from "../lib/wallet.jsx";
@@ -210,6 +212,15 @@ export default function MarketDetail() {
   const [toast, setToast] = useState(null); // { kind, text }
   const [watched, setWatched] = useState(() => readWatch().includes(marketId));
   const [shared, setShared] = useState(false);
+  const [comments, setComments] = useState(null); // null = no comments API for this source
+  const [gate, setGate] = useState(null);
+
+  // Signed in: real API. Signed out: fixtures. A signed-in user opening a
+  // fixture-only market (e.g. from a blog post) falls back to a read-only preview.
+  const preferred = useDataSource();
+  const [src, setSrc] = useState(preferred);
+  const preview = Boolean(user) && src.name === "fixtures";
+  const canTrade = Boolean(user) && !preview;
 
   const loadPositions = useCallback(
     () => getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => {}),
@@ -222,21 +233,31 @@ export default function MarketDetail() {
     setError("");
     setSel(0);
     setWatched(readWatch().includes(marketId));
-    getJSON(`/api/v1/markets/${marketId}`)
-      .then(async (m) => {
+    setComments(null);
+    const find = () =>
+      preferred.fetchMarket(marketId)
+        .then((m) => ({ m, s: preferred }))
+        .catch((e) => {
+          if (preferred === fixtureSource) throw e;
+          return fixtureSource.fetchMarket(marketId).then((m) => ({ m, s: fixtureSource })).catch(() => { throw e; });
+        });
+    find()
+      .then(async ({ m, s }) => {
         if (!alive) return;
+        setSrc(s);
         setMarket(m);
-        const [p, t] = await Promise.all([loadPrices(m, { force: true }), loadTrades(m.id, { force: true })]);
+        const [p, t, c] = await Promise.all([s.loadPrices(m, { force: true }), s.loadTrades(m.id, { force: true }), s.loadComments(m.id)]);
         if (!alive) return;
         setPrices(p);
         setTrades(t);
+        setComments(c);
+        s.fetchMarkets().then((d) => alive && setAllMarkets(Array.isArray(d) ? d : [])).catch(() => {});
+        if (user && s !== fixtureSource) loadPositions();
       })
       .catch((e) => alive && setError(e.message || "Failed to load market"))
       .finally(() => alive && setLoading(false));
-    loadPositions();
-    fetchMarkets().then((d) => alive && setAllMarkets(Array.isArray(d) ? d : [])).catch(() => {});
     return () => { alive = false; };
-  }, [marketId, loadPositions]);
+  }, [marketId, loadPositions, preferred, user]);
 
   useEffect(() => {
     if (!toast) return;
@@ -281,7 +302,7 @@ export default function MarketDetail() {
         .slice(0, 3),
     [allMarkets, market]
   );
-  const { prices: relatedPrices } = useMarketData(related);
+  const { prices: relatedPrices } = useMarketData(related, { source: src });
 
   if (loading) return <Page><Spinner /></Page>;
 
@@ -303,7 +324,13 @@ export default function MarketDetail() {
   const activity = [...(trades || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 20);
 
   const open = (outcomeIndex, action) => {
-    if (!isActive || prices[outcomes[outcomeIndex]?.id] === undefined) return;
+    const o = outcomes[outcomeIndex];
+    if (!isActive || prices[o?.id] === undefined || preview) return;
+    if (!user) {
+      setSel(outcomeIndex);
+      setGate({ market, outcome: { label: o.label, price: action === "BUY" ? o.buy : o.sell }, side: action });
+      return;
+    }
     setSel(outcomeIndex);
     setQty(10);
     setModal({ outcomeIndex, action });
@@ -319,7 +346,7 @@ export default function MarketDetail() {
       const at = res.pricePerShare ?? res.pricePerShareCents ?? (isBuy ? o.buy : o.sell);
       setToast({ kind: "ok", text: `${isBuy ? "Bought" : "Sold"} ${n} shares of ${o.label} at ${at} PZC` });
       setModal(null);
-      const [p, t] = await Promise.all([loadPrices(market, { force: true }), loadTrades(market.id, { force: true })]);
+      const [p, t] = await Promise.all([src.loadPrices(market, { force: true }), src.loadTrades(market.id, { force: true })]);
       setPrices(p);
       setTrades(t);
       loadPositions();
@@ -333,6 +360,7 @@ export default function MarketDetail() {
   };
 
   const toggleWatch = () => {
+    if (!user) { setGate({ market, reason: "Sign up to build a watchlist" }); return; }
     const list = readWatch();
     const next = watched ? list.filter((id) => id !== market.id) : [...list, market.id];
     try { localStorage.setItem(WATCH_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
@@ -396,7 +424,7 @@ export default function MarketDetail() {
               </div>
               {outcomes.map((o, i) => {
                 const on = i === sel;
-                const disabled = !isActive || o.p === null;
+                const disabled = !isActive || o.p === null || preview;
                 return (
                   <div
                     key={o.id}
@@ -442,7 +470,7 @@ export default function MarketDetail() {
               onChange={setTab}
               tabs={[
                 { value: "rules", label: "Rules" },
-                { value: "comments", label: "Comments" },
+                { value: "comments", label: "Comments", count: comments ? comments.length : "" },
                 { value: "activity", label: "Activity", count: trades ? trades.length : "" },
               ]}
             />
@@ -466,13 +494,48 @@ export default function MarketDetail() {
               <div className="px-[22px] py-[18px] flex flex-col gap-1">
                 <div className="flex gap-2.5 mb-3">
                   <input
-                    disabled
+                    disabled={canTrade}
+                    readOnly={!user}
+                    onFocus={() => !user && setGate({ market, reason: "Sign up to join the discussion" })}
                     placeholder="Add a comment"
-                    className="flex-1 min-w-0 h-[42px] rounded-[10px] border border-bd2 bg-sf text-tx px-3.5 text-[14px] outline-none disabled:opacity-60"
+                    className="flex-1 min-w-0 h-[42px] rounded-[10px] border border-bd2 bg-sf text-tx px-3.5 text-[14px] outline-none disabled:opacity-60 placeholder:text-mu"
                   />
-                  <button disabled className="h-[42px] px-4 border-0 rounded-[10px] bg-pr text-white text-[14px] font-semibold opacity-50 cursor-not-allowed">Post</button>
+                  <button
+                    disabled={canTrade}
+                    onClick={() => !user && setGate({ market, reason: "Sign up to join the discussion" })}
+                    className="h-[42px] px-4 border-0 rounded-[10px] bg-pr text-white text-[14px] font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Post
+                  </button>
                 </div>
-                <div className="py-8 border-t border-bd text-center text-[14px] text-mu">Comments are coming soon.</div>
+                {comments === null ? (
+                  <div className="py-8 border-t border-bd text-center text-[14px] text-mu">Comments are coming soon.</div>
+                ) : comments.length === 0 ? (
+                  <div className="py-8 border-t border-bd text-center text-[14px] text-mu">No comments yet. Start the conversation.</div>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c.id} className="flex gap-3 py-3 border-t border-bd">
+                      <div className="w-8 h-8 rounded-full bg-sf2 text-tx2 flex items-center justify-center text-[13px] font-semibold flex-none">
+                        {c.user.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+                          <span className="font-semibold">{c.user}</span>
+                          {c.holding && (
+                            <span className={`px-[7px] py-px rounded-[5px] text-[11.5px] font-semibold ${
+                              c.holding.outcome.toLowerCase() === "no" ? "bg-nos text-no" : c.holding.outcome.toLowerCase() === "yes" ? "bg-yess text-yes" : "bg-prs text-prt"
+                            }`}>
+                              Holds {fmt(c.holding.shares)} {c.holding.outcome}
+                            </span>
+                          )}
+                          <span className="text-mu">{timeAgo(c.createdAt)}</span>
+                        </div>
+                        <div className="text-[14px] leading-[1.55] text-tx2 mt-1">{c.text}</div>
+                        <div className="text-xs text-mu mt-1.5">♥ {c.likes}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
             {tab === "activity" && (
@@ -524,7 +587,11 @@ export default function MarketDetail() {
                   <div className="font-mono text-[22px] font-semibold tracking-[-0.04em] mt-0.5">{selected.sell}</div>
                 </div>
               </div>
-              {isActive ? (
+              {preview ? (
+                <div className="px-3.5 py-3 rounded-[11px] bg-sf2 text-tx2 text-[13.5px] font-[550]">
+                  This is a sample market and isn’t open for trading.
+                </div>
+              ) : isActive ? (
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => open(sel, "BUY")}
@@ -549,14 +616,21 @@ export default function MarketDetail() {
                 </div>
               )}
               <div className="flex flex-col gap-[9px] mt-4 pt-4 border-t border-bd text-[13.5px]">
-                <div className="flex justify-between gap-3">
+                {canTrade && <div className="flex justify-between gap-3">
                   <span className="text-mu">Your position</span>
                   <span className="font-mono text-right">
                     {holding ? `${fmt(holding.quantity)} shares · avg ${fmt(holding.avgBuyPriceCents)}` : "—"}
                   </span>
-                </div>
+                </div>}
                 <div className="flex justify-between gap-3"><span className="text-mu">Payout if correct</span><span className="font-mono">100 PZC / share</span></div>
-                <div className="flex justify-between gap-3"><span className="text-mu">Available</span><span className="font-mono">{balance === null ? "—" : `${fmt(balance)} PZC`}</span></div>
+                {canTrade ? (
+                  <div className="flex justify-between gap-3"><span className="text-mu">Available</span><span className="font-mono">{balance === null ? "—" : `${fmt(balance)} PZC`}</span></div>
+                ) : !user && (
+                  <div className="text-mu">
+                    <Link to="/signup" className="text-pr hover:text-prh font-medium">Sign up</Link> or{" "}
+                    <Link to="/login" className="text-pr hover:text-prh font-medium">log in</Link> to trade with free PZC.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -604,6 +678,7 @@ export default function MarketDetail() {
           onConfirm={confirm}
         />
       )}
+      <SignupGate intent={gate} onClose={() => setGate(null)} />
     </Page>
   );
 }

@@ -72,8 +72,11 @@ export function loadTrades(marketId, { force = false } = {}) {
   }, force);
 }
 
-/** Loads prices (and optionally trades) for a list of markets. */
-export function useMarketData(markets, { trades = false } = {}) {
+/** Loads prices (and optionally trades) for a list of markets. Pass a data
+ *  `source` (see lib/dataSource.js) to read fixtures instead of the API. */
+export function useMarketData(markets, { trades = false, source } = {}) {
+  const getPrices = source?.loadPrices ?? loadPrices;
+  const getTrades = source?.loadTrades ?? loadTrades;
   const [prices, setPrices] = useState({});
   const [tradeMap, setTradeMap] = useState({});
   const key = markets.map((m) => m.id).join(",");
@@ -81,12 +84,12 @@ export function useMarketData(markets, { trades = false } = {}) {
   useEffect(() => {
     let alive = true;
     markets.forEach((m) => {
-      loadPrices(m).then((p) => alive && setPrices((s) => ({ ...s, [m.id]: p })));
-      if (trades) loadTrades(m.id).then((t) => alive && setTradeMap((s) => ({ ...s, [m.id]: t })));
+      getPrices(m).then((p) => alive && setPrices((s) => ({ ...s, [m.id]: p })));
+      if (trades) getTrades(m.id).then((t) => alive && setTradeMap((s) => ({ ...s, [m.id]: t })));
     });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, trades]);
+  }, [key, trades, source?.name]);
 
   return { prices, trades: tradeMap };
 }
