@@ -16,6 +16,26 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Fixture data mode
+
+Copy `.env.example` to `.env` and set `EXPO_PUBLIC_FIXTURE_DATA`:
+
+```dotenv
+EXPO_PUBLIC_FIXTURE_DATA=true
+```
+
+- `true` enables the complete local fixture experience, including the fake profile, markets, portfolio, news, wallet history, session-only trading, and synthetic live ticker.
+- `false` disables every fixture-backed dataset and synthetic mutation. Login uses the live `https://api.pryzm.ca/auth/login` endpoint, while screens whose real endpoints are not configured show an explicit unavailable state.
+- If the variable is missing or invalid, fixture mode is enabled to preserve the local development experience.
+
+Expo inlines `EXPO_PUBLIC_*` values into the client bundle. Restart Metro after changing the value:
+
+```bash
+npx expo start --clear
+```
+
+Do not store secrets in `EXPO_PUBLIC_*` variables. Real market, portfolio, activity, wallet, news, notification, profile, and leaderboard endpoint contracts still need to be implemented before those screens can display live data.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
