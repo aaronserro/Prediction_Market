@@ -1,8 +1,11 @@
 package com.betting.backend.wallet.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -11,6 +14,12 @@ import com.betting.backend.wallet.model.FundRequest;
 import com.betting.backend.wallet.model.FundRequestStatus;
 @Repository
 public interface FundRequestRepository extends JpaRepository<FundRequest, Long> {
+
+    Optional<FundRequest> findByIdempotencyKey(String idempotencyKey);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select request from FundRequest request where request.id = :requestId")
+    Optional<FundRequest> findByIdForUpdate(@Param("requestId") Long requestId);
 
     /**
      * Returns all fund requests belonging to the wallet of a specific user,

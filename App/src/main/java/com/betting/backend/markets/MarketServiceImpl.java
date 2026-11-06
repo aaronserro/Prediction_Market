@@ -12,21 +12,32 @@ import com.betting.backend.markets.dto.MarketResponse;
 import com.betting.backend.markets.dto.OutcomeResponse;
 import com.betting.backend.markets.dto.UpdateMarketRequest;
 
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import com.betting.backend.positions.PositionRepository;
 import com.betting.backend.positions.PositionService;
+import com.betting.backend.positions.PositionStatus;
 
 @Service
 public class MarketServiceImpl implements MarketService{
     private final MarketRepository marketRepository;
     private final OutcomeRepository outcomeRepository;
     private final PositionService positionService;
+    private final PositionRepository positionRepository;
+    private final TransactionTemplate transactionTemplate;
     public MarketServiceImpl(MarketRepository marketRepository,
                             OutcomeRepository outcomeRepository,
-                            PositionService positionService){
+                            PositionService positionService,
+                            PositionRepository positionRepository,
+                            PlatformTransactionManager transactionManager){
         this.marketRepository = marketRepository;
         this.outcomeRepository = outcomeRepository;
         this.positionService = positionService;
+        this.positionRepository = positionRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.transactionTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
     }
     @Override
     @Transactional
@@ -262,25 +273,58 @@ public class MarketServiceImpl implements MarketService{
 
         return toResponse(saved);
     }
-    @Transactional
-    public void resolveMarket(UUID marketId, UUID winningOutcomeId) {
-    Market market = marketRepository.findById(marketId)
-        .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
+    /**
+     * Resolution runs in short transactions so one failed payout cannot roll back
+     * the others. The market stays CLOSED (with its winner recorded) until every
+     * position is settled; calling again with the same winner resumes settlement.
+     */
+    @Override
+    public int resolveMarket(UUID marketId, UUID winningOutcomeId) {
+        Boolean alreadyResolved = transactionTemplate.execute(
+                status -> claimResolution(marketId, winningOutcomeId));
+        if (Boolean.TRUE.equals(alreadyResolved)) {
+            return 0;
+        }
 
-    if (market.getStatus() != MarketStatus.CLOSED) {
-        throw new IllegalStateException("Market must be CLOSED before resolving");
+        positionService.settlePositions(marketId, winningOutcomeId);
+
+        Long remaining = transactionTemplate.execute(status -> {
+            Market market = marketRepository.findByIdForUpdate(marketId)
+                    .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
+            long open = positionRepository.countByOutcome_Market_IdAndStatus(marketId, PositionStatus.OPEN);
+            if (open == 0 && market.getStatus() != MarketStatus.RESOLVED) {
+                market.setStatus(MarketStatus.RESOLVED);
+                marketRepository.save(market);
+            }
+            return open;
+        });
+        return remaining == null ? 0 : remaining.intValue();
     }
-    if (market.getStatus() == MarketStatus.RESOLVED) return;
 
-    // validate outcome belongs to market
-    boolean belongs = market.getOutcomes().stream()
-        .anyMatch(o -> o.getId().equals(winningOutcomeId));
-    if (!belongs) throw new IllegalArgumentException("Winning outcome does not belong to market");
+    /** @return true if the market is already fully resolved with this winner */
+    private boolean claimResolution(UUID marketId, UUID winningOutcomeId) {
+        Market market = marketRepository.findByIdForUpdate(marketId)
+                .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
 
-    market.setStatus(MarketStatus.RESOLVED);
-    market.setWinningOutcomeId(winningOutcomeId); // you need this field on Market
-    marketRepository.save(market);
-    positionService.settlePositions(marketId, winningOutcomeId);
+        UUID recordedWinner = market.getWinningOutcomeId();
+        if (recordedWinner != null && !recordedWinner.equals(winningOutcomeId)) {
+            throw new IllegalStateException("Market already resolving/resolved with a different outcome");
+        }
+        if (market.getStatus() == MarketStatus.RESOLVED) {
+            return true;
+        }
+        if (market.getStatus() != MarketStatus.CLOSED) {
+            throw new IllegalStateException("Market must be CLOSED before resolving");
+        }
 
-}
+        boolean belongs = market.getOutcomes().stream()
+                .anyMatch(o -> o.getId().equals(winningOutcomeId));
+        if (!belongs) {
+            throw new IllegalArgumentException("Winning outcome does not belong to market");
+        }
+
+        market.setWinningOutcomeId(winningOutcomeId);
+        marketRepository.save(market);
+        return false;
+    }
 }

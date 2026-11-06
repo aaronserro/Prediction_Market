@@ -1,6 +1,5 @@
 package com.betting.backend.wallet.Repository;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,8 +24,8 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     // Filter by date range (inclusive) + pagination, recent-first
     Page<WalletTransaction> findByWalletAndCreatedAtBetweenOrderByCreatedAtDesc(
             Wallet wallet,
-            Instant from,
-            Instant to,
+            LocalDateTime from,
+            LocalDateTime to,
             Pageable pageable
     );
 

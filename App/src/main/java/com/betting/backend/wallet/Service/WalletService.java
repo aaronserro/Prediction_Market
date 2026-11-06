@@ -9,4 +9,10 @@ public interface WalletService {
     public WalletResponse getbalance(Long userid);
     public TransactionResponse credit(Long amountCents, Long userid, String IDEkey, String refid);
     public TransactionResponse debit(Long amountCents, Long userid, String IDEkey, String refid);
+    public TransferResponse transfer(
+            Long fromUserId,
+            Long toUserId,
+            Long amountCents,
+            String refId,
+            String idempotencyKey);
 }

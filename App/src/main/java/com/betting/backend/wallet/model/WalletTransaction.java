@@ -2,6 +2,7 @@ package com.betting.backend.wallet.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(
@@ -36,6 +37,10 @@ public class WalletTransaction {
     @Column(name = "idempotency_key", nullable = false, length = 128)
     private String idempotencyKey;
 
+    // Optional business reference such as a trade, transfer, or settlement ID
+    @Column(name = "ref_id", length = 255)
+    private String refId;
+
     // Auditing
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -51,7 +56,9 @@ public class WalletTransaction {
 
     @PrePersist
     public void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        }
     }
 
     // Getters & setters
@@ -90,6 +97,14 @@ public class WalletTransaction {
 
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getRefId() {
+        return refId;
+    }
+
+    public void setRefId(String refId) {
+        this.refId = refId;
     }
 
     public LocalDateTime getCreatedAt() {

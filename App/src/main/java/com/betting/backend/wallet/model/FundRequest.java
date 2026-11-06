@@ -1,12 +1,17 @@
 package com.betting.backend.wallet.model;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "fund_requests")
+@Table(
+    name = "fund_requests",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_fund_request_idempotency", columnNames = "idempotency_key")
+    }
+)
 public class FundRequest {
 
     @Id
@@ -21,6 +26,12 @@ public class FundRequest {
     /** Amount in cents (never dollars to avoid float rounding issues) */
     @Column(name = "amount_cents", nullable = false)
     private Long amountCents;
+
+    /** Client operation key used to make creation retry-safe. */
+    // Nullable so schema update succeeds for rows created before keys existed;
+    // new API-created rows always set it.
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
 
     /** Optimistic locking version */
     @Version
@@ -47,10 +58,16 @@ public class FundRequest {
     protected FundRequest() {}
 
     /** Constructor for PENDING fund requests */
-    public FundRequest(Wallet wallet, Long amountCents, String reason) {
+    public FundRequest(Wallet wallet, Long amountCents, String reason, String idempotencyKey) {
         this.wallet = wallet;
         this.amountCents = amountCents;
         this.reason = reason;
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    /** Compatibility constructor for code that creates requests outside the API. */
+    public FundRequest(Wallet wallet, Long amountCents, String reason) {
+        this(wallet, amountCents, reason, UUID.randomUUID().toString());
     }
 
     /** Set createdAt automatically */
@@ -64,6 +81,7 @@ public class FundRequest {
     public Long getId() { return id; }
     public Wallet getWallet() { return wallet; }
     public Long getAmountCents() { return amountCents; }
+    public String getIdempotencyKey() { return idempotencyKey; }
     public Integer getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getProcessedAt() { return processedAt; }

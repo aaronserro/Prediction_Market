@@ -30,10 +30,19 @@ Optional<Position> findByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
 
     List<Position> findAllByUser_Id(Long userId);
     List<Position> findByOutcome_Market_IdAndStatus(UUID marketId, PositionStatus status);
+
+    @Query("SELECT p.id FROM Position p WHERE p.outcome.market.id = :marketId AND p.status = :status")
+    List<Long> findIdsByMarketIdAndStatus(@Param("marketId") UUID marketId,
+                                          @Param("status") PositionStatus status);
+
+    long countByOutcome_Market_IdAndStatus(UUID marketId, PositionStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Position p WHERE p.id = :id")
+    Optional<Position> findByIdForUpdate(@Param("id") Long id);
        List<Position> findByMarketId(UUID marketId);
     boolean existsByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
 
-    void deleteByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
     List<Position> findByUserIdAndStatus(Long userId, PositionStatus status);
 
 

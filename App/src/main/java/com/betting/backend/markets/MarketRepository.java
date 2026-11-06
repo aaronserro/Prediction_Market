@@ -1,12 +1,22 @@
 package com.betting.backend.markets;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MarketRepository extends JpaRepository<Market, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Market m WHERE m.id = :id")
+    Optional<Market> findByIdForUpdate(@Param("id") UUID id);
 
     // 1. Find a market by its ID
     // Already provided by JpaRepository: findById(UUID id)

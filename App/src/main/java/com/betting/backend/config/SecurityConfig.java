@@ -61,7 +61,6 @@ public class SecurityConfig {
       .cors(cors -> cors.configurationSource(corsConfig()))
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-        // 🔑 Allow preflight requests
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers("/auth/**", "/api/v1/auth/**").permitAll()
         // Public auth endpoints
@@ -79,7 +78,10 @@ public class SecurityConfig {
         // Public market GET endpoints - anyone can view markets
         .requestMatchers(HttpMethod.GET, "/api/v1/markets/**").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/v1/news/**").permitAll()
-        .requestMatchers(HttpMethod.GET, "/api/v1/users/*/wallet").permitAll()
+
+        // Minting funds directly is admin-only; users go through fund requests.
+        // Other wallet endpoints require login + ownership (checked in WalletController).
+        .requestMatchers(HttpMethod.POST, "/api/v1/users/*/wallet/deposit").hasAuthority("ROLE_ADMIN")
 
         // Authenticated endpoints - must be logged in
         .requestMatchers(HttpMethod.POST, "/api/v1/trades/**").authenticated()
@@ -98,13 +100,13 @@ public class SecurityConfig {
   CorsConfigurationSource corsConfig() {
     var cfg = new CorsConfiguration();
 
-    // ✅ Frontend origins allowed to call your API
+    // Frontend origins allowed to call API
     cfg.setAllowedOrigins(List.of(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "https://app.pryzm.ca",     // existing prod frontend
-        "https://www.pryzm.ca",     // 👈 your live site (causing the current error)
+        "https://www.pryzm.ca",     // live site (causing the current error)
         "https://pryzm.ca"          // optional bare domain, useful if you ever use it
     ));
 

@@ -1,12 +1,12 @@
 package com.betting.backend.wallet.Service;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
-import org.springframework.boot.autoconfigure.pulsar.PulsarProperties.Transaction;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.betting.backend.wallet.dto.TransferResponse;
@@ -16,31 +16,30 @@ import com.betting.backend.wallet.model.Wallet;
 import com.betting.backend.user.User;
 import com.betting.backend.user.UserRepository;
 import com.betting.backend.wallet.dto.TransactionResponse;
-import com.betting.backend.wallet.dto.TransferResponse;
 import com.betting.backend.wallet.Exceptions.AmountInvalidException;
 import com.betting.backend.wallet.Exceptions.BusinessValidationException;
-import com.betting.backend.wallet.Exceptions.DuplicateOperationException;
-import com.betting.backend.wallet.Exceptions.InsufficientFundsException;
 import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
 import com.betting.backend.wallet.Repository.WalletRepository;
-import com.betting.backend.wallet.Repository.WalletTransactionRepository;
-import com.betting.backend.wallet.dto.WalletResponse;
-import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
-import com.betting.backend.wallet.dto.TransactionResponse;
 
 @Service
 public class WalletServiceImpl implements WalletService {
-    private WalletRepository walletRepository;
-    private WalletTransactionService walletTransactionService;
-     private final UserRepository userRepository;
-    public WalletServiceImpl(UserRepository repo2, WalletRepository repo, WalletTransactionService transactionService){
-        this.walletRepository=repo;
-        this.walletTransactionService=transactionService;
-        this.userRepository=repo2;
+    private final WalletRepository walletRepository;
+    private final WalletTransactionService walletTransactionService;
+    private final WalletMutationExecutor walletMutationExecutor;
+    private final UserRepository userRepository;
 
-
+    public WalletServiceImpl(
+            UserRepository userRepository,
+            WalletRepository walletRepository,
+            WalletTransactionService walletTransactionService,
+            WalletMutationExecutor walletMutationExecutor) {
+        this.walletRepository = walletRepository;
+        this.walletTransactionService = walletTransactionService;
+        this.walletMutationExecutor = walletMutationExecutor;
+        this.userRepository = userRepository;
     }
 
+@Override
 @Transactional
 public TransferResponse transfer(
         Long fromUserId,
@@ -57,7 +56,7 @@ public TransferResponse transfer(
         throw new IllegalArgumentException("fromUserId must differ from toUserId");
     }
     if (amountCents == null || amountCents <= 0) {
-        throw new AmountInvalidException(amountCents);
+        throw invalidAmount(amountCents);
     }
     if (idempotencyKey == null || idempotencyKey.isBlank()) {
         throw new BusinessValidationException("Idempotency-Key is required");
@@ -80,13 +79,13 @@ public TransferResponse transfer(
     PartyResponse from = new PartyResponse(
             fromUserId,
             debitTx.getTransactionId().toString(),
-            debitTx.getAmountCents()
+            debitTx.getBalanceAfterCents()
     );
 
     PartyResponse to = new PartyResponse(
             toUserId,
             creditTx.getTransactionId().toString(),
-            creditTx.getAmountCents()
+            creditTx.getBalanceAfterCents()
     );
 
     TransferResponse resp = new TransferResponse(
@@ -103,107 +102,60 @@ public TransferResponse transfer(
 }
 
     @Override
-    @Transactional
     public TransactionResponse credit(Long amountCents, Long userid, String IDEkey, String refid){
-
-        Wallet wallet_added;
-        if (userid == null) {
-            throw new IllegalArgumentException("userId is required");
-        }
-        if(amountCents<=0){
-            throw new AmountInvalidException(amountCents);
-        }
-        if(IDEkey==null||IDEkey.isBlank()){
-            throw new BusinessValidationException(IDEkey);
-        }
-        // Check idempotency first before loading wallet
-        Optional<TransactionResponse> responce = walletTransactionService.findByIdempotencyKey(IDEkey);
-        if(responce.isPresent()){
-            TransactionResponse tx = responce.get();
-            Wallet callerWallet = walletRepository.findByUser_Id(userid)
-            .orElseThrow(()-> new WalletNotFoundException(userid));
-            boolean sameWallet = tx.getWalletId() != null && tx.getWalletId().equals(callerWallet.getId());
-            boolean sameAmount = tx.getAmountCents() == amountCents;
-            boolean isCredit   = tx.getType() != null && tx.getType().equalsIgnoreCase("CREDIT");
-            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED");
-
-            if (sameWallet && sameAmount && isCredit && succeeded) {
-                return tx; // idempotent repeat of the exact same request
-            }
-
-            // same key but different intent → reject
-            throw new DuplicateOperationException(
-                "Idempotency key already used for a different operation (wallet=" +
-                tx.getWalletId() + ", type=" + tx.getType() + ", amountCents=" + tx.getAmountCents() + ")"
-            );
-        }
-
-        // Load wallet for new transaction
-        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
-        if(wallet.isEmpty()){
-            throw new WalletNotFoundException(userid);
-        }
-
-        wallet_added = wallet.get();
-        Long oldBalance = wallet_added.getBalanceCents();
-        Long newBalance = oldBalance + amountCents;
-        wallet_added.setBalanceCents(newBalance);
-        walletRepository.saveAndFlush(wallet_added);
-
-        return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
+        return coordinateMutation(amountCents, userid, IDEkey, refid, true);
     }
 
     @Override
-    @Transactional
     public TransactionResponse debit(Long amountCents, Long userid, String IDEkey, String refid){
-        Wallet wallet_added;
+        return coordinateMutation(amountCents, userid, IDEkey, refid, false);
+    }
+
+    private TransactionResponse coordinateMutation(
+            Long amountCents,
+            Long userid,
+            String idempotencyKey,
+            String refId,
+            boolean credit) {
         if (userid == null) {
             throw new IllegalArgumentException("userId is required");
         }
-        if(amountCents<=0){
-            throw new AmountInvalidException(amountCents);
+        if(amountCents == null || amountCents <= 0){
+            throw invalidAmount(amountCents);
         }
-        if(IDEkey==null||IDEkey.isBlank()){
-            throw new BusinessValidationException(IDEkey);
-        }
-        // Check idempotency first
-        Optional<TransactionResponse> responce = walletTransactionService.findByIdempotencyKey(IDEkey);
-        if(responce.isPresent()){
-            TransactionResponse tx = responce.get();
-            Wallet callerWallet = walletRepository.findByUser_Id(userid)
-            .orElseThrow(()-> new WalletNotFoundException(userid));
-            boolean sameWallet = tx.getWalletId() != null && tx.getWalletId().equals(callerWallet.getId());
-            boolean sameAmount = tx.getAmountCents() == amountCents;
-            boolean isDebit    = tx.getType() != null && tx.getType().equalsIgnoreCase("DEBIT");
-            boolean succeeded  = tx.getStatus() == null || tx.getStatus().equalsIgnoreCase("SUCCEEDED");
-
-            if (sameWallet && sameAmount && isDebit && succeeded) {
-                return tx; // idempotent repeat of the exact same request
-            }
-
-            // same key but different intent → reject
-            throw new DuplicateOperationException(
-                "Idempotency key already used for a different operation (wallet=" +
-                tx.getWalletId() + ", type=" + tx.getType() + ", amountCents=" + tx.getAmountCents() + ")"
-            );
+        if(idempotencyKey == null || idempotencyKey.isBlank()){
+            throw new BusinessValidationException("Idempotency-Key is required");
         }
 
-        // Load wallet for new transaction
-        Optional<Wallet> wallet = walletRepository.findByUser_Id(userid);
-        if(wallet.isEmpty()){
-            throw new WalletNotFoundException(userid);
+        String key = idempotencyKey.trim();
+        long signedDelta = credit ? amountCents : -amountCents;
+        Wallet wallet = walletRepository.findByUser_Id(userid)
+                .orElseThrow(() -> new WalletNotFoundException(userid));
+
+        TransactionResponse existing = walletTransactionService.findByIdempotencyKey(key)
+                .orElse(null);
+        if (existing != null) {
+            return WalletMutationExecutor.requireMatchingIntent(
+                    existing, wallet, signedDelta, key);
         }
 
-        wallet_added = wallet.get();
-        Long oldBalance = wallet_added.getBalanceCents();
-        if (oldBalance < amountCents.longValue()) {
-            throw new InsufficientFundsException(userid, amountCents, oldBalance);
+        try {
+            return walletMutationExecutor.mutate(userid, signedDelta, key, refId);
+        } catch (DataIntegrityViolationException | OptimisticLockingFailureException conflict) {
+            TransactionResponse winner = walletTransactionService.findByIdempotencyKey(key)
+                    .orElseThrow(() -> new com.betting.backend.wallet.Exceptions.DuplicateOperationException(
+                            key,
+                            credit ? "CREDIT" : "DEBIT",
+                            "Concurrent wallet mutation prevented this operation"));
+            return WalletMutationExecutor.requireMatchingIntent(
+                    winner, wallet, signedDelta, key);
         }
-        Long newBalance = oldBalance - amountCents;
-        wallet_added.setBalanceCents(newBalance);
-        walletRepository.saveAndFlush(wallet_added);
+    }
 
-        return walletTransactionService.appendTransaction(wallet_added, amountCents.longValue(), newBalance, IDEkey, refid);
+    private static AmountInvalidException invalidAmount(Long amountCents) {
+        return amountCents == null
+                ? new AmountInvalidException(0L, "Amount is required")
+                : new AmountInvalidException(amountCents);
     }
 
 
@@ -233,16 +185,4 @@ public TransferResponse transfer(
             updatedAt
         );
     }
-    // --- helpers ---
-    private WalletResponse mapToResponse(Wallet wallet) {
-        // adjust fields to your DTO
-        WalletResponse dto = new WalletResponse();
-        dto.setWalletId(wallet.getId());
-        dto.setBalanceCents(wallet.getBalanceCents());
-        // dto.setUpdatedAt(wallet.getUpdatedAt());   // if present
-        // dto.setCurrency("CAD");                    // if you want a default
-        return dto;
-    }
-
-
 }

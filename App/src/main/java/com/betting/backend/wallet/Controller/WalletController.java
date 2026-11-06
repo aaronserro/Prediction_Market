@@ -4,7 +4,7 @@ import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,25 +16,40 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
-import com.betting.backend.wallet.Repository.WalletRepository;
+import com.betting.backend.user.User;
 import com.betting.backend.wallet.Service.WalletService;
-import com.betting.backend.wallet.Service.WalletServiceImpl;
 import com.betting.backend.wallet.dto.*;
 
 @RestController
 @RequestMapping("/api/v1")
 @Validated
 public class WalletController {
-    private final WalletServiceImpl walletService;
-    public WalletController(WalletServiceImpl walletService) {
+    private final WalletService walletService;
+    public WalletController(WalletService walletService) {
         this.walletService = walletService;
     }
+    // Callers may only act on their own wallet; admins may read any wallet.
+    private static void requireOwner(User currentUser, Long pathUserId) {
+        if (currentUser == null || !currentUser.getId().equals(pathUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "You cannot access another user's wallet");
+        }
+    }
+
+    private static void requireOwnerOrAdmin(User currentUser, Long pathUserId) {
+        boolean isAdmin = currentUser != null && currentUser.getAuthorities().stream()
+            .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (!isAdmin) {
+            requireOwner(currentUser, pathUserId);
+        }
+    }
+
     @GetMapping("/users/{userId}/wallet")
     public ResponseEntity<WalletResponse> getWallet(
             @PathVariable("userId") Long userId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestHeader(value = "Accept", required = false) String acceptHeader) {
+            @AuthenticationPrincipal User currentUser) {
 
+        requireOwnerOrAdmin(currentUser, userId);
         WalletResponse wallet = walletService.getbalance(userId);
 
         return ResponseEntity.ok()
@@ -46,8 +61,10 @@ public class WalletController {
                     produces = "application/json")
     public ResponseEntity<TransactionResponse>withdraw(@PathVariable("userId") Long userId,
             @Valid @RequestBody WithdrawRequest body,                         // { amountCents, refId? }
-            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
+            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+            @AuthenticationPrincipal User currentUser
     ){
+        requireOwner(currentUser, userId);
          String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
         TransactionResponse tx = walletService.debit( body.getAmountCents(), userId,  key, body.getRefId());
         return ResponseEntity.ok()
@@ -62,25 +79,12 @@ public class WalletController {
             @Valid @RequestBody DepositRequest body,                         // { amountCents, refId? }
             @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
     ) {
+        // Admin-only (enforced in SecurityConfig): users get funds via fund requests.
         String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
-        TransactionResponse tx = walletService.credit(userId, body.getAmountCents(),  key, body.getRefId());
+        TransactionResponse tx = walletService.credit(body.getAmountCents(), userId, key, body.getRefId());
         return ResponseEntity.ok()
         .header("Cache-Control", "no-store")
         .body(tx);
-    }
-    public ResponseEntity<TransactionResponse[]>Transfer(
-        @Valid @RequestBody TransferRequest body,
-        @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
-
-    ){
-        String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
-        TransactionResponse tx1 = walletService.credit(body.getToWalletId(),body.getAmountCents(),idemKey,body.getRefId());
-        TransactionResponse tx2 = walletService.debit(body.getAmountCents(),body.getToWalletId(),idemKey,body.getRefId());
-        TransactionResponse[] arr = {tx1,tx2};
-        return ResponseEntity.ok()
-        .header("Cache-Control", "no-store")
-        .body(arr);
-
     }
     @PostMapping(
     value = "/users/{fromUserId}/wallet/transfer/{toUserId}",
@@ -91,8 +95,12 @@ public ResponseEntity<TransferResponse> transfer(
         @PathVariable("fromUserId") Long fromUserId,
         @PathVariable("toUserId") Long toUserId,
         @Valid @RequestBody TransferRequest body,        // expects: toUserId, amountCents>=1, refId?
-        @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
+        @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+        @AuthenticationPrincipal User currentUser
 ) {
+    // Only the sender can move money out of their own wallet
+    requireOwner(currentUser, fromUserId);
+
     // Normalize/generate idempotency key (or 400 if your policy requires it)
     String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
 

@@ -54,14 +54,6 @@ public class PositionController {
 
         List<PositionResponse> out = new ArrayList<>();
         for (Position p : positions) {
-
-            // If you're deleting closed positions, this is unnecessary.
-            // If you keep qty=0 rows, skip them:
-            if (p.getQuantity() <= 0) continue;
-            if (p.getStatus() == PositionStatus.SETTLED) continue;
-            var m = p.getOutcome().getMarket();
-            if (m != null && m.getStatus() != com.betting.backend.markets.MarketStatus.ACTIVE) continue;
-
             UUID outcomeId = p.getOutcome().getId();
 
             // Use marketId and marketName from Position entity, with fallback to outcome's market
@@ -88,8 +80,8 @@ public class PositionController {
             long costBasis = p.getCostBasisCents();
             long avgBuy = (qty > 0) ? (costBasis / qty) : 0;
 
-            // Get actual current price from PricingService
-            long currentPrice = getCurrentPriceCents(marketId, outcomeId);
+            // Closed/settled rows (qty 0) keep only realized P&L; skip live pricing.
+            long currentPrice = qty > 0 ? getCurrentPriceCents(marketId, outcomeId) : 0L;
 
             long marketValue = (long) qty * currentPrice;
             long unrealized = marketValue - costBasis;

@@ -9,6 +9,8 @@ public class TransactionResponse {
     private long amountCents;
     private String status;    // e.g. "PENDING", "SUCCEEDED", "FAILED"
     private String idempotencyKey;
+    private String refId;
+    private long balanceAfterCents;
     private Instant createdAt;
 
     public TransactionResponse() {
@@ -74,6 +76,22 @@ public class TransactionResponse {
 
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getRefId() {
+        return refId;
+    }
+
+    public void setRefId(String refId) {
+        this.refId = refId;
+    }
+
+    public long getBalanceAfterCents() {
+        return balanceAfterCents;
+    }
+
+    public void setBalanceAfterCents(long balanceAfterCents) {
+        this.balanceAfterCents = balanceAfterCents;
     }
 
     public Instant getCreatedAt() {

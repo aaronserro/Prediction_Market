@@ -2,13 +2,14 @@ package com.betting.backend.positions;
 
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
 import com.betting.backend.user.User;
-import com.betting.backend.wallet.Service.WalletService;
 
 import jakarta.annotation.PostConstruct;
 
@@ -16,7 +17,6 @@ import jakarta.annotation.PostConstruct;
  * Implements PositionService using your PositionRepository method names:
  * - findByUser_IdAndOutcomeId(...)
  * - existsByUser_IdAndOutcomeId(...)
- * - deleteByUser_IdAndOutcomeId(...)
  *
  * NOTE: Your interface currently has a typo: applySel(...) not applySell(...).
  * This class implements applySel(...) to match your interface.
@@ -24,16 +24,18 @@ import jakarta.annotation.PostConstruct;
 @Service
 public class PositionServiceImpl implements PositionService {
 
+    private static final Logger log = LoggerFactory.getLogger(PositionServiceImpl.class);
+
     private final PositionRepository positionRepository;
     private final OutcomeRepository outcomeRepository;
-    private final WalletService walletService;
+    private final PositionSettlementExecutor settlementExecutor;
 
     public PositionServiceImpl(PositionRepository positionRepository,
                                OutcomeRepository outcomeRepository,
-                            WalletService walletService) {
+                               PositionSettlementExecutor settlementExecutor) {
         this.positionRepository = positionRepository;
         this.outcomeRepository = outcomeRepository;
-        this.walletService=walletService;
+        this.settlementExecutor = settlementExecutor;
     }
 
     @Override
@@ -102,101 +104,30 @@ public class PositionServiceImpl implements PositionService {
         long prevRealized = (position.getRealizedPnl() == null) ? 0L : position.getRealizedPnl();
         position.setRealizedPnl(prevRealized + realizedDelta);
 
-        // Close logic
-        if (position.getQuantity() == 0) {
-
-            // If you'd rather keep the row, replace this delete with a save(position)
-            positionRepository.deleteByUser_IdAndOutcomeId(user.getId(), outcomeId);
-
-        } else {
-            positionRepository.save(position);
-        }
-
-    }
-@Transactional
-public void settlePositions(UUID marketId, UUID winningOutcomeId) {
-    final int PAYOUT_PER_WINNING_SHARE_CENTS = 100;
-
-    var openPositions = positionRepository.findByOutcome_Market_IdAndStatus(
-            marketId, PositionStatus.OPEN
-    );
-
-    // List to track payouts to process after positions are settled
-    java.util.List<PayoutInfo> payoutsToProcess = new java.util.ArrayList<>();
-
-    for (Position position : openPositions) {
-        int qty = position.getQuantity();
-
-        // If somehow an OPEN position has 0 qty, just mark it settled so it disappears.
-        if (qty <= 0) {
-            position.setStatus(PositionStatus.SETTLED);
-            positionRepository.save(position);
-            continue;
-        }
-
-        boolean isWinner = position.getOutcome() != null
-                && position.getOutcome().getId().equals(winningOutcomeId);
-
-        long payoutCents = isWinner
-                ? safeMultiplyToLong(qty, PAYOUT_PER_WINNING_SHARE_CENTS)
-                : 0L;
-
-        long costBasis = position.getCostBasisCents();
-        position.setSettledCostBasisCents(costBasis); // <-- add this
-        long prevRealized = position.getRealizedPnl() == null ? 0L : position.getRealizedPnl();
-        long realizedDelta = payoutCents - costBasis;
-
-        // Update accounting on the position
-
-        position.setRealizedPnl(prevRealized + realizedDelta);
-
-        // Close the position
-        position.setQuantity(0);
-        position.setCostBasisCents(0L);
-        position.setStatus(PositionStatus.SETTLED);
-
+        // Retain fully sold positions so their accumulated realized P&L remains
+        // available to the portfolio endpoint. A later buy reuses this row.
         positionRepository.save(position);
 
-        // Queue payout for processing after transaction commits
-        if (payoutCents > 0) {
-            payoutsToProcess.add(new PayoutInfo(
-                position.getUser().getId(),
-                payoutCents,
-                marketId
-            ));
-        }
     }
-
-    // Process all payouts after positions are settled
-    for (PayoutInfo payout : payoutsToProcess) {
-        try {
-            String ideKey = "SETTLEv1:" + payout.marketId + ":" + payout.userId;
-            String refId  = "MARKET_SETTLEMENT:" + payout.marketId;
-
-            walletService.credit(
-                    payout.amountCents,
-                    payout.userId,
-                    ideKey,
-                    refId
-            );
-        } catch (Exception e) {
-            System.err.println("  ❌ ERROR crediting wallet for user " + payout.userId + ": " + e.getMessage());
-            e.printStackTrace();
+    /**
+     * Settles every OPEN position in the market. Each position (and its payout)
+     * commits in its own transaction; failures are logged and left OPEN so a
+     * later call can retry them. Intentionally not @Transactional.
+     *
+     * @return number of positions that failed to settle
+     */
+    @Override
+    public int settlePositions(UUID marketId, UUID winningOutcomeId) {
+        int failures = 0;
+        for (Long positionId : positionRepository.findIdsByMarketIdAndStatus(marketId, PositionStatus.OPEN)) {
+            try {
+                settlementExecutor.settle(positionId, marketId, winningOutcomeId);
+            } catch (RuntimeException e) {
+                failures++;
+                log.error("Failed to settle position {} for market {}", positionId, marketId, e);
+            }
         }
-    }
-}
-
-    // Helper class to track payout information
-    private static class PayoutInfo {
-        final Long userId;
-        final long amountCents;
-        final UUID marketId;
-
-        PayoutInfo(Long userId, long amountCents, UUID marketId) {
-            this.userId = userId;
-            this.amountCents = amountCents;
-            this.marketId = marketId;
-        }
+        return failures;
     }
 
     /**

@@ -2,6 +2,9 @@ package com.betting.backend.wallet.Service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -9,15 +12,25 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailServiceImpl implements EmailService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmailServiceImpl.class);
+
     private final JavaMailSender mailSender;
+    private final boolean mailEnabled;
     private static final String FROM_ADDRESS = "pryzmcompany@gmail.com";  // Verified sender
 
-    public EmailServiceImpl(JavaMailSender mailSender) {
+    public EmailServiceImpl(JavaMailSender mailSender,
+                            @Value("${app.mail.enabled:true}") boolean mailEnabled) {
         this.mailSender = mailSender;
+        this.mailEnabled = mailEnabled;
     }
 
     @Override
     public void sendFundRequestEmail(String userIdentifier, Long amountCents, String reason) {
+        if (!mailEnabled) {
+            log.info("Email disabled (app.mail.enabled=false); skipping fund request email for {} amountCents={} reason={}",
+                userIdentifier, amountCents, reason);
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");

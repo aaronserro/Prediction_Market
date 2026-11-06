@@ -23,7 +23,8 @@ public interface MarketService {
 
     MarketResponse updateMarket(UUID marketId, UpdateMarketRequest request);
 
-    void resolveMarket(UUID marketId, UUID winningOutcomeId);
+    /** @return number of positions still unsettled (0 means the market is RESOLVED) */
+    int resolveMarket(UUID marketId, UUID winningOutcomeId);
 
 
 }

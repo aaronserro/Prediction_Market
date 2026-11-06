@@ -4,37 +4,40 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.UUID;
 
 //import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Sort;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.betting.backend.wallet.dto.FundRequestCreateRequest;
 import com.betting.backend.wallet.dto.FundRequestResponse;
 import com.betting.backend.wallet.model.FundRequest;
 import com.betting.backend.wallet.model.FundRequestStatus;
 import com.betting.backend.wallet.model.Wallet;
+import com.betting.backend.wallet.Exceptions.DuplicateOperationException;
 import com.betting.backend.wallet.Repository.FundRequestRepository;
 import com.betting.backend.wallet.Repository.WalletRepository;
 @Service
 public class FundRequestServiceImpl implements FundRequestService{
     private final FundRequestRepository fundRequestRepository;
     private final WalletRepository walletRepository;
-    private final EmailService emailService;
+    private final FundRequestCreationExecutor creationExecutor;
     private final WalletService walletService;
     public FundRequestServiceImpl(FundRequestRepository fundRequestRepository,
                                   WalletRepository walletRepository,
-                                  EmailService emailService, WalletService walletService) {
+                                  FundRequestCreationExecutor creationExecutor,
+                                  WalletService walletService) {
         this.fundRequestRepository = fundRequestRepository;
         this.walletRepository = walletRepository;
-        this.emailService = emailService;
+        this.creationExecutor = creationExecutor;
         this.walletService=walletService;
     }
 
     @Override
     public FundRequestResponse createFundRequest(
-        Long userId, FundRequestCreateRequest request){
+        Long userId, FundRequestCreateRequest request, String idempotencyKey){
                     // 1) Validate input
         if (userId == null) {
             throw new IllegalArgumentException("userId is required");
@@ -51,21 +54,48 @@ public class FundRequestServiceImpl implements FundRequestService{
         if (request.getReason() == null || request.getReason().isBlank()) {
             throw new IllegalArgumentException("Reason must not be blank.");
         }
-        Wallet wallet = walletRepository.findByUser_Id(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user id " + userId));
-        FundRequest entity = new FundRequest(wallet,request.getAmountCents(),request.getReason());
-        FundRequest saved = fundRequestRepository.save(entity);
-            emailService.sendFundRequestEmail(
-            "userId=" + userId,
-            request.getAmountCents(),
-            request.getReason()
-    );
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key is required");
+        }
 
-    return toResponse(saved);
+        String key = idempotencyKey.trim();
+        if (key.length() > 128) {
+            throw new IllegalArgumentException("Idempotency-Key must not exceed 128 characters");
+        }
+        FundRequest existing = fundRequestRepository.findByIdempotencyKey(key).orElse(null);
+        if (existing != null) {
+            return toResponse(requireMatchingCreation(existing, userId, request, key));
+        }
 
+        try {
+            FundRequest created = creationExecutor.create(
+                    userId, request.getAmountCents(), request.getReason(), key);
+            return toResponse(requireMatchingCreation(created, userId, request, key));
+        } catch (DataIntegrityViolationException conflict) {
+            FundRequest winner = fundRequestRepository.findByIdempotencyKey(key)
+                    .orElseThrow(() -> new DuplicateOperationException(
+                            key,
+                            "FUND_REQUEST_CREATE",
+                            "Concurrent fund-request creation prevented this operation"));
+            return toResponse(requireMatchingCreation(winner, userId, request, key));
+        }
+    }
 
-
-
+    private static FundRequest requireMatchingCreation(
+            FundRequest existing,
+            Long userId,
+            FundRequestCreateRequest request,
+            String idempotencyKey) {
+        boolean matches = existing.getWallet().getUser().getId().equals(userId)
+                && existing.getAmountCents().equals(request.getAmountCents())
+                && existing.getReason().equals(request.getReason());
+        if (matches) {
+            return existing;
+        }
+        throw new DuplicateOperationException(
+                idempotencyKey,
+                "FUND_REQUEST_CREATE",
+                "Idempotency key already used for a different fund request");
     }
     private FundRequestResponse toResponse(FundRequest entity) {
         FundRequestResponse dto = new FundRequestResponse();
@@ -122,15 +152,19 @@ public class FundRequestServiceImpl implements FundRequestService{
                     .toList();
     }
     @Override
+    @Transactional
     public FundRequestResponse approveRequest(Long requestId, Long adminUserId){
         if (adminUserId==null){
             throw new IllegalArgumentException("adminUserId cannot be null");
 
         }
-        FundRequest request = fundRequestRepository.findById(requestId)
+        FundRequest request = fundRequestRepository.findByIdForUpdate(requestId)
         .orElseThrow(() -> new IllegalArgumentException(
             "Fund request not found for id " + requestId
         ));
+        if (request.getStatus() == FundRequestStatus.APPROVED) {
+            return toResponse(request);
+        }
         if (request.getStatus() != FundRequestStatus.PENDING) {
             throw new IllegalStateException("Only PENDING requests can be approved.");
         }
@@ -145,9 +179,8 @@ public class FundRequestServiceImpl implements FundRequestService{
         Long userId = wallet.getUser().getId();
         Long amountCents = request.getAmountCents();
 
-        String idempotencyKey = UUID.randomUUID().toString();
         String refId = "FUND_REQUEST:" + requestId;
-        walletService.credit(amountCents, userId, idempotencyKey, refId);
+        walletService.credit(amountCents, userId, refId, refId);
 
         request.setStatus(FundRequestStatus.APPROVED);
         request.setProcessedAt(Instant.now());
@@ -158,12 +191,13 @@ public class FundRequestServiceImpl implements FundRequestService{
 
     }
     @Override
+    @Transactional
     public FundRequestResponse denyRequest(Long requestId, Long adminUserId){
         if (adminUserId==null){
             throw new IllegalArgumentException("adminUserId cannot be null");
 
         }
-        FundRequest request = fundRequestRepository.findById(requestId)
+        FundRequest request = fundRequestRepository.findByIdForUpdate(requestId)
         .orElseThrow(() -> new IllegalArgumentException(
             "Fund request not found for id " + requestId
         ));

@@ -1,18 +1,18 @@
 package com.betting.backend.wallet.Controller;
 
 import java.util.List;
+import java.util.UUID;
 
-import org.apache.catalina.connector.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -34,16 +34,21 @@ public class FundRequestController {
     public ResponseEntity<FundRequestResponse> createFundRequest(
         @PathVariable("userId") Long pathUserid,
         @Valid @RequestBody FundRequestCreateRequest body,
+        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
         @AuthenticationPrincipal(expression= "id") Long authUserId
     ){
         if(authUserId==null||!authUserId.equals(pathUserid)){
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "you cannot create a fund request for another user");
         }
-        FundRequestResponse dto = fundRequestService.createFundRequest(pathUserid, body);
+        String key = (idempotencyKey == null || idempotencyKey.isBlank())
+                ? UUID.randomUUID().toString()
+                : idempotencyKey.trim();
+        FundRequestResponse dto = fundRequestService.createFundRequest(pathUserid, body, key);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .header("Cache-Control","no-store")
+                .header("Idempotency-Key", key)
                 .body(dto);
 
 

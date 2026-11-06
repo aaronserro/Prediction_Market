@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.betting.backend.markets.dto.MarketCreateRequest;
 import com.betting.backend.markets.dto.MarketResponse;
@@ -41,7 +42,11 @@ public class MarketController {
         @PathVariable UUID marketId,
         @RequestParam UUID winningOutcomeId
 ) {
-    marketService.resolveMarket(marketId, winningOutcomeId);
+    int unsettled = marketService.resolveMarket(marketId, winningOutcomeId);
+    if (unsettled > 0) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                unsettled + " position(s) could not be settled; retry resolving this market");
+    }
     return ResponseEntity.noContent().build();
 }
 
