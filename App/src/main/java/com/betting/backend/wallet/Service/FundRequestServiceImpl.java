@@ -1,8 +1,6 @@
 package com.betting.backend.wallet.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 //import org.springframework.boot.autoconfigure.data.web.SpringDataWebProperties.Sort;
@@ -101,18 +99,16 @@ public class FundRequestServiceImpl implements FundRequestService{
         FundRequestResponse dto = new FundRequestResponse();
         dto.setId(entity.getId());
         dto.setWalletID(entity.getWallet().getId());
+        if (entity.getWallet().getUser() != null) {
+            dto.setUserId(entity.getWallet().getUser().getId());
+            dto.setUsername(entity.getWallet().getUser().getUsername());
+        }
         dto.setAmountCents(entity.getAmountCents());          // adjust if your field name differs
         dto.setReason(entity.getReason());
         dto.setStatus(entity.getStatus());
-        LocalDateTime createdAt = LocalDateTime.ofInstant(entity.getCreatedAt(), ZoneId.systemDefault());
-        LocalDateTime processedAt = entity.getProcessedAt() == null
-    ? null
-    : LocalDateTime.ofInstant(entity.getProcessedAt(), ZoneId.systemDefault());
-
-        dto.setCreatedAt(createdAt);
-
-        // processedAt can be null
-        dto.setProcessedAt(processedAt);
+        // Instants serialize as UTC ISO-8601 (with "Z"), so clients render the correct local time.
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setProcessedAt(entity.getProcessedAt());
 
         return dto;
 }
@@ -201,8 +197,11 @@ public class FundRequestServiceImpl implements FundRequestService{
         .orElseThrow(() -> new IllegalArgumentException(
             "Fund request not found for id " + requestId
         ));
+        if (request.getStatus() == FundRequestStatus.REJECTED) {
+            return toResponse(request);
+        }
         if (request.getStatus() != FundRequestStatus.PENDING) {
-            throw new IllegalStateException("denyed...");
+            throw new IllegalStateException("Only PENDING requests can be rejected.");
         }
         request.setStatus(FundRequestStatus.REJECTED);
         request.setProcessedAt(Instant.now());

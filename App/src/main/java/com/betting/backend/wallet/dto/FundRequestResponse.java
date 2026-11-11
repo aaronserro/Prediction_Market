@@ -1,17 +1,19 @@
 package com.betting.backend.wallet.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import com.betting.backend.wallet.model.FundRequestStatus;
 
 public class FundRequestResponse {
     private Long id;
     private Long Walletid;
+    private Long userId;
+    private String username;
     private Long amountCents;
     private String reason;
     private FundRequestStatus status;
-    private LocalDateTime createdAt;
-    private LocalDateTime processedAt; // can be null if still pending
+    private Instant createdAt;
+    private Instant processedAt; // can be null if still pending
 
     public Long getId() {
         return id;
@@ -21,6 +23,18 @@ public class FundRequestResponse {
     }
     public void setWalletID(Long WalletId){
         this.Walletid=WalletId;
+    }
+    public Long getUserId() {
+        return userId;
+    }
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
     }
     public void setId(Long id) {
         this.id = id;
@@ -50,19 +64,19 @@ public class FundRequestResponse {
         this.status = status;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getProcessedAt() {
+    public Instant getProcessedAt() {
         return processedAt;
     }
 
-    public void setProcessedAt(LocalDateTime processedAt) {
+    public void setProcessedAt(Instant processedAt) {
         this.processedAt = processedAt;
     }
 

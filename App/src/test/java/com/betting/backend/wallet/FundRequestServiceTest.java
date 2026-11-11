@@ -163,6 +163,32 @@ class FundRequestServiceTest {
     }
 
     @Test
+    void rejectionRetryReturnsRejectedResultWithoutSavingAgain() {
+        Fixture fixture = new Fixture();
+        FundRequest rejected = request(54L, fixture.wallet, 900L, "reason", "create-key");
+        rejected.setStatus(FundRequestStatus.REJECTED);
+        when(fixture.fundRequests.findByIdForUpdate(54L)).thenReturn(Optional.of(rejected));
+
+        FundRequestResponse response = fixture.service.denyRequest(54L, 99L);
+
+        assertThat(response.getStatus()).isEqualTo(FundRequestStatus.REJECTED);
+        assertThat(response.getUserId()).isEqualTo(1L);
+        verify(fixture.fundRequests, never()).save(any(FundRequest.class));
+    }
+
+    @Test
+    void rejectingApprovedRequestFails() {
+        Fixture fixture = new Fixture();
+        FundRequest approved = request(55L, fixture.wallet, 900L, "reason", "create-key");
+        approved.setStatus(FundRequestStatus.APPROVED);
+        when(fixture.fundRequests.findByIdForUpdate(55L)).thenReturn(Optional.of(approved));
+
+        assertThatThrownBy(() -> fixture.service.denyRequest(55L, 99L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Only PENDING");
+    }
+
+    @Test
     void processingRepositoryMethodUsesPessimisticWriteLock() throws Exception {
         Method method = FundRequestRepository.class.getMethod("findByIdForUpdate", Long.class);
         assertThat(method.getAnnotation(Lock.class).value())

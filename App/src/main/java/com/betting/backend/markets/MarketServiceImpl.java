@@ -116,6 +116,7 @@ public class MarketServiceImpl implements MarketService{
         resp.setStartDate(market.getStartDate());
         resp.setEndDate(market.getEndDate());
         resp.setResolutionSource(market.getResolutionSource());
+        resp.setWinningOutcomeId(market.getWinningOutcomeId());
 
         List<OutcomeResponse> outcomeLabels = market.getOutcomes().stream()
                 .map(this::toOutcomeResponse)
@@ -243,6 +244,14 @@ public class MarketServiceImpl implements MarketService{
 
         Market market = marketRepository.findById(marketId)
                 .orElseThrow(() -> new IllegalArgumentException("Market not found with id: " + marketId));
+
+        if (market.getStatus() == MarketStatus.RESOLVED) {
+            throw new IllegalStateException("Resolved markets cannot be edited.");
+        }
+        // RESOLVED must go through resolveMarket so positions are settled and payouts are credited.
+        if (request.getStatus() == MarketStatus.RESOLVED) {
+            throw new IllegalArgumentException("Use the Resolve action to resolve a market.");
+        }
 
         // Only update fields that are not null (partial update / PATCH-style)
         if (request.getTitle() != null) {

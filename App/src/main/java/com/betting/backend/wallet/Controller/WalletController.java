@@ -1,7 +1,9 @@
 package com.betting.backend.wallet.Controller;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,22 +14,32 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import com.betting.backend.user.User;
 import com.betting.backend.wallet.Service.WalletService;
+import com.betting.backend.wallet.Service.WalletTransactionService;
 import com.betting.backend.wallet.dto.*;
 
 @RestController
 @RequestMapping("/api/v1")
 @Validated
 public class WalletController {
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final WalletService walletService;
-    public WalletController(WalletService walletService) {
+    private final WalletTransactionService walletTransactionService;
+
+    public WalletController(WalletService walletService, WalletTransactionService walletTransactionService) {
         this.walletService = walletService;
+        this.walletTransactionService = walletTransactionService;
     }
+
+    public record TransactionPage(List<TransactionResponse> items, int page, int size,
+                                  long totalElements, boolean hasNext) {}
     // Callers may only act on their own wallet; admins may read any wallet.
     private static void requireOwner(User currentUser, Long pathUserId) {
         if (currentUser == null || !currentUser.getId().equals(pathUserId)) {
@@ -55,6 +67,25 @@ public class WalletController {
         return ResponseEntity.ok()
                 .header("Cache-Control", "no-store")
                 .body(wallet);
+    }
+
+    // Ledger history, newest first.
+    @GetMapping("/users/{userId}/wallet/transactions")
+    public ResponseEntity<TransactionPage> getTransactions(
+            @PathVariable("userId") Long userId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @AuthenticationPrincipal User currentUser) {
+
+        requireOwnerOrAdmin(currentUser, userId);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        Page<TransactionResponse> result =
+                walletTransactionService.getRecentTransactions(userId, Math.max(page, 0), safeSize);
+
+        return ResponseEntity.ok()
+                .header("Cache-Control", "no-store")
+                .body(new TransactionPage(result.getContent(), result.getNumber(), result.getSize(),
+                        result.getTotalElements(), result.hasNext()));
     }
     @PostMapping(value = "/users/{userId}/wallet/withdraw",
                     consumes = "application/json",

@@ -28,6 +28,7 @@ public class MarketResponse {
     private MarketStatus status; // "UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"
 
     private LocalDateTime createdAt;
+    private UUID winningOutcomeId;
     private boolean active;
 
     public UUID getId() {
@@ -108,5 +109,13 @@ public class MarketResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public UUID getWinningOutcomeId() {
+        return winningOutcomeId;
+    }
+
+    public void setWinningOutcomeId(UUID winningOutcomeId) {
+        this.winningOutcomeId = winningOutcomeId;
     }
 }

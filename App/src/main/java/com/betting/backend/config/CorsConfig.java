@@ -25,7 +25,10 @@ public class CorsConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         // Headers the client can send
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "Idempotency-Key"));
+
+        // Response headers the client may read
+        config.setExposedHeaders(List.of("Idempotency-Key"));
 
         // If you use cookies / Authorization header
         config.setAllowCredentials(true);
