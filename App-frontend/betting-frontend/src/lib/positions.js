@@ -1,4 +1,10 @@
 // Values from GET /api/v1/positions/me are in cents, which equal PZC.
+// The endpoint returns every position, including settled/sold-out ones with quantity 0.
+export const isOpenPosition = (p) => (Number(p.quantity) || 0) > 0;
+
+export const realizedTotal = (positions) =>
+  positions.reduce((s, p) => s + (Number(p.realizedPnlCents) || 0), 0);
+
 export function positionStats(p) {
   const qty = Number(p.quantity) || 0;
   const cost = Number(p.costBasisCents) || 0;

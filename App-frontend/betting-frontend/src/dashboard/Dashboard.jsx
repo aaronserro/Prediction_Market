@@ -7,7 +7,7 @@ import { fmt, signed } from "../lib/format.js";
 import rankImages, { RANK_KEYS, computeRank, formatRank, rankProgress } from "../lib/rankImages.js";
 import { Chips, LineChart, LiveDot, MarketCard, MarketGrid, Page, Segmented, card } from "../components/ui.jsx";
 import PositionsTable from "../components/PositionsTable.jsx";
-import { totals } from "../lib/positions.js";
+import { isOpenPosition, totals } from "../lib/positions.js";
 
 const RANGES = ["1D", "1W", "1M", "ALL"];
 const CHIPS = ["All", "Politics", "Sports", "Finance", "Technology", "Entertainment"];
@@ -109,6 +109,7 @@ export default function Dashboard() {
   const [rank, setRank] = useState(null);
   const [markets, setMarkets] = useState([]);
   const [chip, setChip] = useState("All");
+  const open = useMemo(() => positions.filter(isOpenPosition), [positions]);
 
   useEffect(() => {
     getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => setPositions([]));
@@ -144,19 +145,19 @@ export default function Dashboard() {
       </div>
 
       <div className="flex flex-wrap gap-4 items-stretch">
-        <PortfolioCard balance={balance} positions={positions} />
+        <PortfolioCard balance={balance} positions={open} />
         <RankCard rank={rank} />
       </div>
 
       <section className={`${card} overflow-hidden`}>
         <div className="flex items-center justify-between px-[22px] py-[18px]">
           <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">
-            Open positions <span className="font-mono text-[13px] font-medium text-mu ml-1.5">{positions.length}</span>
+            Open positions <span className="font-mono text-[13px] font-medium text-mu ml-1.5">{open.length}</span>
           </h2>
           <Link to="/portfolio" className="text-[13px] font-medium text-pr hover:text-prh">Full portfolio →</Link>
         </div>
-        {positions.length ? (
-          <PositionsTable positions={positions.slice(0, 5)} />
+        {open.length ? (
+          <PositionsTable positions={open.slice(0, 5)} />
         ) : (
           <div className="px-[22px] py-10 border-t border-bd text-center text-[14px] text-mu">
             No open positions yet. <Link to="/markets" className="text-pr hover:text-prh font-medium">Browse markets →</Link>

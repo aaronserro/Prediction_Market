@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ErrorNote, Page, PageHeader, Spinner, Tabs, card } from "../components/ui.jsx";
+import { ErrorNote, Page, PageHeader, Spinner, Tabs, card, tdCls, thCls } from "../components/ui.jsx";
 import PositionsTable from "../components/PositionsTable.jsx";
-import { totals } from "../lib/positions.js";
+import { isOpenPosition, realizedTotal, totals } from "../lib/positions.js";
 import { fetchMarkets, getJSON } from "../lib/markets.js";
 import { fmt, signed, signedPct } from "../lib/format.js";
 
@@ -34,22 +34,24 @@ export default function PortfolioPage() {
   }, []);
 
   const marketsById = useMemo(() => Object.fromEntries(markets.map((m) => [m.id, m])), [markets]);
-  // /positions/me only returns positions in ACTIVE markets; settled ones are
-  // filtered server-side, so the Resolved tab stays empty until an endpoint exists.
-  const resolved = [];
-  const t = totals(positions);
-  const plColor = t.pl > 0 ? "text-yes" : t.pl < 0 ? "text-no" : "";
-  const empty = !loading && positions.length === 0 && resolved.length === 0;
+  // /positions/me returns every position; settled or sold-out ones have quantity 0.
+  const open = useMemo(() => positions.filter(isOpenPosition), [positions]);
+  const resolved = useMemo(() => positions.filter((p) => !isOpenPosition(p)), [positions]);
+  const t = totals(open);
+  const realized = realizedTotal(positions);
+  const totalPl = t.pl + realized;
+  const plColor = totalPl > 0 ? "text-yes" : totalPl < 0 ? "text-no" : "";
+  const empty = !loading && positions.length === 0;
 
   return (
     <Page className="flex flex-col gap-5">
       <PageHeader title="Portfolio" subtitle="Track your active positions across markets" />
 
       <div className={`${card} overflow-hidden grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))]`}>
-        <Cell label="Positions">{positions.length}</Cell>
+        <Cell label="Open positions">{open.length}</Cell>
         <Cell label="Invested">{fmt(t.invested)} <Unit /></Cell>
         <Cell label="Current value">{fmt(t.value)} <Unit /></Cell>
-        <Cell label="Total P/L" color={plColor} sub={signedPct(t.plPct, 2)} last>{signed(t.pl)}</Cell>
+        <Cell label="Total P/L" color={plColor} sub={`Open ${signedPct(t.plPct, 2)} · Realized ${signed(realized)}`} last>{signed(totalPl)}</Cell>
       </div>
 
       {error && <ErrorNote>{error}</ErrorNote>}
@@ -74,16 +76,44 @@ export default function PortfolioPage() {
               value={tab}
               onChange={setTab}
               tabs={[
-                { value: "open", label: "Open", count: positions.length },
+                { value: "open", label: "Open", count: open.length },
                 { value: "resolved", label: "Resolved", count: resolved.length },
               ]}
             />
             {tab === "open" ? (
-              positions.length ? (
-                <div className="-mt-px"><PositionsTable positions={positions} marketsById={marketsById} stackedPl /></div>
+              open.length ? (
+                <div className="-mt-px"><PositionsTable positions={open} marketsById={marketsById} stackedPl /></div>
               ) : (
                 <div className="py-12 text-center text-[14px] text-mu">No open positions.</div>
               )
+            ) : resolved.length ? (
+              <div className="overflow-x-auto -mt-px">
+                <table className="w-full min-w-[520px] border-collapse">
+                  <thead>
+                    <tr>
+                      <th className={thCls}>Market</th>
+                      <th className={thCls}>Your pick</th>
+                      <th className={`${thCls} !text-right`}>Realized P/L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resolved.map((p) => {
+                      const r = Number(p.realizedPnlCents) || 0;
+                      return (
+                        <tr key={`${p.marketId}-${p.outcomeId}`} className="hover:bg-sf2 transition-colors">
+                          <td className={`${tdCls} font-[550]`}>
+                            <Link to={`/markets/${p.marketId}`} className="hover:text-pr">{p.marketTitle}</Link>
+                          </td>
+                          <td className={`${tdCls} text-tx2`}>{p.outcomeName}</td>
+                          <td className={`${tdCls} text-right font-mono ${r > 0 ? "text-yes" : r < 0 ? "text-no" : ""}`}>
+                            {signed(r)} <Unit />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="py-12 text-center text-[14px] text-mu">No resolved positions yet.</div>
             )}
