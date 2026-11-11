@@ -77,7 +77,7 @@ export default function PortfolioPage() {
               onChange={setTab}
               tabs={[
                 { value: "open", label: "Open", count: open.length },
-                { value: "resolved", label: "Resolved", count: resolved.length },
+                { value: "resolved", label: "Closed", count: resolved.length },
               ]}
             />
             {tab === "open" ? (
@@ -115,7 +115,7 @@ export default function PortfolioPage() {
                 </table>
               </div>
             ) : (
-              <div className="py-12 text-center text-[14px] text-mu">No resolved positions yet.</div>
+              <div className="py-12 text-center text-[14px] text-mu">No closed positions yet.</div>
             )}
           </>
         )}

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ErrorNote, LiveDot, Page, Segmented, Spinner, Tabs, card } from "../components/ui.jsx";
-import { API_BASE, getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { API_BASE, errorFromResponse, getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
 import { fixtureSource, useDataSource } from "../lib/dataSource.js";
 import SignupGate from "../components/SignupGate.jsx";
 import { buildHistory, toPath, xTicks } from "../lib/history.js";
-import { catLabel, fmt, fmtDate, fmtDateTime, fmtShortDate, timeAgo } from "../lib/format.js";
+import { catLabel, fmt, fmtDate, fmtDateTime, fmtShortDate, signed, timeAgo } from "../lib/format.js";
 import { useWallet } from "../lib/wallet.jsx";
 import { useAuth } from "../auth/AuthContext.jsx";
 
@@ -21,6 +21,24 @@ const readWatch = () => {
 
 const Diamond = () => <span className="w-[5px] h-[5px] mt-2 bg-am rotate-45 flex-none" />;
 
+/** Maps backend trade errors to user-facing text. */
+function tradeErrorMessage(err) {
+  const msg = err.message || "";
+  if (err.code === "INSUFFICIENT_FUNDS" || /insufficient (balance|funds)/i.test(msg)) {
+    return "Insufficient balance. Please add funds to your wallet.";
+  }
+  if (/no open position|already closed|outstanding=0/i.test(msg)) {
+    return "You don't own any shares of this outcome to sell.";
+  }
+  if (/cannot sell more than (held|outstanding)/i.test(msg)) {
+    return "You don't have enough shares to sell. Please check your portfolio.";
+  }
+  if (/not active for trading/i.test(msg)) {
+    return "This market is no longer open for trading.";
+  }
+  return msg || `Trade failed (${err.status ?? "network error"})`;
+}
+
 async function postTrade(side, body) {
   const res = await fetch(`${API_BASE}/api/v1/trades/${side}`, {
     method: "POST",
@@ -28,13 +46,11 @@ async function postTrade(side, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const text = await res.text();
   if (!res.ok) {
-    if (/insufficient (balance|funds)/i.test(text)) throw new Error("Insufficient balance. Please add funds to your wallet.");
-    if (text.includes("outstanding=0")) throw new Error("You don't own any shares of this outcome to sell.");
-    if (text.includes("Cannot sell more than outstanding")) throw new Error("You don't have enough shares to sell. Please check your portfolio.");
-    throw new Error(text || `Trade failed with status ${res.status}`);
+    const err = await errorFromResponse(res);
+    throw new Error(tradeErrorMessage(err));
   }
+  const text = await res.text();
   try { return text ? JSON.parse(text) : {}; } catch { return {}; }
 }
 
@@ -97,10 +113,13 @@ function PriceChart({ outcomes, history, range, setRange, binary, weekChange }) 
   );
 }
 
-function ConfirmModal({ market, outcome, action, qty, setQty, onCancel, onConfirm, busy }) {
+function ConfirmModal({ market, outcome, action, qty, setQty, held, onCancel, onConfirm, busy }) {
   const isBuy = action === "BUY";
   const price = isBuy ? outcome.buy : outcome.sell;
   const [quote, setQuote] = useState(null);
+  // Sells are limited to shares held; offer smaller presets plus "All".
+  const qtys = isBuy ? QTYS : [...QTYS.filter((n) => n < held), held];
+  const overHeld = !isBuy && qty > held;
 
   useEffect(() => {
     if (!isBuy) { setQuote(null); return; }
@@ -139,9 +158,10 @@ function ConfirmModal({ market, outcome, action, qty, setQty, onCancel, onConfir
             Confirm {isBuy ? "Buy" : "Sell"} · <span style={{ color: outcome.color }}>{outcome.label}</span>
           </h3>
           <div className="text-[12.5px] text-mu font-medium mb-2">Shares to {isBuy ? "buy" : "sell"}</div>
-          <div className="grid grid-cols-3 gap-2 mb-[18px]">
-            {QTYS.map((n) => {
+          <div className="grid gap-2 mb-[18px]" style={{ gridTemplateColumns: `repeat(${qtys.length}, minmax(0, 1fr))` }}>
+            {qtys.map((n) => {
               const on = n === qty;
+              const all = !isBuy && n === held;
               return (
                 <button
                   key={n}
@@ -151,7 +171,7 @@ function ConfirmModal({ market, outcome, action, qty, setQty, onCancel, onConfir
                   }`}
                 >
                   <span className="font-mono text-xl font-semibold tracking-[-0.03em]">{n}</span>
-                  <span className="text-[11px]">shares</span>
+                  <span className="text-[11px]">{all ? "all shares" : "shares"}</span>
                 </button>
               );
             })}
@@ -170,6 +190,12 @@ function ConfirmModal({ market, outcome, action, qty, setQty, onCancel, onConfir
                 <span className="font-mono text-yes font-semibold">{fmt(100 * qty)} PZC</span>
               </div>
             )}
+            {!isBuy && (
+              <div className="flex justify-between gap-4">
+                <span className="text-mu">You hold</span>
+                <span className={`font-mono ${overHeld ? "text-no font-semibold" : ""}`}>{fmt(held)} shares</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-[1fr_1.4fr] gap-2 px-[22px] pt-[18px] pb-[22px]">
@@ -178,7 +204,7 @@ function ConfirmModal({ market, outcome, action, qty, setQty, onCancel, onConfir
           </button>
           <button
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || overHeld}
             className="h-[46px] border-0 rounded-[11px] bg-pr enabled:hover:bg-prh text-white text-[14.5px] font-semibold cursor-pointer disabled:opacity-60"
           >
             {busy ? "Placing…" : `Confirm ${isBuy ? "Buy" : "Sell"}`}
@@ -318,8 +344,13 @@ export default function MarketDetail() {
   }
 
   const isActive = market.status === "ACTIVE";
+  const isResolved = market.status === "RESOLVED";
+  const winner = isResolved ? outcomes.find((o) => o.id === market.winningOutcomeId) : null;
   const selected = outcomes[Math.min(sel, outcomes.length - 1)];
-  const holding = positions.find((p) => p.marketId === market.id && p.outcomeId === selected?.id);
+  const positionFor = (outcomeId) => positions.find((p) => p.marketId === market.id && p.outcomeId === outcomeId);
+  const heldOf = (outcomeId) => Number(positionFor(outcomeId)?.quantity) || 0;
+  const holding = selected ? positionFor(selected.id) : undefined;
+  const heldSelected = selected ? heldOf(selected.id) : 0;
   const volume = volumeOf(trades);
   const activity = [...(trades || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 20);
 
@@ -331,8 +362,10 @@ export default function MarketDetail() {
       setGate({ market, outcome: { label: o.label, price: action === "BUY" ? o.buy : o.sell }, side: action });
       return;
     }
+    const held = heldOf(o.id);
+    if (action === "SELL" && held <= 0) return;
     setSel(outcomeIndex);
-    setQty(10);
+    setQty(action === "SELL" ? Math.min(QTYS[0], held) : QTYS[0]);
     setModal({ outcomeIndex, action });
   };
 
@@ -398,7 +431,9 @@ export default function MarketDetail() {
             {isActive ? (
               <span className="flex items-center gap-1.5 text-yes font-semibold"><LiveDot />LIVE</span>
             ) : (
-              <span className="px-[9px] py-[3px] rounded-md bg-ams text-amt font-semibold">{market.status === "UPCOMING" ? "UPCOMING" : "CLOSED"}</span>
+              <span className={`px-[9px] py-[3px] rounded-md font-semibold ${isResolved ? "bg-prs text-prt" : "bg-ams text-amt"}`}>
+                {isResolved ? "RESOLVED" : market.status === "UPCOMING" ? "UPCOMING" : "CLOSED"}
+              </span>
             )}
             <span><span className="font-mono text-tx2">{volume === null ? "—" : fmt(volume)}</span> PZC vol</span>
             <span>Closes {fmtDate(market.endDate)}</span>
@@ -425,6 +460,7 @@ export default function MarketDetail() {
               {outcomes.map((o, i) => {
                 const on = i === sel;
                 const disabled = !isActive || o.p === null || preview;
+                const noShares = canTrade && heldOf(o.id) <= 0;
                 return (
                   <div
                     key={o.id}
@@ -435,7 +471,12 @@ export default function MarketDetail() {
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-[3px] flex-none" style={{ background: o.color }} />
                       <div className="min-w-0">
-                        <div className="text-[15px] font-semibold truncate">{o.label}</div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[15px] font-semibold truncate">{o.label}</span>
+                          {winner?.id === o.id && (
+                            <span className="px-[7px] py-px rounded-[5px] bg-yess text-yes text-[11.5px] font-semibold flex-none">Winner</span>
+                          )}
+                        </div>
                         <div className="text-xs text-mu mt-0.5"><span className="font-mono">{o.vol === null ? "—" : fmt(o.vol)}</span> PZC vol</div>
                       </div>
                     </div>
@@ -449,7 +490,8 @@ export default function MarketDetail() {
                         Buy <span className="font-mono">{o.buy}</span>
                       </button>
                       <button
-                        disabled={disabled}
+                        disabled={disabled || noShares}
+                        title={noShares && !disabled ? "You don't hold shares of this outcome" : undefined}
                         onClick={(e) => { e.stopPropagation(); open(i, "SELL"); }}
                         className="h-10 border-0 rounded-[9px] bg-nos text-no text-[14px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -602,11 +644,16 @@ export default function MarketDetail() {
                   </button>
                   <button
                     onClick={() => open(sel, "SELL")}
-                    disabled={selected.p === null}
+                    disabled={selected.p === null || (canTrade && heldSelected <= 0)}
+                    title={canTrade && heldSelected <= 0 ? "You don't hold shares of this outcome" : undefined}
                     className="h-[46px] rounded-[11px] border border-bd2 bg-sf enabled:hover:bg-sf2 text-tx text-[15px] font-semibold cursor-pointer disabled:opacity-40"
                   >
                     Sell
                   </button>
+                </div>
+              ) : isResolved ? (
+                <div className="px-3.5 py-3 rounded-[11px] bg-yess text-yes text-[13.5px] font-[550]">
+                  Market resolved{winner ? ` · Winner: ${winner.label}` : ""}. Winning shares paid 100 PZC each.
                 </div>
               ) : (
                 <div className="px-3.5 py-3 rounded-[11px] bg-ams text-amt text-[13.5px] font-[550]">
@@ -619,7 +666,11 @@ export default function MarketDetail() {
                 {canTrade && <div className="flex justify-between gap-3">
                   <span className="text-mu">Your position</span>
                   <span className="font-mono text-right">
-                    {holding ? `${fmt(holding.quantity)} shares · avg ${fmt(holding.avgBuyPriceCents)}` : "—"}
+                    {heldSelected > 0
+                      ? `${fmt(heldSelected)} shares · avg ${fmt(holding.avgBuyPriceCents)}`
+                      : holding
+                        ? `Closed · realized ${signed(holding.realizedPnlCents)} PZC`
+                        : "—"}
                   </span>
                 </div>}
                 <div className="flex justify-between gap-3"><span className="text-mu">Payout if correct</span><span className="font-mono">100 PZC / share</span></div>
@@ -673,6 +724,7 @@ export default function MarketDetail() {
           action={modal.action}
           qty={qty}
           setQty={setQty}
+          held={heldOf(outcomes[modal.outcomeIndex].id)}
           busy={busy}
           onCancel={() => !busy && setModal(null)}
           onConfirm={confirm}

@@ -9,7 +9,7 @@ import BlogCard from "./BlogCard.jsx";
 import { CATEGORIES, isOpenListing, summarize, useMarketData, volumeOf } from "../lib/markets.js";
 import { useDataSource, fetchPosts } from "../lib/dataSource.js";
 import { buildHistory } from "../lib/history.js";
-import { catLabel, fmt, fmtShortDate, fmtVol, timeAgo } from "../lib/format.js";
+import { catLabel, fmt, fmtShortDate, fmtVol, timeAgo, toTime } from "../lib/format.js";
 import rankImages, { RANK_KEYS, formatRank } from "../lib/rankImages.js";
 
 const COLORS = ["var(--pr)", "var(--am)", "oklch(0.62 0.12 195)", "var(--mu)"];
@@ -266,7 +266,7 @@ export default function LandingPage() {
     const effective = filter === "New" ? "New" : sort;
     const key = {
       // Trending = PZC traded in the past 7 days.
-      Trending: (m) => -(volumeOf(trades[m.id]?.filter((t) => Date.now() - new Date(t.createdAt) < 7 * 864e5)) || 0),
+      Trending: (m) => -(volumeOf(trades[m.id]?.filter((t) => Date.now() - toTime(t.createdAt) < 7 * 864e5)) || 0),
       New: (m) => -new Date(m.createdAt).getTime(),
       Volume: (m) => -(volumeOf(trades[m.id]) || 0),
       "Closing soon": (m) => new Date(m.endDate).getTime(),

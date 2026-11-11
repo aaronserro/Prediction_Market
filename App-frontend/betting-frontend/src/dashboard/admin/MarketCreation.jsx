@@ -1,6 +1,8 @@
 // src/admin/MarketCreation.jsx
 import { useState } from "react";
 import { Field, Notice, btnPrimary, btnSecondary, btnSmall, inputCls, textareaCls } from "../../components/ui.jsx";
+import { fromLocalInput } from "../../lib/format.js";
+import { errorFromResponse } from "../../lib/markets.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
@@ -78,8 +80,8 @@ export default function MarketCreation({ onMarketCreated }) {
       title: title.trim(),
       description: description.trim(),
       category,                         // enum string: "SPORTS", etc.
-      startDate,                        // "YYYY-MM-DDTHH:mm"
-      endDate,
+      startDate: fromLocalInput(startDate), // entered in admin's local time, sent as UTC
+      endDate: fromLocalInput(endDate),
       resolutionSource: resolutionSource.trim(),
       outcomes: cleanedOutcomes,
     };
@@ -98,10 +100,7 @@ export default function MarketCreation({ onMarketCreated }) {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Request failed with status ${res.status}`);
-      }
+      if (!res.ok) throw await errorFromResponse(res);
 
       const data = await res.json();
       setSuccessMessage(`Market "${data.title}" created successfully.`);

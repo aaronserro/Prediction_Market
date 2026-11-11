@@ -1,4 +1,5 @@
 // src/admin/adminHelpers.js
+import { errorFromResponse } from "../lib/markets.js";
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
@@ -18,10 +19,7 @@ async function http(path, opts = {}) {
     throw err;
   }
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`HTTP ${res.status} — ${text}`);
-  }
+  if (!res.ok) throw await errorFromResponse(res);
 
   if (res.status === 204) return null;
 

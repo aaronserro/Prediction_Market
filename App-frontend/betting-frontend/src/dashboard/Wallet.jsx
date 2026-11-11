@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useWallet, userIdOf } from "../lib/wallet.jsx";
-import { getJSON } from "../lib/markets.js";
+import { fetchMarkets, getJSON } from "../lib/markets.js";
 import { fmt, fmtDate, fmtDateTime } from "../lib/format.js";
 import { Coin, ErrorNote, Page, PageHeader, Segmented, card } from "../components/ui.jsx";
 import { totals } from "../lib/positions.js";
@@ -10,6 +10,25 @@ import { totals } from "../lib/positions.js";
 const PRESETS = [100, 500, 1000, 5000];
 const REASONS = ["Account top-up", "Tournament entry", "Promotional credit", "Referral reward", "Other"];
 const TX_TABS = ["All", "Trades", "Payouts", "Funding"];
+const TX_PAGE_SIZE = 20;
+
+const marketIdOf = (refId) => /market=([0-9a-f-]{36})/i.exec(refId)?.[1] ?? /^MARKET_SETTLEMENT:([0-9a-f-]{36})/i.exec(refId)?.[1];
+
+/** Turns a ledger entry into a display row, using its refId to tell trades, payouts and funding apart. */
+function describeTx(tx, titles) {
+  const ref = tx.refId || "";
+  const amt = (tx.type === "DEBIT" ? -1 : 1) * (Number(tx.amountCents) || 0);
+  const title = titles[marketIdOf(ref)] || "a market";
+  const qty = /qty=(\d+)/.exec(ref)?.[1];
+  const base = { id: tx.transactionId, date: tx.createdAt, amt, balance: tx.balanceAfterCents };
+
+  if (ref.startsWith("BUY:")) return { ...base, type: "Trades", desc: `Bought ${qty ? `${qty} shares` : "shares"} · ${title}` };
+  if (ref.startsWith("SELL:")) return { ...base, type: "Trades", desc: `Sold ${qty ? `${qty} shares` : "shares"} · ${title}` };
+  if (ref.startsWith("MARKET_SETTLEMENT:")) return { ...base, type: "Payouts", desc: `Payout · ${title}` };
+  if (ref.startsWith("FUND_REQUEST:")) return { ...base, type: "Funding", desc: `Fund request #${ref.slice("FUND_REQUEST:".length)}` };
+  if (ref === "SIGNUP_BONUS") return { ...base, type: "Funding", desc: "Signup bonus" };
+  return { ...base, type: "Funding", desc: ref || (amt >= 0 ? "Deposit" : "Withdrawal") };
+}
 
 const PILL = {
   PENDING: "bg-ams text-amt",
@@ -78,6 +97,31 @@ export default function Wallet() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [txTab, setTxTab] = useState("All");
+  const [ledger, setLedger] = useState([]);
+  const [ledgerNext, setLedgerNext] = useState(null); // next page index, null when done
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerUnavailable, setLedgerUnavailable] = useState(false);
+  const [marketTitles, setMarketTitles] = useState({});
+  // One key per request intent, reused if the same submission is retried.
+  const intentRef = useRef(null);
+
+  const loadLedger = useCallback(async (page = 0) => {
+    if (!userId) return;
+    setLedgerLoading(true);
+    try {
+      const res = await getJSON(`/api/v1/users/${userId}/wallet/transactions?page=${page}&size=${TX_PAGE_SIZE}`);
+      const items = Array.isArray(res?.items) ? res.items : [];
+      setLedger((cur) => (page === 0 ? items : [...cur, ...items]));
+      setLedgerNext(res?.hasNext ? page + 1 : null);
+      setLedgerUnavailable(false);
+    } catch (e) {
+      // Older backend without the endpoint: fall back to approved fund requests.
+      if (e.status === 404) setLedgerUnavailable(true);
+      else setError(e.message || String(e));
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, [userId]);
 
   const refreshRequests = useCallback(async () => {
     if (!userId) return;
@@ -92,8 +136,12 @@ export default function Wallet() {
   }, [userId]);
 
   useEffect(() => { refreshRequests(); }, [refreshRequests]);
+  useEffect(() => { loadLedger(0); }, [loadLedger]);
   useEffect(() => {
     getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => {});
+    fetchMarkets()
+      .then((list) => setMarketTitles(Object.fromEntries((Array.isArray(list) ? list : []).map((m) => [m.id, m.title]))))
+      .catch(() => {});
   }, []);
 
   const amt = parseFloat(amount);
@@ -104,19 +152,24 @@ export default function Wallet() {
     const amountCents = Math.round(amt);
     setSubmitting(true);
     setError(null);
+    const intent = `${amountCents}|${reason}`;
+    if (intentRef.current?.intent !== intent) {
+      intentRef.current = { intent, key: crypto.randomUUID() };
+    }
     // Optimistically show the new request at the top of the list.
     const optimistic = { id: `tmp-${Date.now()}`, amountCents, reason, status: "PENDING", createdAt: new Date().toISOString() };
     setRequests((r) => [optimistic, ...r]);
     try {
       await getJSON(`/api/v1/users/${userId}/wallet/fund-requests`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": intentRef.current.key },
         body: JSON.stringify({ amountCents, reason }),
       });
+      intentRef.current = null;
       setAmount("");
       setReason(REASONS[0]);
       setSuccess(true);
-      await Promise.all([refreshWallet(), refreshRequests()]);
+      await Promise.all([refreshWallet(), refreshRequests(), loadLedger(0)]);
     } catch (e) {
       setRequests((r) => r.filter((x) => x.id !== optimistic.id));
       setError(e.message || String(e));
@@ -129,15 +182,15 @@ export default function Wallet() {
   const pending = requests.filter((r) => r.status === "PENDING").reduce((s, r) => s + (Number(r.amountCents) || 0), 0);
   const latest = requests[0];
 
-  // No transaction-history endpoint yet: funding rows are derived from approved requests.
-  const txs = useMemo(
-    () =>
-      requests
+  const txs = useMemo(() => {
+    if (ledgerUnavailable) {
+      return requests
         .filter((r) => r.status === "APPROVED")
-        .map((r) => ({ id: r.id, date: r.processedAt || r.createdAt, type: "Funding", desc: r.reason || "Fund request", amt: Number(r.amountCents) || 0 })),
-    [requests]
-  );
-  const shownTxs = txTab === "All" || txTab === "Funding" ? txs : [];
+        .map((r) => ({ id: r.id, date: r.processedAt || r.createdAt, type: "Funding", desc: r.reason || "Fund request", amt: Number(r.amountCents) || 0, balance: null }));
+    }
+    return ledger.map((tx) => describeTx(tx, marketTitles));
+  }, [ledgerUnavailable, requests, ledger, marketTitles]);
+  const shownTxs = txTab === "All" ? txs : txs.filter((x) => x.type === txTab);
 
   return (
     <Page className="flex flex-col gap-5">
@@ -267,14 +320,29 @@ export default function Wallet() {
                     <span className="text-[13px] text-tx2">{x.type}</span>
                     <span className="truncate">{x.desc}</span>
                     <span className={`text-right font-mono font-semibold ${x.amt > 0 ? "text-yes" : "text-tx"}`}>
-                      {x.amt > 0 ? "+" : "−"}{fmt(Math.abs(x.amt))}
+                      {x.amt > 0 ? "+" : x.amt < 0 ? "−" : ""}{fmt(Math.abs(x.amt))}
                     </span>
-                    <span className="text-right font-mono text-mu">—</span>
+                    <span className="text-right font-mono text-mu">{x.balance == null ? "—" : fmt(x.balance)}</span>
                   </div>
                 ))
               ) : (
                 <div className="px-[22px] py-10 text-center text-[14px] text-mu">
-                  {txTab === "Trades" || txTab === "Payouts" ? `${txTab} history isn’t available yet.` : "No transactions yet."}
+                  {ledgerLoading
+                    ? "Loading…"
+                    : ledgerUnavailable && (txTab === "Trades" || txTab === "Payouts")
+                      ? `${txTab} history isn’t available yet.`
+                      : txTab === "All" ? "No transactions yet." : `No ${txTab.toLowerCase()} yet.`}
+                </div>
+              )}
+              {!ledgerUnavailable && ledgerNext !== null && (
+                <div className="px-[22px] py-3 border-t border-bd text-center">
+                  <button
+                    onClick={() => loadLedger(ledgerNext)}
+                    disabled={ledgerLoading}
+                    className="h-9 px-4 rounded-[9px] border border-bd bg-sf text-tx2 text-[13.5px] font-medium cursor-pointer hover:bg-sf2 disabled:opacity-50"
+                  >
+                    {ledgerLoading ? "Loading…" : "Load more"}
+                  </button>
                 </div>
               )}
             </div>

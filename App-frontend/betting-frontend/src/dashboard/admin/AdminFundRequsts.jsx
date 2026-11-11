@@ -17,8 +17,6 @@ const TABS = [
   { id: "REJECTED", label: "Rejected" },
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
-
 export default function AdminFundRequests() {
   const [requests, setRequests] = useState([]);
   const [currentStatus, setCurrentStatus] = useState("PENDING");
@@ -35,27 +33,8 @@ export default function AdminFundRequests() {
       setErrorMsg("");
       try {
         const data = await fetchFundRequestsByStatus(currentStatus);
-        const raw = data || [];
-
-        // For any request that lacks a username field, fetch it from /api/v1/users/{userId}
-        const enriched = await Promise.all(
-          raw.map(async (req) => {
-            const existing = req.username || req.userIdentifier || req.userEmail;
-            if (existing) return req;
-            const uid = req.userId || req.user_id;
-            if (!uid) return req;
-            try {
-              const res = await fetch(`${API_BASE}/api/v1/users/${uid}`, { credentials: "include" });
-              if (!res.ok) return req;
-              const user = await res.json();
-              return { ...req, username: user.username || user.name || user.email || String(uid) };
-            } catch {
-              return req;
-            }
-          })
-        );
-
-        if (!cancelled) setRequests(enriched);
+        // Each request includes userId and username.
+        if (!cancelled) setRequests(Array.isArray(data) ? data : []);
       } catch (err) {
         if (err.status === 401 || err.status === 403) {
           setErrorMsg(`Access denied (${err.status}). Your account may not have admin privileges on the server.`);
@@ -74,6 +53,12 @@ export default function AdminFundRequests() {
   // Fund request amounts are stored in cents; 1 PZC = 1 cent.
   const formatAmount = (amountCents) => (amountCents == null ? "—" : `${fmt(amountCents)} PZC`);
 
+  // 409 = the request is no longer PENDING (processed elsewhere); drop it from this list.
+  function handleConflict(id, err) {
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    setErrorMsg(`Request #${id} was already processed: ${err.message}`);
+  }
+
   async function handleApprove(id) {
     setBusyId(id);
     setErrorMsg("");
@@ -85,6 +70,7 @@ export default function AdminFundRequests() {
         navigate("/login", { replace: true, state: { from: "/admin" } });
         return;
       }
+      if (err.status === 409) return handleConflict(id, err);
       setErrorMsg(err.message || "Failed to approve request.");
     } finally {
       setBusyId(null);
@@ -102,6 +88,7 @@ export default function AdminFundRequests() {
         navigate("/login", { replace: true, state: { from: "/admin" } });
         return;
       }
+      if (err.status === 409) return handleConflict(id, err);
       setErrorMsg(err.message || "Failed to reject request.");
     } finally {
       setBusyId(null);
@@ -145,7 +132,7 @@ export default function AdminFundRequests() {
                     <tr key={req.id} className="hover:bg-sf2 transition-colors">
                       <td className={`${tdCls} font-mono text-mu`}>{req.id}</td>
                       <td className={`${tdCls} font-[550]`}>
-                        {req.username || req.userIdentifier || req.userEmail || (req.userId ?? req.user_id) || "—"}
+                        {req.username || req.userId || "—"}
                       </td>
                       <td className={`${tdCls} text-right font-mono font-semibold whitespace-nowrap`}>{formatAmount(req.amountCents)}</td>
                       <td className={`${tdCls} text-tx2 max-w-xs break-words`}>{req.reason}</td>

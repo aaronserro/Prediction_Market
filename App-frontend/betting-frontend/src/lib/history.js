@@ -2,6 +2,8 @@
 // dedicated price-history endpoint yet, so each trade's pricePerShare is
 // treated as that outcome's price at the moment of the trade.
 
+import { toTime } from "./format.js";
+
 export const RANGES = {
   "1D": 864e5,
   "1W": 7 * 864e5,
@@ -19,12 +21,12 @@ export function buildHistory(market, trades, prices, range = "1M") {
   const end = Date.now();
   const outcomes = market?.outcomes || [];
   const list = (Array.isArray(trades) ? trades : [])
-    .map((t) => ({ ...t, at: new Date(t.createdAt).getTime(), p: Number(t.pricePerShare) }))
+    .map((t) => ({ ...t, at: toTime(t.createdAt), p: Number(t.pricePerShare) }))
     .filter((t) => Number.isFinite(t.at) && Number.isFinite(t.p))
     .sort((a, b) => a.at - b.at);
 
   const first = list.length ? list[0].at : end - 864e5;
-  const created = market?.createdAt ? new Date(market.createdAt).getTime() : first;
+  const created = market?.createdAt ? toTime(market.createdAt) : first;
   const origin = Math.min(first, Number.isFinite(created) ? created : first);
   const span = RANGES[range] ?? RANGES["1M"];
   const start = span === Infinity ? origin : Math.max(origin, end - span);

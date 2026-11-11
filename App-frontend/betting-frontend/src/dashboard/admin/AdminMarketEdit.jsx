@@ -3,13 +3,14 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import { ErrorNote, Field, Notice, Page, Spinner, StatusPill, btnAmber, btnPrimary, btnSecondary, card, inputCls, tdCls, textareaCls, thCls } from "../../components/ui.jsx";
-import { catLabel, fmt, fmtDate, fmtDateTime } from "../../lib/format.js";
-import { loadPrices } from "../../lib/markets.js";
+import { catLabel, fmt, fmtDate, fmtDateTime, fromLocalInput, toLocalInput } from "../../lib/format.js";
+import { errorFromResponse, loadPrices } from "../../lib/markets.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_OPTIONS = ["SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
-const STATUS_OPTIONS = ["UPCOMING", "ACTIVE", "CLOSED", "RESOLVED"];
+// RESOLVED is set only by the Resolve action, which settles positions and pays winners.
+const STATUS_OPTIONS = ["UPCOMING", "ACTIVE", "CLOSED"];
 
 export default function AdminMarketEdit() {
   const { marketId } = useParams();
@@ -54,9 +55,7 @@ export default function AdminMarketEdit() {
           credentials: "include",
         });
 
-        if (!res.ok) {
-          throw new Error(`Failed to fetch market: ${res.status}`);
-        }
+        if (!res.ok) throw await errorFromResponse(res);
 
         const data = await res.json();
         setMarket(data);
@@ -67,8 +66,10 @@ export default function AdminMarketEdit() {
         setDescription(data.description || "");
         setCategory(data.category || "SPORTS");
         setStatus(data.status || "ACTIVE");
-        setCloseTime(data.endDate ? data.endDate.substring(0, 16) : "");
+        setCloseTime(toLocalInput(data.endDate));
         setResolutionSource(data.resolutionSource || "");
+        // A CLOSED market with a recorded winner is a resolution that didn't finish.
+        if (data.winningOutcomeId) setSelectedWinningOutcome(data.winningOutcomeId);
       } catch (err) {
         setError(err.message || "Failed to load market");
       } finally {
@@ -127,19 +128,18 @@ export default function AdminMarketEdit() {
           title,
           description,
           category,
-          status,
-          endDate: closeTime || null,
+          // Only send status when the admin actually changed it.
+          ...(status !== market.status ? { status } : {}),
+          endDate: fromLocalInput(closeTime),
           resolutionSource: resolutionSource || null,
         }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed to update market: ${res.status}`);
-      }
+      if (!res.ok) throw await errorFromResponse(res);
 
       const updatedMarket = await res.json();
       setMarket(updatedMarket);
+      setStatus(updatedMarket.status || status);
       setSaveSuccess("Market updated successfully!");
 
       setTimeout(() => setSaveSuccess(""), 3000);
@@ -171,34 +171,21 @@ export default function AdminMarketEdit() {
       );
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed to resolve market: ${res.status}`);
-      }
-
-      // Check if response has content before parsing JSON
-      const contentType = res.headers.get("content-type");
-      let resolvedMarket = null;
-
-      if (contentType && contentType.includes("application/json")) {
-        const text = await res.text();
-        if (text) {
-          resolvedMarket = JSON.parse(text);
+        const err = await errorFromResponse(res);
+        if (err.status === 409 && /could not be settled/i.test(err.message)) {
+          // Winner is recorded; some payouts failed. Keep the panel open so the admin can retry.
+          setMarket((m) => ({ ...m, winningOutcomeId: selectedWinningOutcome }));
+          throw new Error(`${err.message}. Click “Confirm resolve” again to retry.`);
         }
+        throw err;
       }
 
-      // Update market state if we got data, otherwise just update status
-      if (resolvedMarket) {
-        setMarket(resolvedMarket);
-        setStatus(resolvedMarket.status || "RESOLVED");
-      } else {
-        // If no response body, just update status locally
-        setMarket({ ...market, status: "RESOLVED" });
-        setStatus("RESOLVED");
-      }
+      // 204 No Content on success
+      setMarket((m) => ({ ...m, status: "RESOLVED", winningOutcomeId: selectedWinningOutcome }));
+      setStatus("RESOLVED");
 
       setResolveSuccess("Market resolved successfully!");
       setShowResolveConfirm(false);
-      setSelectedWinningOutcome("");
 
       setTimeout(() => setResolveSuccess(""), 5000);
     } catch (err) {
@@ -231,6 +218,9 @@ export default function AdminMarketEdit() {
   }
 
   const volume = trades.reduce((sum, t) => sum + (Number(t.totalAmount) || 0), 0);
+  const isResolved = market.status === "RESOLVED";
+  const resolvePending = market.status === "CLOSED" && !!market.winningOutcomeId;
+  const winner = market.outcomes?.find((o) => o.id === market.winningOutcomeId);
 
   return (
     <div className="min-h-screen">
@@ -255,7 +245,9 @@ export default function AdminMarketEdit() {
           <div className="flex-[2_1_620px] min-w-0 flex flex-col gap-4">
             <form onSubmit={handleSave} className={`${card} p-6 flex flex-col gap-4`}>
               <h2 className="m-0 text-[17px] font-[620] tracking-[-0.02em]">Market details</h2>
+              {isResolved && <Notice kind="warn">Resolved markets can’t be edited.</Notice>}
 
+              <fieldset disabled={isResolved} className="contents">
               <Field label="Title" htmlFor="me-title">
                 <input id="me-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} required />
               </Field>
@@ -271,6 +263,7 @@ export default function AdminMarketEdit() {
                 <Field label="Status" htmlFor="me-status">
                   <select id="me-status" value={status} onChange={(e) => setStatus(e.target.value)} className={`${inputCls} cursor-pointer`}>
                     {STATUS_OPTIONS.map((st) => <option key={st} value={st}>{catLabel(st)}</option>)}
+                    {isResolved && <option value="RESOLVED" disabled>Resolved</option>}
                   </select>
                 </Field>
               </div>
@@ -287,12 +280,13 @@ export default function AdminMarketEdit() {
                   className={inputCls}
                 />
               </Field>
+              </fieldset>
 
               {saveSuccess && <Notice kind="ok">{saveSuccess}</Notice>}
               {error && <Notice kind="err">{error}</Notice>}
 
               <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={saveLoading} className={btnPrimary}>{saveLoading ? "Saving…" : "Save changes"}</button>
+                <button type="submit" disabled={saveLoading || isResolved} className={btnPrimary}>{saveLoading ? "Saving…" : "Save changes"}</button>
                 <button type="button" onClick={() => navigate("/admin/markets-events")} className={btnSecondary}>Cancel</button>
               </div>
             </form>
@@ -364,13 +358,20 @@ export default function AdminMarketEdit() {
               </div>
             )}
 
-            {market.status !== "RESOLVED" && market.outcomes && market.outcomes.length > 0 && (
+            {(market.status === "UPCOMING" || market.status === "ACTIVE") && (
+              <Notice kind="warn">Close the market (set status to Closed and save) before resolving it.</Notice>
+            )}
+
+            {market.status === "CLOSED" && market.outcomes && market.outcomes.length > 0 && (
               <div className="bg-sf border border-bd rounded-2xl shadow-trade p-5 flex flex-col gap-4">
                 <div>
                   <div className="text-[14px] font-semibold">Resolve market</div>
                   <p className="m-0 mt-1 text-[13px] text-mu">Sets the status to Resolved and pays 100 PZC per winning share.</p>
                 </div>
 
+                {resolvePending && !resolveError && (
+                  <Notice kind="warn">A previous resolve didn’t finish paying out. Resolve again with the same outcome to retry.</Notice>
+                )}
                 {resolveSuccess && <Notice kind="ok">{resolveSuccess}</Notice>}
                 {resolveError && <Notice kind="err">{resolveError}</Notice>}
 
@@ -380,7 +381,7 @@ export default function AdminMarketEdit() {
                     value={selectedWinningOutcome}
                     onChange={(e) => setSelectedWinningOutcome(e.target.value)}
                     className={`${inputCls} cursor-pointer`}
-                    disabled={resolveLoading}
+                    disabled={resolveLoading || resolvePending}
                   >
                     <option value="">Select an outcome</option>
                     {market.outcomes.map((outcome) => (
@@ -415,9 +416,11 @@ export default function AdminMarketEdit() {
               </div>
             )}
 
-            {market.status === "RESOLVED" && (
+            {isResolved && (
               <Notice kind="ok">
-                <span className="font-semibold">Market resolved.</span> Payouts have been distributed.
+                <span className="font-semibold">Market resolved.</span>
+                {winner ? ` Winner: ${winner.label || winner.description}.` : ""}
+                {" "}Payouts have been distributed.
               </Notice>
             )}
           </aside>

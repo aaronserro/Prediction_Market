@@ -6,12 +6,24 @@ export const API_BASE =
 
 export const CATEGORIES = ["SPORTS", "POLITICS", "FINANCE", "ENTERTAINMENT", "TECHNOLOGY", "OTHER"];
 
+/** Builds an Error from a failed response. The API returns
+ *  { status, error, message, code }; older endpoints may return plain text. */
+export async function errorFromResponse(res) {
+  const text = await res.text().catch(() => "");
+  let body = null;
+  try { body = text ? JSON.parse(text) : null; } catch { /* plain text */ }
+  const message = body && typeof body === "object"
+    ? body.message || body.error
+    : text;
+  const err = new Error(message || `Request failed (${res.status})`);
+  err.status = res.status;
+  err.code = body?.code ?? null;
+  return err;
+}
+
 export async function getJSON(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, { credentials: "include", ...opts });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed (${res.status})`);
-  }
+  if (!res.ok) throw await errorFromResponse(res);
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
