@@ -119,7 +119,7 @@ class PositionSettlementTest {
         when(repo.findByUser_IdAndOutcomeId(anyLong(), eq(outcomeId))).thenReturn(Optional.of(position));
 
         new PositionServiceImpl(repo, mock(OutcomeRepository.class), mock(PositionSettlementExecutor.class))
-                .applySel(position.getUser(), outcomeId, 10, 60);
+                .applySell(position.getUser(), outcomeId, 10, 600L);
 
         verify(repo).save(position);
         assertThat(position.getQuantity()).isZero();

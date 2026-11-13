@@ -3,8 +3,6 @@ package com.betting.backend.trades;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.betting.backend.markets.MarketStatus;
 import com.betting.backend.trades.dto.CreateTradeRequest;
 import com.betting.backend.trades.dto.TradeResponse;
 import com.betting.backend.user.User;
@@ -113,10 +111,10 @@ public class TradeServiceImpl implements TradeService {
         if (request.getQuantity() <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than zero");
         }
-        Market market = marketRepo.findById(request.getMarketId())
+        Market market = marketRepo.findByIdForUpdate(request.getMarketId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Market not found with id: " + request.getMarketId()));
-        if (!MarketStatus.ACTIVE.equals(market.getStatus())) {
+        if (!market.isActive()) {
             throw new IllegalStateException("Market is not active for trading");
         }
         Outcome outcome = outcomerepo.findById(request.getOutcomeId())
@@ -140,7 +138,7 @@ public class TradeServiceImpl implements TradeService {
         System.out.println("  Outcome: " + outcome.getLabel());
         */
         // Update position first to validate user has enough shares
-        positionService.applySel(currentUser, outcome.getId(), quantity, pricePerShare);
+        positionService.applySell(currentUser, outcome.getId(), quantity, totalAmount);
 
         // Update outstanding shares
         outcome.incremementOutstanding(-quantity);
@@ -182,12 +180,12 @@ public class TradeServiceImpl implements TradeService {
         }
 
         // 2) Load Market
-        Market market = marketRepo.findById(request.getMarketId())
+        Market market = marketRepo.findByIdForUpdate(request.getMarketId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Market not found with id: " + request.getMarketId()));
 
         // 2b) Ensure market is ACTIVE
-        if (!MarketStatus.ACTIVE.equals(market.getStatus())) {
+        if (!market.isActive()) {
             throw new IllegalStateException("Market is not active for trading");
         }
 
@@ -242,7 +240,7 @@ public class TradeServiceImpl implements TradeService {
         Trade savedTrade = tradeRepo.save(trade);
 
         // 8) Update user's position
-        positionService.applyBuy(currentUser, outcome.getId(), quantity, pricePerShare);
+        positionService.applyBuy(currentUser, outcome.getId(), quantity, totalAmount);
 
         // 9) Use the common mapper
         return toResponse(savedTrade);

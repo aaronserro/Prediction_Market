@@ -40,9 +40,9 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     @Transactional
-    public Position applyBuy(User user, UUID outcomeId, int qty, int buypriceCents) {
+    public Position applyBuy(User user, UUID outcomeId, int qty, long totalCostCents) {
         validatePositiveQty(qty);
-        validateNonNegativePrice(buypriceCents);
+        validateNonNegativePrice(totalCostCents);
 
         Outcome outcome = outcomeRepository.findById(outcomeId)
                 .orElseThrow(() -> new IllegalArgumentException("Outcome not found: " + outcomeId));
@@ -64,7 +64,7 @@ public class PositionServiceImpl implements PositionService {
                 });
         position.setStatus(PositionStatus.OPEN);
 
-        long addCost = safeMultiplyToLong(qty, buypriceCents);
+        long addCost = totalCostCents;;
 
         position.setQuantity(position.getQuantity() + qty);
         position.setCostBasisCents(position.getCostBasisCents() + addCost);
@@ -74,9 +74,9 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     @Transactional
-    public void applySel(User user, UUID outcomeId, int qty, int currentMarketprice) {
+    public void applySell(User user, UUID outcomeId, int qty, long totalProceedsCents) {
         validatePositiveQty(qty);
-        validateNonNegativePrice(currentMarketprice);
+        validateNonNegativePrice(totalProceedsCents);
 
         Position position = positionRepository.findByUser_IdAndOutcomeId(user.getId(), outcomeId)
                 .orElseThrow(() -> new IllegalStateException(
@@ -93,7 +93,7 @@ public class PositionServiceImpl implements PositionService {
 
         long costBasis = position.getCostBasisCents();
 
-        long proceeds = safeMultiplyToLong(qty, currentMarketprice);
+        long proceeds = totalProceedsCents;
         long costRemoved = (costBasis * (long) qty) /heldQty;
         long realizedDelta = proceeds - costRemoved;
 
@@ -170,12 +170,7 @@ public class PositionServiceImpl implements PositionService {
         if (qty <= 0) throw new IllegalArgumentException("qty must be > 0");
     }
 
-    private static void validateNonNegativePrice(int priceCents) {
-        if (priceCents < 0) throw new IllegalArgumentException("priceCents must be >= 0");
+    private static void validateNonNegativePrice(long totalCostCents) {
+        if (totalCostCents < 0) throw new IllegalArgumentException("totalCostCents must be >= 0");
     }
-
-    private static long safeMultiplyToLong(int a, int b) {
-        return (long) a * (long) b;
-    }
-
 }
