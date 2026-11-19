@@ -7,6 +7,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -18,6 +19,8 @@ import com.betting.backend.wallet.Exceptions.DuplicateOperationException;
 import com.betting.backend.wallet.Exceptions.InsufficientFundsException;
 import com.betting.backend.wallet.Exceptions.OptimisticRetryExceededException;
 import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
+import com.betting.backend.auth.ratelimit.RateLimitExceededException;
+import com.betting.backend.auth.ratelimit.RateLimitUnavailableException;
 
 /**
  * Returns a consistent JSON error body: {timestamp, status, error, message, code}.
@@ -25,6 +28,32 @@ import com.betting.backend.wallet.Exceptions.WalletNotFoundException;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> rateLimitExceeded(RateLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", Long.toString(ex.getRetryAfterSeconds()))
+            .header("Cache-Control", "no-store")
+            .body(bodyMap(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many requests; try again later", "RATE_LIMIT_EXCEEDED"));
+    }
+
+    @ExceptionHandler(RateLimitUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> rateLimitUnavailable(RateLimitUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .header("Retry-After", "30")
+            .header("Cache-Control", "no-store")
+            .body(bodyMap(HttpStatus.SERVICE_UNAVAILABLE,
+                "Signup is temporarily unavailable; try again later", "RATE_LIMIT_UNAVAILABLE"));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> authenticationFailed(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .header("Cache-Control", "no-store")
+            .body(bodyMap(HttpStatus.UNAUTHORIZED,
+                "Invalid username or password", "AUTHENTICATION_FAILED"));
+    }
 
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<Map<String, Object>> insufficientFunds(InsufficientFundsException ex) {
@@ -83,6 +112,10 @@ public class GlobalExceptionHandler {
     }
 
     private static ResponseEntity<Map<String, Object>> body(HttpStatusCode status, String message, String code) {
+        return ResponseEntity.status(status).body(bodyMap(status, message, code));
+    }
+
+    private static Map<String, Object> bodyMap(HttpStatusCode status, String message, String code) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now());
         body.put("status", status.value());
@@ -92,6 +125,6 @@ public class GlobalExceptionHandler {
         if (code != null) {
             body.put("code", code);
         }
-        return ResponseEntity.status(status).body(body);
+        return body;
     }
 }

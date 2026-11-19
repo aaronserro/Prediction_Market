@@ -1,5 +1,6 @@
 // com.betting.backend.auth.AuthController.java
 package com.betting.backend.auth;
+import com.betting.backend.auth.ratelimit.AuthRateLimiter;
 import org.springframework.security.core.Authentication;
 import com.betting.backend.auth.dto.*;
 import com.betting.backend.user.User;
@@ -7,14 +8,16 @@ import com.betting.backend.user.UserRepository;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import com.betting.backend.auth.MeResponse;
 import java.util.Set;
 import com.betting.backend.wallet.Service.WalletService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -28,17 +31,20 @@ public class AuthController {
   private final AuthenticationManager authMgr;
   private final JwtUtil jwt;
   private final WalletService walletService;
+  private final AuthRateLimiter rateLimiter;
 
   public AuthController(UserRepository users,
                         PasswordEncoder encoder,
                         AuthenticationManager authMgr,
                         JwtUtil jwt,
-                        WalletService walletService) {
+                        WalletService walletService,
+                        AuthRateLimiter rateLimiter) {
     this.users = users;
     this.encoder = encoder;
     this.authMgr = authMgr;
     this.jwt = jwt;
     this.walletService = walletService;
+    this.rateLimiter = rateLimiter;
   }
   @GetMapping("/me")
   public ResponseEntity<MeResponse> me(Authentication auth) {
@@ -60,7 +66,10 @@ public class AuthController {
         return ResponseEntity.ok(new MeResponse(userId, username, roles));
     }
   @PostMapping("/signup")
-  public ResponseEntity<?> signup(@RequestBody SignupRequest req) {
+    public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest req,
+                                    HttpServletRequest request) {
+      rateLimiter.checkSignup(request.getRemoteAddr());
+
     if (users.existsByUsername(req.username())) {
       return ResponseEntity.badRequest().body("Username already taken");
     }
@@ -85,11 +94,21 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+  public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req,
+                                 HttpServletRequest request) {
+    rateLimiter.checkLogin(request.getRemoteAddr(), req.username());
+
     // Clear existing authentication before logging in new user
     SecurityContextHolder.clearContext();
 
-    authMgr.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
+    try {
+      authMgr.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
+    } catch (AuthenticationException ex) {
+      rateLimiter.recordLoginFailure(req.username());
+      throw ex;
+    }
+
+    rateLimiter.clearLoginFailures(req.username());
     String token = jwt.generate(req.username());
     return ResponseEntity.ok()
       .header("Set-Cookie", authCookie(token).toString())
