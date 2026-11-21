@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import jakarta.persistence.LockModeType;
 @Repository
@@ -17,11 +19,12 @@ public interface PositionRepository extends JpaRepository<Position, Long> {
 @Lock(LockModeType.PESSIMISTIC_WRITE)
 Optional<Position> findByUser_IdAndOutcomeId(Long userId, UUID outcomeId);
 
-    @Query("SELECT p FROM Position p " +
-           "LEFT JOIN FETCH p.outcome o " +
-           "LEFT JOIN FETCH o.market " +
-           "WHERE p.user.id = :userId")
-    List<Position> findAllByUser_IdWithMarket(@Param("userId") Long userId);
+    @Query(value = "SELECT p FROM Position p " +
+                   "LEFT JOIN FETCH p.outcome o " +
+                   "LEFT JOIN FETCH o.market " +
+                   "WHERE p.user.id = :userId",
+           countQuery = "SELECT COUNT(p) FROM Position p WHERE p.user.id = :userId")
+    Page<Position> findAllByUser_IdWithMarket(@Param("userId") Long userId, Pageable pageable);
 
     @Query("SELECT p FROM Position p " +
            "LEFT JOIN FETCH p.outcome o " +

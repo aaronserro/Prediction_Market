@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import com.betting.backend.wallet.model.FundRequest;
@@ -26,11 +28,13 @@ public interface FundRequestRepository extends JpaRepository<FundRequest, Long> 
      * ordered by creation time (newest first).
      */
     List<FundRequest> findByWallet_User_IdOrderByCreatedAtDesc(Long userId);
+    Page<FundRequest> findByWallet_User_Id(Long userId, Pageable pageable);
     /**
      * Returns all fund requests that match the given status (PENDING, APPROVED, REJECTED),
      * ordered by creation time (newest first). Useful for admin review screens.
      */
     List<FundRequest> findByStatusOrderByCreatedAtDesc(FundRequestStatus status);
+    Page<FundRequest> findByStatus(FundRequestStatus status, Pageable pageable);
 
     /**
      * OPTIONAL — Only add if you want user-level filtering + status.

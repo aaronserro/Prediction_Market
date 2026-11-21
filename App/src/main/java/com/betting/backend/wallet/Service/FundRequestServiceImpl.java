@@ -126,6 +126,14 @@ public class FundRequestServiceImpl implements FundRequestService{
                     .toList();
 }
 
+    public org.springframework.data.domain.Page<FundRequestResponse> listFundRequests(
+            Long userId, org.springframework.data.domain.Pageable pageable) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User id cannot be null");
+        }
+        return fundRequestRepository.findByWallet_User_Id(userId, pageable).map(this::toResponse);
+    }
+
 
 
 
@@ -146,6 +154,12 @@ public class FundRequestServiceImpl implements FundRequestService{
         return entities.stream()
                     .map(this::toResponse)
                     .toList();
+    }
+
+    public org.springframework.data.domain.Page<FundRequestResponse> adminList(
+            FundRequestStatus status, org.springframework.data.domain.Pageable pageable) {
+        return (status == null ? fundRequestRepository.findAll(pageable)
+                : fundRequestRepository.findByStatus(status, pageable)).map(this::toResponse);
     }
     @Override
     @Transactional

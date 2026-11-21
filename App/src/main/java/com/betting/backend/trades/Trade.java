@@ -7,7 +7,8 @@ import com.betting.backend.markets.Outcome;
 import com.betting.backend.user.User;
 
 @Entity
-@Table(name = "trades")
+@Table(name = "trades", uniqueConstraints = @UniqueConstraint(
+    name = "uk_trade_idempotency", columnNames = "idempotency_key"))
 public class Trade {
     @Column(name = "side", nullable = false, updatable = false)
     @Enumerated(EnumType.STRING)
@@ -28,6 +29,9 @@ public class Trade {
 
     @Column(name = "price_per_share", nullable = false, updatable = false)
     private int pricePerShare;
+
+    @Column(name = "idempotency_key", length = 128, updatable = false)
+    private String idempotencyKey;
 
     @ManyToOne
     @JoinColumn(name="market_id", nullable = false)
@@ -74,6 +78,10 @@ public class Trade {
         return pricePerShare;
     }
 
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
     public Market getMarket() {
         return market;
     }
@@ -104,6 +112,10 @@ public class Trade {
 
     public void setPricePerShare(int pricePerShare) {
         this.pricePerShare = pricePerShare;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public void setMarket(Market market) {

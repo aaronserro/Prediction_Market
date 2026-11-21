@@ -1,21 +1,22 @@
 // com.betting.backend.auth.AuthController.java
 package com.betting.backend.auth;
 import com.betting.backend.auth.ratelimit.AuthRateLimiter;
+import com.betting.backend.auth.mfa.AdminMfaService;
+import com.betting.backend.audit.AuditService;
+import com.betting.backend.config.SecurityProperties;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.web.csrf.CsrfToken;
 import com.betting.backend.auth.dto.*;
 import com.betting.backend.user.User;
-import com.betting.backend.user.UserRepository;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Set;
-import com.betting.backend.wallet.Service.WalletService;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
@@ -23,29 +24,34 @@ import jakarta.validation.Valid;
 @RequestMapping("/auth")
 public class AuthController {
 
-  private static final String AUTH_COOKIE = "betauth";
-  private static final long SIGNUP_BONUS_CENTS = 10_000L;
-
-  private final UserRepository users;
-  private final PasswordEncoder encoder;
   private final AuthenticationManager authMgr;
   private final JwtUtil jwt;
-  private final WalletService walletService;
+  private final SignupService signupService;
   private final AuthRateLimiter rateLimiter;
+  private final SecurityProperties securityProperties;
+  private final AdminMfaService adminMfaService;
+  private final AuditService auditService;
 
-  public AuthController(UserRepository users,
-                        PasswordEncoder encoder,
-                        AuthenticationManager authMgr,
+  public AuthController(AuthenticationManager authMgr,
                         JwtUtil jwt,
-                        WalletService walletService,
-                        AuthRateLimiter rateLimiter) {
-    this.users = users;
-    this.encoder = encoder;
+                        SignupService signupService,
+                        AuthRateLimiter rateLimiter,
+                        SecurityProperties securityProperties,
+                        AdminMfaService adminMfaService,
+                        AuditService auditService) {
     this.authMgr = authMgr;
     this.jwt = jwt;
-    this.walletService = walletService;
+    this.signupService = signupService;
     this.rateLimiter = rateLimiter;
+    this.securityProperties = securityProperties;
+    this.adminMfaService = adminMfaService;
+    this.auditService = auditService;
   }
+  @GetMapping("/csrf")
+  public Map<String, String> csrf(CsrfToken token) {
+    return Map.of("headerName", token.getHeaderName(), "token", token.getToken());
+  }
+
   @GetMapping("/me")
   public ResponseEntity<MeResponse> me(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
@@ -70,27 +76,11 @@ public class AuthController {
                                     HttpServletRequest request) {
       rateLimiter.checkSignup(request.getRemoteAddr());
 
-    if (users.existsByUsername(req.username())) {
-      return ResponseEntity.badRequest().body("Username already taken");
-    }
-    var u = new User();
-    u.setUsername(req.username());
-    u.setPasswordHash(encoder.encode(req.password()));
-    u.setEmail(req.email());
-    u.setRoles(Set.of("ROLE_USER"));
-    users.save(u);
-
-    // Ensure wallet exists and credit signup bonus (idempotent per user)
-    walletService.getbalance(u.getId());
-    String ideKey = "SIGNUP_BONUS:" + u.getId();
-    String refId = "SIGNUP_BONUS";
-    walletService.credit(SIGNUP_BONUS_CENTS, u.getId(), ideKey, refId);
-
-    // Auto-login after signup (optional)
-    String token = jwt.generate(u.getUsername());
+    User u = signupService.signup(req);
+    String token = jwt.generate(u);
     return ResponseEntity.ok()
       .header("Set-Cookie", authCookie(token).toString())
-      .body(new AuthResponse(u.getUsername(), token));
+      .body(new AuthResponse(u.getUsername()));
   }
 
   @PostMapping("/login")
@@ -102,34 +92,48 @@ public class AuthController {
     SecurityContextHolder.clearContext();
 
     try {
-      authMgr.authenticate(new UsernamePasswordAuthenticationToken(req.username(), req.password()));
+      Authentication authentication = authMgr.authenticate(
+          new UsernamePasswordAuthenticationToken(req.username(), req.password()));
+      if (!(authentication.getPrincipal() instanceof User user)) {
+        throw new AuthenticationServiceException("Authenticated account state unavailable");
+      }
+      if (isAdministrator(user)) {
+        try {
+          adminMfaService.requireEnabled(user);
+          if (!adminMfaService.verify(user, req.mfaCode())) {
+            throw new BadCredentialsException("Invalid MFA code");
+          }
+        } catch (AuthenticationException ex) {
+          auditService.rejected(user.getId(), "ADMIN_LOGIN", "USER", user.getId().toString());
+          throw ex;
+        }
+        auditService.success(user.getId(), "ADMIN_LOGIN", "USER", user.getId().toString());
+      }
+      rateLimiter.clearLoginFailures(req.username());
+      String token = jwt.generate(user);
+      return ResponseEntity.ok()
+        .header("Set-Cookie", authCookie(token).toString())
+        .body(new AuthResponse(user.getUsername()));
     } catch (AuthenticationException ex) {
       rateLimiter.recordLoginFailure(req.username());
       throw ex;
     }
+  }
 
-    rateLimiter.clearLoginFailures(req.username());
-    String token = jwt.generate(req.username());
-    return ResponseEntity.ok()
-      .header("Set-Cookie", authCookie(token).toString())
-      .body(new AuthResponse(req.username(), token));
+  private boolean isAdministrator(User user) {
+    return user.getAuthorities().stream()
+        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
   }
 
   @PostMapping("/logout")
   public ResponseEntity<?> logout() {
-    boolean isProd = System.getenv("SPRING_PROFILES_ACTIVE") != null
-                     && System.getenv("SPRING_PROFILES_ACTIVE").contains("prod");
-
-    ResponseCookie.ResponseCookieBuilder clearCookie = ResponseCookie.from(AUTH_COOKIE, "")
+    ResponseCookie.ResponseCookieBuilder clearCookie = ResponseCookie.from(
+            securityProperties.getCookieName(), "")
         .httpOnly(true)
+        .secure(securityProperties.isCookieSecure())
+        .sameSite(securityProperties.getCookieSameSite())
         .path("/")
         .maxAge(0);
-
-    if (isProd) {
-      clearCookie.secure(true).sameSite("None").domain(".pryzm.ca");
-    } else {
-      clearCookie.secure(false).sameSite("Lax");
-    }
 
     return ResponseEntity.ok()
       .header("Set-Cookie", clearCookie.build().toString())
@@ -139,26 +143,12 @@ public class AuthController {
 
 
   private ResponseCookie authCookie(String token) {
-    // Detect production by checking if running on HTTPS (api.pryzm.ca)
-    boolean isProd = System.getenv("SPRING_PROFILES_ACTIVE") != null
-                     && System.getenv("SPRING_PROFILES_ACTIVE").contains("prod");
-
-    ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(AUTH_COOKIE, token)
+    return ResponseCookie.from(securityProperties.getCookieName(), token)
       .httpOnly(true)
+      .secure(securityProperties.isCookieSecure())
+      .sameSite(securityProperties.getCookieSameSite())
       .path("/")
-      .maxAge(60 * 60 * 12);
-
-    if (isProd) {
-      // Production: secure cookie with cross-site support and domain set
-      builder.secure(true)
-             .sameSite("None")
-             .domain(".pryzm.ca");  // Share cookie across subdomains
-    } else {
-      // Development: non-secure cookie for localhost
-      builder.secure(false)
-             .sameSite("Lax");
-    }
-
-    return builder.build();
+      .maxAge(securityProperties.getJwtLifetime())
+      .build();
   }
 }

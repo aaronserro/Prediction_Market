@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
             .header("Retry-After", "30")
             .header("Cache-Control", "no-store")
             .body(bodyMap(HttpStatus.SERVICE_UNAVAILABLE,
-                "Signup is temporarily unavailable; try again later", "RATE_LIMIT_UNAVAILABLE"));
+                "This operation is temporarily unavailable; try again later", "RATE_LIMIT_UNAVAILABLE"));
     }
 
     @ExceptionHandler(AuthenticationException.class)

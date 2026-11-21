@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,7 +30,14 @@ public class User implements UserDetails {
     @Column(name = "password_hash",nullable = false)
     private String passwordHash;
 
+    @Column(nullable = false)
     private String email;
+
+    @Column(name = "account_enabled", nullable = false)
+    private boolean accountEnabled = true;
+
+    @Column(name = "token_version", nullable = false)
+    private long tokenVersion;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -66,6 +74,10 @@ public class User implements UserDetails {
         return roles;
     }
 
+    public long getTokenVersion() {
+        return tokenVersion;
+    }
+
     public List<Position> getPositions() {
         return positions;
     }
@@ -88,6 +100,7 @@ public class User implements UserDetails {
     }
 
     public void setPasswordHash(String passwordHash) {
+        invalidateTokensWhenPersistedValueChanges(this.passwordHash, passwordHash);
         this.passwordHash = passwordHash;
     }
 
@@ -96,7 +109,19 @@ public class User implements UserDetails {
     }
 
     public void setRoles(Set<String> roles) {
+        invalidateTokensWhenPersistedValueChanges(this.roles, roles);
         this.roles = roles;
+    }
+
+    public void setAccountEnabled(boolean accountEnabled) {
+        if (this.id != null && this.accountEnabled != accountEnabled) {
+            tokenVersion++;
+        }
+        this.accountEnabled = accountEnabled;
+    }
+
+    public void setTokenVersion(long tokenVersion) {
+        this.tokenVersion = tokenVersion;
     }
 
     public void setPositions(List<Position> positions) {
@@ -144,6 +169,12 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return accountEnabled;
+    }
+
+    private void invalidateTokensWhenPersistedValueChanges(Object currentValue, Object newValue) {
+        if (id != null && !Objects.equals(currentValue, newValue)) {
+            tokenVersion++;
+        }
     }
 }

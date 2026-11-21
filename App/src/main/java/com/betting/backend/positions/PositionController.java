@@ -6,12 +6,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.betting.backend.positions.PositionResponse;
+import com.betting.backend.config.PageResponse;
 import com.betting.backend.user.User;
 import com.betting.backend.user.UserRepository;
 import com.betting.backend.markets.PricingService;
@@ -27,6 +34,8 @@ import com.betting.backend.markets.MarketStatus;
 @RestController
 @RequestMapping("/api/v1/positions")
 public class PositionController {
+
+    private static final Logger log = LoggerFactory.getLogger(PositionController.class);
 
     private final PositionRepository positionRepository;
     private final UserRepository userRepository;
@@ -45,12 +54,17 @@ public class PositionController {
 
     @GetMapping("/me")
     @Transactional(readOnly = true)
-    public List<PositionResponse> getMyPositions(Principal principal) {
+        public ResponseEntity<PageResponse<PositionResponse>> getMyPositions(
+            Principal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         String username = principal.getName();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found for: " + username));
 
-        List<Position> positions = positionRepository.findAllByUser_IdWithMarket(user.getId());
+        var positions = positionRepository.findAllByUser_IdWithMarket(user.getId(),
+            PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                Sort.by(Sort.Direction.DESC, "createdAt")));
 
         List<PositionResponse> out = new ArrayList<>();
         for (Position p : positions) {
@@ -70,7 +84,7 @@ public class PositionController {
 
             // Skip positions with no market info
             if (marketId == null) {
-                System.err.println("Position " + p.getId() + " has no marketId, skipping");
+                log.warn("Skipping position without market ID positionId={}", p.getId());
                 continue;
             }
 
@@ -102,7 +116,10 @@ public class PositionController {
             ));
         }
 
-        return out;
+        PageResponse<PositionResponse> response = new PageResponse<>(out, positions.getNumber(),
+            positions.getSize(), positions.getTotalElements(), positions.getTotalPages(),
+            positions.hasNext());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
     }
 
     /**
@@ -140,7 +157,8 @@ public class PositionController {
 
         } catch (Exception e) {
             // Fallback to 50 cents if pricing fails
-            System.err.println("Error getting price for market=" + marketId + ", outcome=" + outcomeId + ": " + e.getMessage());
+            log.warn("Unable to price position marketId={} outcomeId={}; using fallback",
+                    marketId, outcomeId);
             return 50L;
         }
     }

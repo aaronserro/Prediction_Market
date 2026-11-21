@@ -169,6 +169,25 @@ public class MarketServiceImpl implements MarketService{
             .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<MarketResponse> getMarkets(
+            MarketStatus status,
+            MarketCategory category,
+            org.springframework.data.domain.Pageable pageable) {
+        if (status != null && category != null) {
+            return marketRepository.findByStatusAndCategory(status, category, pageable)
+                .map(this::toResponse);
+        }
+        if (status != null) {
+            return marketRepository.findByStatus(status, pageable).map(this::toResponse);
+        }
+        if (category != null) {
+            return marketRepository.findByCategory(category, pageable).map(this::toResponse);
+        }
+        return marketRepository.findAll(pageable).map(this::toResponse);
+    }
+
 
     @Override
     @Transactional(readOnly = true)

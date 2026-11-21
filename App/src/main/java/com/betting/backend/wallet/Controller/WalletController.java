@@ -2,7 +2,6 @@ package com.betting.backend.wallet.Controller;
 
 import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
+import com.betting.backend.auth.ratelimit.FinancialRateLimiter;
+import com.betting.backend.audit.AuditService;
+import com.betting.backend.security.IdempotencyKeyFactory;
 import com.betting.backend.user.User;
 import com.betting.backend.wallet.Service.WalletService;
 import com.betting.backend.wallet.Service.WalletTransactionService;
@@ -32,10 +34,20 @@ public class WalletController {
 
     private final WalletService walletService;
     private final WalletTransactionService walletTransactionService;
+    private final FinancialRateLimiter rateLimiter;
+    private final IdempotencyKeyFactory idempotencyKeys;
+    private final AuditService auditService;
 
-    public WalletController(WalletService walletService, WalletTransactionService walletTransactionService) {
+    public WalletController(WalletService walletService,
+                            WalletTransactionService walletTransactionService,
+                            FinancialRateLimiter rateLimiter,
+                            IdempotencyKeyFactory idempotencyKeys,
+                            AuditService auditService) {
         this.walletService = walletService;
         this.walletTransactionService = walletTransactionService;
+        this.rateLimiter = rateLimiter;
+        this.idempotencyKeys = idempotencyKeys;
+        this.auditService = auditService;
     }
 
     public record TransactionPage(List<TransactionResponse> items, int page, int size,
@@ -92,14 +104,19 @@ public class WalletController {
                     produces = "application/json")
     public ResponseEntity<TransactionResponse>withdraw(@PathVariable("userId") Long userId,
             @Valid @RequestBody WithdrawRequest body,                         // { amountCents, refId? }
-            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+            @RequestHeader("Idempotency-Key") String clientKey,
             @AuthenticationPrincipal User currentUser
     ){
         requireOwner(currentUser, userId);
-         String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
+        rateLimiter.checkWithdraw(currentUser.getId());
+        String key = idempotencyKeys.requireAndScope(
+            "wallet-withdraw", currentUser.getId(), clientKey);
         TransactionResponse tx = walletService.debit( body.getAmountCents(), userId,  key, body.getRefId());
+        auditService.success(currentUser.getId(), "WALLET_WITHDRAW", "USER", userId.toString());
+        tx.setIdempotencyKey(clientKey.trim());
         return ResponseEntity.ok()
         .header("Cache-Control", "no-store")
+        .header("Idempotency-Key", clientKey.trim())
         .body(tx);
     }
     @PostMapping(value = "/users/{userId}/wallet/deposit",
@@ -108,13 +125,19 @@ public class WalletController {
     public ResponseEntity<TransactionResponse> deposit(
             @PathVariable("userId") Long userId,
             @Valid @RequestBody DepositRequest body,                         // { amountCents, refId? }
-            @RequestHeader(value = "Idempotency-Key", required = false) String idemKey
+            @RequestHeader("Idempotency-Key") String clientKey,
+            @AuthenticationPrincipal User admin
     ) {
         // Admin-only (enforced in SecurityConfig): users get funds via fund requests.
-        String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
+        rateLimiter.checkAdminFinancial(admin.getId());
+        String key = idempotencyKeys.requireAndScope(
+            "wallet-deposit", admin.getId(), clientKey);
         TransactionResponse tx = walletService.credit(body.getAmountCents(), userId, key, body.getRefId());
+        auditService.success(admin.getId(), "WALLET_DEPOSIT", "USER", userId.toString());
+        tx.setIdempotencyKey(clientKey.trim());
         return ResponseEntity.ok()
         .header("Cache-Control", "no-store")
+        .header("Idempotency-Key", clientKey.trim())
         .body(tx);
     }
     @PostMapping(
@@ -126,14 +149,15 @@ public ResponseEntity<TransferResponse> transfer(
         @PathVariable("fromUserId") Long fromUserId,
         @PathVariable("toUserId") Long toUserId,
         @Valid @RequestBody TransferRequest body,        // expects: toUserId, amountCents>=1, refId?
-        @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+        @RequestHeader("Idempotency-Key") String clientKey,
         @AuthenticationPrincipal User currentUser
 ) {
     // Only the sender can move money out of their own wallet
     requireOwner(currentUser, fromUserId);
+    rateLimiter.checkTransfer(currentUser.getId());
 
-    // Normalize/generate idempotency key (or 400 if your policy requires it)
-    String key = (idemKey == null || idemKey.isBlank()) ? UUID.randomUUID().toString() : idemKey;
+        String key = idempotencyKeys.requireAndScope(
+            "wallet-transfer", currentUser.getId(), clientKey);
 
     // Delegate to atomic service method
     TransferResponse resp = walletService.transfer(
@@ -143,13 +167,15 @@ public ResponseEntity<TransferResponse> transfer(
             body.getRefId(),
             key
     );
+    auditService.success(currentUser.getId(), "WALLET_TRANSFER", "USER", toUserId.toString());
+    resp.setIdempotencyKey(clientKey.trim());
 
     // Expose a canonical URL for the created transfer (optional but nice)
     URI location = URI.create(String.format("/api/v1/transfers/%s", resp.getTransferId()));
 
     return ResponseEntity.created(location)
             .header("Cache-Control", "no-store")
-            .header("Idempotency-Key", key)
+            .header("Idempotency-Key", clientKey.trim())
             .body(resp);
 }
 

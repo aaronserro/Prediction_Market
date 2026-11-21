@@ -11,24 +11,26 @@ import java.util.List;
 public class CorsConfig {
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(SecurityProperties properties) {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed origins (frontends)
-        config.setAllowedOrigins(List.of(
-                "https://www.pryzm.ca",
-                "https://pryzm.ca",
-                "http://localhost:5173" // keep for local dev if needed
-        ));
+        config.setAllowedOrigins(properties.getAllowedOrigins());
 
         // HTTP methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         // Headers the client can send
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "Idempotency-Key"));
+        config.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "X-Requested-With",
+            "X-XSRF-TOKEN",
+            "Idempotency-Key",
+            "X-Request-ID"));
 
         // Response headers the client may read
-        config.setExposedHeaders(List.of("Idempotency-Key"));
+        config.setExposedHeaders(List.of("Idempotency-Key", "X-Request-ID"));
 
         // If you use cookies / Authorization header
         config.setAllowCredentials(true);

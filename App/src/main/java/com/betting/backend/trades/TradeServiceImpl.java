@@ -13,7 +13,7 @@ import com.betting.backend.markets.OutcomeRepository;
 import com.betting.backend.markets.PricingService;
 import com.betting.backend.positions.PositionService;
 import com.betting.backend.wallet.Service.WalletService;
-import com.betting.backend.wallet.dto.TransactionResponse;
+import com.betting.backend.wallet.Exceptions.DuplicateOperationException;
 
 @Service
 public class TradeServiceImpl implements TradeService {
@@ -94,6 +94,13 @@ public class TradeServiceImpl implements TradeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<TradeResponse> getTradesForMarket(
+            UUID marketId, org.springframework.data.domain.Pageable pageable) {
+        return tradeRepo.findByMarketId(marketId, pageable).map(this::toResponse);
+    }
+
+    @Override
     public List<TradeResponse> getTradesForOutcomeInMarket(UUID marketId, UUID outcomeId) {
         return tradeRepo.findByMarketIdAndOutcomeId(marketId, outcomeId)
                 .stream()
@@ -103,19 +110,22 @@ public class TradeServiceImpl implements TradeService {
 
     // ---- Command method (create buy trade) ----
     @Transactional
-    public TradeResponse createSellTrade(CreateTradeRequest request, User currentUser){
-        if (request == null){
-            throw new IllegalArgumentException("Trade request cannot be null");
-
-        }
-        if (request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
+    public TradeResponse createSellTrade(
+            CreateTradeRequest request, User currentUser, String idempotencyKey){
+        validateCommand(request, currentUser, idempotencyKey);
+        Trade replay = findReplay(request, currentUser, TradeSide.SELL, idempotencyKey);
+        if (replay != null) {
+            return toResponse(replay);
         }
         Market market = marketRepo.findByIdForUpdate(request.getMarketId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Market not found with id: " + request.getMarketId()));
         if (!market.isActive()) {
             throw new IllegalStateException("Market is not active for trading");
+        }
+        replay = findReplay(request, currentUser, TradeSide.SELL, idempotencyKey);
+        if (replay != null) {
+            return toResponse(replay);
         }
         Outcome outcome = outcomerepo.findById(request.getOutcomeId())
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -128,15 +138,6 @@ public class TradeServiceImpl implements TradeService {
         int quantity = request.getQuantity();
         long totalAmount = pricingService.quoteSellPayout(market.getId(), outcome.getId(), quantity);
         int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
-        /*
-        System.out.println("DEBUG - Sell Trade Details:");
-        System.out.println("  Quantity: " + quantity);
-        System.out.println("  Total Amount (cents): " + totalAmount);
-        System.out.println("  Price Per Share (cents): " + pricePerShare);
-        System.out.println("  User: " + currentUser.getUsername());
-        System.out.println("  Market: " + market.getTitle());
-        System.out.println("  Outcome: " + outcome.getLabel());
-        */
         // Update position first to validate user has enough shares
         positionService.applySell(currentUser, outcome.getId(), quantity, totalAmount);
 
@@ -146,9 +147,9 @@ public class TradeServiceImpl implements TradeService {
         outcomerepo.flush(); // Force immediate database update
 
         // Credit wallet using WalletService
-        String idempotencyKey = "trade_sell_" + UUID.randomUUID().toString();
         String refId = "SELL:market=" + market.getId() + ",outcome=" + outcome.getId() + ",qty=" + quantity;
-        TransactionResponse creditTx = walletService.credit(totalAmount, currentUser.getId(), idempotencyKey, refId);
+        walletService.credit(
+            totalAmount, currentUser.getId(), idempotencyKey + ":wallet", refId);
 
         // Create trade record
         Trade trade = new Trade();
@@ -159,8 +160,8 @@ public class TradeServiceImpl implements TradeService {
         trade.setPricePerShare(pricePerShare);
         trade.setTotalAmount(totalAmount);
         trade.setside(TradeSide.SELL);  // enum side
-        trade.setUser(currentUser);
-        Trade savedTrade = tradeRepo.save(trade);
+        trade.setIdempotencyKey(idempotencyKey);
+        Trade savedTrade = tradeRepo.saveAndFlush(trade);
 
         // Use the common mapper
         return toResponse(savedTrade);
@@ -169,14 +170,12 @@ public class TradeServiceImpl implements TradeService {
     }
 
     @Transactional
-    public TradeResponse createBuyTrade(CreateTradeRequest request, User currentUser) {
-        if (request == null) {
-            throw new IllegalArgumentException("Trade request cannot be null");
-        }
-
-        // 1) Basic validation on quantity
-        if (request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
+    public TradeResponse createBuyTrade(
+            CreateTradeRequest request, User currentUser, String idempotencyKey) {
+        validateCommand(request, currentUser, idempotencyKey);
+        Trade replay = findReplay(request, currentUser, TradeSide.BUY, idempotencyKey);
+        if (replay != null) {
+            return toResponse(replay);
         }
 
         // 2) Load Market
@@ -187,6 +186,10 @@ public class TradeServiceImpl implements TradeService {
         // 2b) Ensure market is ACTIVE
         if (!market.isActive()) {
             throw new IllegalStateException("Market is not active for trading");
+        }
+        replay = findReplay(request, currentUser, TradeSide.BUY, idempotencyKey);
+        if (replay != null) {
+            return toResponse(replay);
         }
 
         // 3) Load Outcome and ensure it belongs to the same market
@@ -204,28 +207,15 @@ public class TradeServiceImpl implements TradeService {
         long totalAmount = pricingService.quoteBuyCost(market.getId(), outcome.getId(), quantity);
         int pricePerShare = (int) Math.round((double) totalAmount / (double) quantity);
 
-        System.out.println("DEBUG - Buy Trade Details:");
-        System.out.println("  Quantity: " + quantity);
-        System.out.println("  Total Amount (cents): " + totalAmount);
-        System.out.println("  Price Per Share (cents): " + pricePerShare);
-        System.out.println("  User: " + currentUser.getUsername());
-        System.out.println("  Market: " + market.getTitle());
-        System.out.println("  Outcome: " + outcome.getLabel());
-
         // 5) Debit wallet using WalletService (this will validate sufficient funds)
-        String idempotencyKey = "trade_buy_" + UUID.randomUUID().toString();
         String refId = "BUY:market=" + market.getId() + ",outcome=" + outcome.getId() + ",qty=" + quantity;
-        TransactionResponse debitTx = walletService.debit(totalAmount, currentUser.getId(), idempotencyKey, refId);
+        walletService.debit(
+            totalAmount, currentUser.getId(), idempotencyKey + ":wallet", refId);
 
         // 6) Update outstanding shares AFTER wallet is debited
         outcome.incremementOutstanding(quantity);
         outcomerepo.save(outcome);
         outcomerepo.flush(); // Force immediate database update
-
-        Outcome reloaded = outcomerepo.findById(outcome.getId()).orElseThrow();
-        System.out.println("DEBUG outstanding reloaded: " + reloaded.getOutstanding());
-        int spotAfter = pricingService.getSpotprice(market.getId(), outcome.getId());
-        System.out.println("DEBUG spot price after increment: " + spotAfter);
 
         // 7) Create Trade entity
         Trade trade = new Trade();
@@ -236,13 +226,59 @@ public class TradeServiceImpl implements TradeService {
         trade.setPricePerShare(pricePerShare);
         trade.setTotalAmount(totalAmount);
         trade.setside(TradeSide.BUY);  // enum side
-        trade.setUser(currentUser);
-        Trade savedTrade = tradeRepo.save(trade);
+        trade.setIdempotencyKey(idempotencyKey);
+        Trade savedTrade = tradeRepo.saveAndFlush(trade);
 
         // 8) Update user's position
         positionService.applyBuy(currentUser, outcome.getId(), quantity, totalAmount);
 
         // 9) Use the common mapper
         return toResponse(savedTrade);
+    }
+
+    private void validateCommand(
+            CreateTradeRequest request, User currentUser, String idempotencyKey) {
+        if (request == null) {
+            throw new IllegalArgumentException("Trade request cannot be null");
+        }
+        if (currentUser == null || currentUser.getId() == null) {
+            throw new IllegalArgumentException("Authenticated user is required");
+        }
+        if (request.getMarketId() == null || request.getOutcomeId() == null) {
+            throw new IllegalArgumentException("Market and outcome are required");
+        }
+        if (request.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new IllegalArgumentException("Idempotency-Key is required");
+        }
+        if (idempotencyKey.length() > 128) {
+            throw new IllegalArgumentException("Idempotency-Key must not exceed 128 characters");
+        }
+    }
+
+    private Trade findReplay(
+            CreateTradeRequest request,
+            User currentUser,
+            TradeSide side,
+            String idempotencyKey) {
+        Trade existing = tradeRepo.findByIdempotencyKey(idempotencyKey).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+
+        boolean matches = existing.getUser().getId().equals(currentUser.getId())
+                && existing.getside() == side
+                && existing.getMarket().getId().equals(request.getMarketId())
+                && existing.getOutcome().getId().equals(request.getOutcomeId())
+                && existing.getQuantity() == request.getQuantity();
+        if (matches) {
+            return existing;
+        }
+        throw new DuplicateOperationException(
+                idempotencyKey,
+                "TRADE_" + side,
+                "Idempotency key already used for a different trade");
     }
 }

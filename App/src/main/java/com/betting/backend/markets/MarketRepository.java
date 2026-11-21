@@ -3,6 +3,8 @@ package com.betting.backend.markets;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
@@ -26,12 +28,16 @@ public interface MarketRepository extends JpaRepository<Market, UUID> {
 
     // 3. Return all markets based on status
     List<Market> findByStatus(MarketStatus status);
+    Page<Market> findByStatus(MarketStatus status, Pageable pageable);
 
     // 4. Return all markets based on category
     List<Market> findByCategory(MarketCategory category);
+    Page<Market> findByCategory(MarketCategory category, Pageable pageable);
 
     // Optional: find markets by status + category
     List<Market> findByStatusAndCategory(MarketStatus status, MarketCategory category);
+        Page<Market> findByStatusAndCategory(
+            MarketStatus status, MarketCategory category, Pageable pageable);
     <Optional>Market findByTitle(String Title);
 
     // Find markets by status where end date is before the specified date

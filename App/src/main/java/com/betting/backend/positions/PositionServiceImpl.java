@@ -158,11 +158,10 @@ public class PositionServiceImpl implements PositionService {
             }
 
             if (updated > 0) {
-                System.out.println("✅ Migrated " + updated + " positions with marketId/marketName");
+                log.info("Position migration completed count={}", updated);
             }
         } catch (Exception e) {
-            System.err.println("⚠️ Error migrating positions: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Position migration failed", e);
         }
     }
 
