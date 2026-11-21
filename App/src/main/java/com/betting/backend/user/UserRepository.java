@@ -16,6 +16,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByIdAndAccountEnabledTrue(Long id);
   boolean existsByUsernameIgnoreCase(String username);
   boolean existsByEmailIgnoreCase(String email);
-  @Query("select distinct trade.user from Trade trade where trade.marketId = :marketId")
-  Page<User> findDistinctByTradedMarket(@Param("marketId") UUID marketId, Pageable pageable);
+  @Query(
+      value = """
+          select distinct trade.user
+          from Trade trade
+          where trade.market.id = :marketId
+          """,
+      countQuery = """
+          select count(distinct trade.user.id)
+          from Trade trade
+          where trade.market.id = :marketId
+          """
+  )
+  Page<User> findDistinctByTradedMarket(
+      @Param("marketId") UUID marketId,
+      Pageable pageable
+  );
 }
