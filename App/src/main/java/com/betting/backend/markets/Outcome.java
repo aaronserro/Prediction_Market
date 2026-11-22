@@ -22,7 +22,11 @@ public class Outcome {
     private int total_outstanding = 0;
 
     public void incremementOutstanding(int quantity){
-        total_outstanding+=quantity;
+        int updated = Math.addExact(total_outstanding, quantity);
+        if (updated < 0) {
+            throw new IllegalArgumentException("Outstanding quantity cannot be negative");
+        }
+        total_outstanding = updated;
     }
     public int getOutstanding()
     {

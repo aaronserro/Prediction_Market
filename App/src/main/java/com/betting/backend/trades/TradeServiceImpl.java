@@ -247,9 +247,7 @@ public class TradeServiceImpl implements TradeService {
         if (request.getMarketId() == null || request.getOutcomeId() == null) {
             throw new IllegalArgumentException("Market and outcome are required");
         }
-        if (request.getQuantity() <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
-        }
+        TradeLimits.requireValidQuantity(request.getQuantity());
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException("Idempotency-Key is required");
         }

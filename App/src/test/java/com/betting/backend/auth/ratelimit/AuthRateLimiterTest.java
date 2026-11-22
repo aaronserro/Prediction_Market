@@ -1,6 +1,5 @@
 package com.betting.backend.auth.ratelimit;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -54,12 +53,33 @@ class AuthRateLimiterTest {
     }
 
     @Test
-    void loginFailsOpenWhenRedisIsUnavailable() {
+        void loginFailsClosedWhenRedisIsUnavailable() {
         when(service.consume(anyString(), any()))
                 .thenThrow(new RedisConnectionFailureException("offline"));
 
-        assertThatCode(() -> limiter.checkLogin("203.0.113.10", "Alice"))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> limiter.checkLogin("203.0.113.10", "Alice"))
+            .isInstanceOf(RateLimitUnavailableException.class)
+            .hasMessage("Login is temporarily unavailable");
+        }
+
+        @Test
+        void failedLoginRecordingFailsClosedWhenRedisIsUnavailable() {
+        when(service.consume(anyString(), any()))
+            .thenThrow(new RedisConnectionFailureException("offline"));
+
+        assertThatThrownBy(() -> limiter.recordLoginFailure("Alice"))
+            .isInstanceOf(RateLimitUnavailableException.class)
+            .hasMessage("Login is temporarily unavailable");
+        }
+
+        @Test
+        void successfulLoginCleanupFailsClosedWhenRedisIsUnavailable() {
+        org.mockito.Mockito.doThrow(new RedisConnectionFailureException("offline"))
+            .when(service).clear(anyString());
+
+        assertThatThrownBy(() -> limiter.clearLoginFailures("Alice"))
+            .isInstanceOf(RateLimitUnavailableException.class)
+            .hasMessage("Login is temporarily unavailable");
     }
 
     @Test

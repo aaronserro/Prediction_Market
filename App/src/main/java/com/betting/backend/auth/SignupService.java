@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.betting.backend.auth.dto.SignupRequest;
+import com.betting.backend.config.FinancialProperties;
 import com.betting.backend.user.User;
 import com.betting.backend.user.UserRepository;
 import com.betting.backend.wallet.Service.WalletService;
@@ -17,19 +18,21 @@ import com.betting.backend.wallet.Service.WalletService;
 @Service
 public class SignupService {
 
-    private static final long SIGNUP_BONUS_CENTS = 10_000L;
     private static final String SIGNUP_BONUS_REFERENCE = "SIGNUP_BONUS";
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final WalletService walletService;
+    private final FinancialProperties financialProperties;
 
     public SignupService(UserRepository users,
                          PasswordEncoder encoder,
-                         WalletService walletService) {
+                         WalletService walletService,
+                         FinancialProperties financialProperties) {
         this.users = users;
         this.encoder = encoder;
         this.walletService = walletService;
+        this.financialProperties = financialProperties;
     }
 
     @Transactional
@@ -52,11 +55,13 @@ public class SignupService {
         User saved = users.save(user);
 
         walletService.getbalance(saved.getId());
-        walletService.credit(
-                SIGNUP_BONUS_CENTS,
+        if (financialProperties.isSignupBonusEnabled()) {
+            walletService.credit(
+                financialProperties.getSignupBonusCents(),
                 saved.getId(),
                 SIGNUP_BONUS_REFERENCE + ":" + saved.getId(),
                 SIGNUP_BONUS_REFERENCE);
+        }
         return saved;
     }
 

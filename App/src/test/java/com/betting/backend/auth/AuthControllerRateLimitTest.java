@@ -13,6 +13,7 @@ import com.betting.backend.auth.dto.LoginRequest;
 import com.betting.backend.auth.dto.SignupRequest;
 import com.betting.backend.auth.ratelimit.AuthRateLimiter;
 import com.betting.backend.auth.ratelimit.RateLimitExceededException;
+import com.betting.backend.auth.ratelimit.RateLimitUnavailableException;
 import com.betting.backend.auth.mfa.AdminMfaService;
 import com.betting.backend.audit.AuditService;
 import com.betting.backend.config.SecurityProperties;
@@ -95,6 +96,19 @@ class AuthControllerRateLimitTest {
         verifyNoInteractions(authManager, jwt);
     }
 
+        @Test
+        void redisOutageBeforeAuthenticationDoesNotInvokeAuthenticationOrIssueJwt() {
+                LoginRequest body = new LoginRequest("alice", "correct-password");
+                org.mockito.Mockito.doThrow(new RateLimitUnavailableException(
+                                                "Login is temporarily unavailable", new RuntimeException("offline")))
+                                .when(rateLimiter).checkLogin("203.0.113.10", "alice");
+
+                assertThatThrownBy(() -> controller.login(body, request))
+                                .isInstanceOf(RateLimitUnavailableException.class);
+
+                verifyNoInteractions(authManager, jwt);
+        }
+
     @Test
     void failedAuthenticationIsRecorded() {
         LoginRequest body = new LoginRequest("alice", "wrong-password");
@@ -129,6 +143,26 @@ class AuthControllerRateLimitTest {
             .contains("HttpOnly")
             .contains("SameSite=Lax")
             .doesNotContain("Domain=");
+    }
+
+    @Test
+    void redisOutageWhileClearingSuccessfulLoginDoesNotIssueJwt() {
+        LoginRequest body = new LoginRequest("alice", "correct-password");
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("alice");
+        user.setRoles(java.util.Set.of("ROLE_USER"));
+        when(authManager.authenticate(any())).thenReturn(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
+        org.mockito.Mockito.doThrow(new RateLimitUnavailableException(
+                        "Login is temporarily unavailable", new RuntimeException("offline")))
+                .when(rateLimiter).clearLoginFailures("alice");
+
+        assertThatThrownBy(() -> controller.login(body, request))
+                .isInstanceOf(RateLimitUnavailableException.class);
+
+        verify(jwt, never()).generate(any(User.class));
+        verify(rateLimiter, never()).recordLoginFailure("alice");
     }
 
     @Test

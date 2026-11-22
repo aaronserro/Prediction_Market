@@ -142,6 +142,19 @@ class JwtSecurityTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void deactivatedUserCannotAuthenticateWithExistingToken() throws Exception {
+        User user = user(41L, 2L, true);
+        String token = jwt.generate(user);
+
+        user.setAccountEnabled(false);
+        user.markDeactivated(Instant.parse("2026-01-01T00:00:00Z"), 7L);
+        when(users.findByIdAndAccountEnabledTrue(41L)).thenReturn(Optional.empty());
+
+        mvc.perform(get("/protected").cookie(new Cookie("betauth", token)))
+                .andExpect(status().isUnauthorized());
+    }
+
     private User user(Long id, long tokenVersion, boolean enabled) {
         User user = new User();
         user.setId(id);

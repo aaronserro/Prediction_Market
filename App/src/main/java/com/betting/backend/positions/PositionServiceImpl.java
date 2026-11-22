@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.betting.backend.markets.Outcome;
 import com.betting.backend.markets.OutcomeRepository;
+import com.betting.backend.trades.TradeLimits;
 import com.betting.backend.user.User;
 
 import jakarta.annotation.PostConstruct;
@@ -41,7 +42,7 @@ public class PositionServiceImpl implements PositionService {
     @Override
     @Transactional
     public Position applyBuy(User user, UUID outcomeId, int qty, long totalCostCents) {
-        validatePositiveQty(qty);
+        TradeLimits.requireValidQuantity(qty);
         validateNonNegativePrice(totalCostCents);
 
         Outcome outcome = outcomeRepository.findById(outcomeId)
@@ -64,10 +65,10 @@ public class PositionServiceImpl implements PositionService {
                 });
         position.setStatus(PositionStatus.OPEN);
 
-        long addCost = totalCostCents;;
-
-        position.setQuantity(position.getQuantity() + qty);
-        position.setCostBasisCents(position.getCostBasisCents() + addCost);
+        int updatedQuantity = Math.addExact(position.getQuantity(), qty);
+        long updatedCostBasis = Math.addExact(position.getCostBasisCents(), totalCostCents);
+        position.setQuantity(updatedQuantity);
+        position.setCostBasisCents(updatedCostBasis);
 
         return positionRepository.save(position);
     }
@@ -75,7 +76,7 @@ public class PositionServiceImpl implements PositionService {
     @Override
     @Transactional
     public void applySell(User user, UUID outcomeId, int qty, long totalProceedsCents) {
-        validatePositiveQty(qty);
+        TradeLimits.requireValidQuantity(qty);
         validateNonNegativePrice(totalProceedsCents);
 
         Position position = positionRepository.findByUser_IdAndOutcomeId(user.getId(), outcomeId)
@@ -94,15 +95,15 @@ public class PositionServiceImpl implements PositionService {
         long costBasis = position.getCostBasisCents();
 
         long proceeds = totalProceedsCents;
-        long costRemoved = (costBasis * (long) qty) /heldQty;
-        long realizedDelta = proceeds - costRemoved;
+        long costRemoved = Math.multiplyExact(costBasis, (long) qty) / heldQty;
+        long realizedDelta = Math.subtractExact(proceeds, costRemoved);
 
         // Update position state
-        position.setQuantity(heldQty - qty);
-        position.setCostBasisCents(costBasis - costRemoved);
+        position.setQuantity(Math.subtractExact(heldQty, qty));
+        position.setCostBasisCents(Math.subtractExact(costBasis, costRemoved));
 
         long prevRealized = (position.getRealizedPnl() == null) ? 0L : position.getRealizedPnl();
-        position.setRealizedPnl(prevRealized + realizedDelta);
+        position.setRealizedPnl(Math.addExact(prevRealized, realizedDelta));
 
         // Retain fully sold positions so their accumulated realized P&L remains
         // available to the portfolio endpoint. A later buy reuses this row.
@@ -163,10 +164,6 @@ public class PositionServiceImpl implements PositionService {
         } catch (Exception e) {
             log.error("Position migration failed", e);
         }
-    }
-
-    private static void validatePositiveQty(int qty) {
-        if (qty <= 0) throw new IllegalArgumentException("qty must be > 0");
     }
 
     private static void validateNonNegativePrice(long totalCostCents) {

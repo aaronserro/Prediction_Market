@@ -1,5 +1,6 @@
 package com.betting.backend.user.dto;
 
+import java.time.Instant;
 import java.util.Set;
 
 public class UserResponse {
@@ -7,15 +8,20 @@ public class UserResponse {
     private String username;
     private String email;
     private Set<String> roles;
+    private boolean accountEnabled;
+    private Instant deactivatedAt;
 
     public UserResponse() {
     }
 
-    public UserResponse(Long id, String username, String email, Set<String> roles) {
+    public UserResponse(Long id, String username, String email, Set<String> roles,
+                        boolean accountEnabled, Instant deactivatedAt) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.roles = roles;
+        this.accountEnabled = accountEnabled;
+        this.deactivatedAt = deactivatedAt;
     }
 
     public Long getId() {
@@ -48,5 +54,21 @@ public class UserResponse {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public boolean isAccountEnabled() {
+        return accountEnabled;
+    }
+
+    public void setAccountEnabled(boolean accountEnabled) {
+        this.accountEnabled = accountEnabled;
+    }
+
+    public Instant getDeactivatedAt() {
+        return deactivatedAt;
+    }
+
+    public void setDeactivatedAt(Instant deactivatedAt) {
+        this.deactivatedAt = deactivatedAt;
     }
 }

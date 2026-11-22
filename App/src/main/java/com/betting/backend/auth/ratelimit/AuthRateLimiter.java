@@ -33,8 +33,8 @@ public class AuthRateLimiter {
             requireAllowed("login-account", rateLimits.inspect(
                     keys.loginAccount(username), properties.getLoginAccount().toPolicy()));
         } catch (DataAccessException ex) {
-            // Existing users must not be globally locked out during a Redis outage.
-            log.error("Login rate limiting is unavailable; allowing the request", ex);
+            log.error("Login rate limiting is unavailable; rejecting the request", ex);
+            throw new RateLimitUnavailableException("Login is temporarily unavailable", ex);
         }
     }
 
@@ -47,6 +47,7 @@ public class AuthRateLimiter {
             rateLimits.consume(keys.loginAccount(username), properties.getLoginAccount().toPolicy());
         } catch (DataAccessException ex) {
             log.error("Could not record a failed login in Redis", ex);
+            throw new RateLimitUnavailableException("Login is temporarily unavailable", ex);
         }
     }
 
@@ -59,6 +60,7 @@ public class AuthRateLimiter {
             rateLimits.clear(keys.loginAccount(username));
         } catch (DataAccessException ex) {
             log.error("Could not clear failed logins in Redis", ex);
+            throw new RateLimitUnavailableException("Login is temporarily unavailable", ex);
         }
     }
 

@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+
+import com.betting.backend.trades.TradeLimits;
 @Service
 public class PricingServiceImpl implements PricingService{
     private final MarketRepository marketRepository;
@@ -75,7 +77,7 @@ public class PricingServiceImpl implements PricingService{
 
         if (marketId == null) throw new IllegalArgumentException("marketId cannot be null");
         if (outcomeId == null) throw new IllegalArgumentException("outcomeId cannot be null");
-        if (quantity <= 0) throw new IllegalArgumentException("quantity must be > 0");
+        TradeLimits.requireValidQuantity(quantity);
         Market market = marketRepository.findById(marketId)
         .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
 
@@ -91,12 +93,14 @@ public class PricingServiceImpl implements PricingService{
 
         double before = lmsrCost(outcomes, b);
         // simulate q_i += quantity (in-memory only)
-        int oldQ = target.getOutstanding();
         target.incremementOutstanding(quantity);
-        double after = lmsrCost(outcomes, b);
-
-        // restore (important: do not mutate state permanently in a quote)
-        target.incremementOutstanding(-quantity);
+        double after;
+        try {
+            after = lmsrCost(outcomes, b);
+        } finally {
+            // Quote calculations must never leak their simulated state.
+            target.incremementOutstanding(-quantity);
+        }
 
         long cents = Math.round((after - before) * 100.0);
         if (cents < 0) cents = 0; // defensive
@@ -107,7 +111,7 @@ public class PricingServiceImpl implements PricingService{
     public long quoteSellPayout(UUID marketId, UUID outcomeId, int quantity){
         if (marketId == null) throw new IllegalArgumentException("marketId cannot be null");
         if (outcomeId == null) throw new IllegalArgumentException("outcomeId cannot be null");
-        if (quantity <= 0) throw new IllegalArgumentException("quantity must be > 0");
+        TradeLimits.requireValidQuantity(quantity);
         Market market = marketRepository.findById(marketId)
             .orElseThrow(() -> new IllegalArgumentException("Market not found: " + marketId));
 
@@ -129,11 +133,13 @@ public class PricingServiceImpl implements PricingService{
 
         // simulate q_i -= quantity
         target.incremementOutstanding(-quantity);
-
-        double after = lmsrCost(outcomes, b);
-
-        // restore
-        target.incremementOutstanding(quantity);
+        double after;
+        try {
+            after = lmsrCost(outcomes, b);
+        } finally {
+            // Quote calculations must never leak their simulated state.
+            target.incremementOutstanding(quantity);
+        }
         long cents = Math.round((before - after) * 100.0);
         if (cents < 0) cents = 0;
         return cents;

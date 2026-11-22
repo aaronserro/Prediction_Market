@@ -5,6 +5,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -39,18 +40,24 @@ public class User implements UserDetails {
     @Column(name = "token_version", nullable = false)
     private long tokenVersion;
 
+    @Column(name = "deactivated_at")
+    private Instant deactivatedAt;
+
+    @Column(name = "deactivated_by_user_id")
+    private Long deactivatedByUserId;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private Set<String> roles;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "user")
     private List<Position> positions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "user")
     private List<Trade> trades = new ArrayList<>();
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Wallet wallet;
 
     // --- Getters ---
@@ -76,6 +83,18 @@ public class User implements UserDetails {
 
     public long getTokenVersion() {
         return tokenVersion;
+    }
+
+    public boolean isAccountEnabled() {
+        return accountEnabled;
+    }
+
+    public Instant getDeactivatedAt() {
+        return deactivatedAt;
+    }
+
+    public Long getDeactivatedByUserId() {
+        return deactivatedByUserId;
     }
 
     public List<Position> getPositions() {
@@ -122,6 +141,15 @@ public class User implements UserDetails {
 
     public void setTokenVersion(long tokenVersion) {
         this.tokenVersion = tokenVersion;
+    }
+
+    public void markDeactivated(Instant occurredAt, Long administratorId) {
+        if (accountEnabled) {
+            throw new IllegalStateException("Account must be disabled before deactivation is recorded");
+        }
+        deactivatedAt = Objects.requireNonNull(occurredAt, "Deactivation time is required");
+        deactivatedByUserId = Objects.requireNonNull(
+                administratorId, "Deactivating administrator ID is required");
     }
 
     public void setPositions(List<Position> positions) {

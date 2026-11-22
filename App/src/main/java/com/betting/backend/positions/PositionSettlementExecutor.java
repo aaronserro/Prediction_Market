@@ -39,7 +39,9 @@ public class PositionSettlementExecutor {
         if (qty > 0) {
             boolean isWinner = position.getOutcome() != null
                     && position.getOutcome().getId().equals(winningOutcomeId);
-            long payoutCents = isWinner ? (long) qty * PAYOUT_PER_WINNING_SHARE_CENTS : 0L;
+                long payoutCents = isWinner
+                    ? Math.multiplyExact((long) qty, PAYOUT_PER_WINNING_SHARE_CENTS)
+                    : 0L;
 
             if (payoutCents > 0) {
                 walletService.credit(
@@ -52,7 +54,8 @@ public class PositionSettlementExecutor {
             long costBasis = position.getCostBasisCents();
             long prevRealized = position.getRealizedPnl() == null ? 0L : position.getRealizedPnl();
             position.setSettledCostBasisCents(costBasis);
-            position.setRealizedPnl(prevRealized + payoutCents - costBasis);
+                position.setRealizedPnl(Math.subtractExact(
+                    Math.addExact(prevRealized, payoutCents), costBasis));
             position.setQuantity(0);
             position.setCostBasisCents(0L);
         }

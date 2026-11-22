@@ -1,6 +1,7 @@
 package com.betting.backend.positions;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -124,6 +125,35 @@ class PositionSettlementTest {
         verify(repo).save(position);
         assertThat(position.getQuantity()).isZero();
         assertThat(position.getRealizedPnl()).isEqualTo(600L - 400L);
+    }
+
+    @Test
+    void supportedMaximumWinningQuantityUsesExactPayoutArithmetic() {
+        PositionRepository repo = mock(PositionRepository.class);
+        WalletService wallet = mock(WalletService.class);
+        Position position = position(12L, 5L, winningOutcomeId, 10_000, 500_000L, 0L);
+        when(repo.findByIdForUpdate(12L)).thenReturn(Optional.of(position));
+
+        new PositionSettlementExecutor(repo, wallet).settle(12L, marketId, winningOutcomeId);
+
+        verify(wallet).credit(1_000_000L, 5L,
+                "SETTLE:v1:" + marketId + ":12", "MARKET_SETTLEMENT:" + marketId);
+        assertThat(position.getRealizedPnl()).isEqualTo(500_000L);
+    }
+
+    @Test
+    void realizedPnlOverflowAbortsSettlementBeforePositionSave() {
+        PositionRepository repo = mock(PositionRepository.class);
+        WalletService wallet = mock(WalletService.class);
+        Position position = position(
+                13L, 5L, winningOutcomeId, 1, 0L, Long.MAX_VALUE);
+        when(repo.findByIdForUpdate(13L)).thenReturn(Optional.of(position));
+
+        assertThatThrownBy(() -> new PositionSettlementExecutor(repo, wallet)
+                .settle(13L, marketId, winningOutcomeId))
+                .isInstanceOf(ArithmeticException.class);
+
+        verify(repo, never()).save(position);
     }
 
     private static Position position(Long id, Long userId, UUID outcomeId,

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.betting.backend.auth.dto.SignupRequest;
+import com.betting.backend.config.FinancialProperties;
 import com.betting.backend.user.User;
 import com.betting.backend.user.UserRepository;
 import com.betting.backend.wallet.Service.WalletService;
@@ -26,6 +27,7 @@ class SignupServiceTest {
     private UserRepository users;
     private PasswordEncoder encoder;
     private WalletService walletService;
+    private FinancialProperties financialProperties;
     private SignupService service;
 
     @BeforeEach
@@ -33,7 +35,8 @@ class SignupServiceTest {
         users = org.mockito.Mockito.mock(UserRepository.class);
         encoder = org.mockito.Mockito.mock(PasswordEncoder.class);
         walletService = org.mockito.Mockito.mock(WalletService.class);
-        service = new SignupService(users, encoder, walletService);
+        financialProperties = new FinancialProperties();
+        service = new SignupService(users, encoder, walletService, financialProperties);
 
         when(encoder.encode("long-password")).thenReturn("encoded-password");
         when(users.save(any(User.class))).thenAnswer(invocation -> {
@@ -69,6 +72,7 @@ class SignupServiceTest {
                 .hasMessageContaining("Username already taken");
 
         verify(users, never()).save(any());
+        verify(walletService, never()).getbalance(any());
         verify(walletService, never()).credit(any(), any(), any(), any());
     }
 
@@ -82,19 +86,32 @@ class SignupServiceTest {
                 .hasMessageContaining("Email already registered");
 
         verify(users, never()).save(any());
+        verify(walletService, never()).getbalance(any());
         verify(walletService, never()).credit(any(), any(), any(), any());
     }
 
     @Test
-    void walletAndBonusAreCreatedOnceWithStableKey() {
+    void disabledBonusCreatesWalletWithoutCredit() {
         service.signup(new SignupRequest("alice", "long-password", "alice@example.com"));
 
         verify(walletService).getbalance(42L);
-        verify(walletService).credit(10_000L, 42L, "SIGNUP_BONUS:42", "SIGNUP_BONUS");
+        verify(walletService, never()).credit(any(), any(), any(), any());
+    }
+
+    @Test
+    void enabledBonusUsesConfiguredAmountAndStableKey() {
+        financialProperties.setSignupBonusEnabled(true);
+        financialProperties.setSignupBonusCents(25_000L);
+
+        service.signup(new SignupRequest("alice", "long-password", "alice@example.com"));
+
+        verify(walletService).getbalance(42L);
+        verify(walletService).credit(25_000L, 42L, "SIGNUP_BONUS:42", "SIGNUP_BONUS");
     }
 
     @Test
     void bonusFailurePropagatesFromTransactionalBoundary() throws Exception {
+        financialProperties.setSignupBonusEnabled(true);
         when(walletService.credit(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("wallet unavailable"));
 

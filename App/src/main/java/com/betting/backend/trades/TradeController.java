@@ -21,6 +21,8 @@ import com.betting.backend.trades.dto.TradeResponse;
 import com.betting.backend.user.User;
 import com.betting.backend.user.UserRepository;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/v1/trades")
 public class TradeController {
@@ -45,7 +47,7 @@ public class TradeController {
     }
     @PostMapping("/sell")
     public ResponseEntity<TradeResponse> createSellTrade(
-    @RequestBody CreateTradeRequest request,
+    @Valid @RequestBody CreateTradeRequest request,
     @RequestHeader("Idempotency-Key") String clientKey,
     Principal principal
 ){
@@ -65,7 +67,7 @@ public class TradeController {
 }
     @PostMapping("/buy")
     public ResponseEntity<TradeResponse> createBuyTrade(
-        @RequestBody CreateTradeRequest request,
+        @Valid @RequestBody CreateTradeRequest request,
         @RequestHeader("Idempotency-Key") String clientKey,
         Principal principal
     ){

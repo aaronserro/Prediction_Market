@@ -19,10 +19,10 @@ public class Wallet {
     @JoinColumn(name = "UserId", nullable = false, unique = true)
     private User user;
 
-    @OneToMany(mappedBy = "wallet", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "wallet")
     private List<WalletTransaction> transactions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "wallet", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "wallet")
     private List<FundRequest> fundRequests = new ArrayList<>();
 
     // Store balance in cents as long (avoids float/double issues)

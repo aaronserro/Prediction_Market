@@ -2,13 +2,18 @@ package com.betting.backend.trades.dto;
 
 import java.util.UUID;
 
+import com.betting.backend.trades.TradeLimits;
 import com.betting.backend.trades.TradeSide;
-import com.betting.backend.user.User;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 public class CreateTradeRequest {
 
     private UUID marketId;
     private UUID outcomeId;
+    @Min(1)
+    @Max(TradeLimits.MAX_QUANTITY)
     private int quantity; // number of units/shares user wants to buy
     private TradeSide side;
     public UUID getMarketId() {
