@@ -8,10 +8,10 @@ Set these values in the Render service and never commit them:
 | --- | --- |
 | `SPRING_PROFILES_ACTIVE` | `prod` |
 | `SPRING_DATASOURCE_URL` | Internal JDBC URL beginning with `jdbc:postgresql://` |
-| `DATABASE_RUNTIME_USERNAME` | Least-privileged application role; must own no schema objects |
-| `DATABASE_RUNTIME_PASSWORD` | Independent runtime-role password |
-| `DATABASE_MIGRATION_USERNAME` | Schema-owning role used only by Flyway at startup |
-| `DATABASE_MIGRATION_PASSWORD` | Independent migration-role password |
+| `SPRING_DATASOURCE_USERNAME` | Least-privileged application role; must own no schema objects |
+| `SPRING_DATASOURCE_PASSWORD` | Independent runtime-role password |
+| `SPRING_FLYWAY_USER` | Schema-owning role used only by Flyway at startup |
+| `SPRING_FLYWAY_PASSWORD` | Independent migration-role password |
 | `APP_ALLOWED_ORIGINS` | Exact HTTPS browser origins, comma-separated; no wildcard |
 | `JWT_SECRET` | Random value of at least 32 bytes |
 | `MFA_ENCRYPTION_KEY` | Independent random value of at least 32 bytes |
@@ -48,8 +48,8 @@ their integrations are disabled.
   trigger functions to the migration role. Do this before V4; V4 intentionally fails if the
   migration connection does not own those objects.
 9. Start the candidate image against the sanitized restore with the production profile.
-  Hikari must connect with `DATABASE_RUNTIME_USERNAME`, while Flyway connects separately with
-  `DATABASE_MIGRATION_USERNAME`. Flyway baselines at version `0`, runs V1 through V4, and
+  Hikari must connect with `SPRING_DATASOURCE_USERNAME`, while Flyway connects separately with
+  `SPRING_FLYWAY_USER`. Flyway baselines at version `0`, runs V1 through V4, and
   Hibernate then validates the schema through the runtime connection.
 10. Verify `flyway_schema_history` contains successful versions `1` through `4`,
   `users_deactivation_state_ck`, financial checks, deletion guards, immutable-history guards,
