@@ -2,8 +2,8 @@
 -- Financial records continue to reference the durable users.id value.
 
 ALTER TABLE users
-    ADD COLUMN deactivated_at timestamp with time zone,
-    ADD COLUMN deactivated_by_user_id bigint;
+    ADD COLUMN IF NOT EXISTS deactivated_at timestamp with time zone,
+    ADD COLUMN IF NOT EXISTS deactivated_by_user_id bigint;
 
 -- Existing disabled accounts predate deactivation metadata. Remove their login
 -- identity and credentials before enforcing the state invariant.
