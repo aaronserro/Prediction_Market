@@ -7,7 +7,7 @@ Set these values in the Render service and never commit them:
 | Variable | Requirement |
 | --- | --- |
 | `SPRING_PROFILES_ACTIVE` | `prod` |
-| `DATABASE_URL` | Internal JDBC URL beginning with `jdbc:postgresql://` |
+| `SPRING_DATASOURCE_URL` | Internal JDBC URL beginning with `jdbc:postgresql://` |
 | `DATABASE_RUNTIME_USERNAME` | Least-privileged application role; must own no schema objects |
 | `DATABASE_RUNTIME_PASSWORD` | Independent runtime-role password |
 | `DATABASE_MIGRATION_USERNAME` | Schema-owning role used only by Flyway at startup |
