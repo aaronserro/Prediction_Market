@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
 import AuthShell from '../components/AuthShell.jsx';
 import { Field, Notice, btnPrimary, btnSecondary, inputCls } from '../components/ui.jsx';
-import { API_BASE } from '../lib/markets.js';
 
 export default function Login() {
   const nav = useNavigate();
@@ -22,15 +21,9 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await login(form.username.trim(), form.password, mfaCode);
-      const meRes = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
-      if (meRes.ok) {
-        const userData = await meRes.json();
-        const isAdmin = userData?.roles?.includes('ROLE_ADMIN') || userData?.roles?.includes('ADMIN');
-        nav(isAdmin ? '/admin' : '/dashboard');
-      } else {
-        nav('/dashboard');
-      }
+      const user = await login(form.username.trim(), form.password, mfaCode);
+      const isAdmin = user?.roles?.includes('ROLE_ADMIN') || user?.roles?.includes('ADMIN');
+      nav(isAdmin ? '/admin' : '/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     } finally {

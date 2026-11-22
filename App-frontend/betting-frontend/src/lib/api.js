@@ -57,14 +57,25 @@ export async function request(path, { method = 'GET', body, headers = {} } = {})
 	return parseResponse(res)
 }
 
+async function authRequest(path, options) {
+	// Authentication changes can invalidate the CSRF token associated with the
+	// previous browser state. Always acquire a fresh token for each transition.
+	csrfPromise = undefined
+	try {
+		return await request(path, options)
+	} finally {
+		csrfPromise = undefined
+	}
+}
+
 export function newIdempotencyKey() {
 	return crypto.randomUUID()
 }
 
 
 export const api = {
-	signup: (payload) => request('/auth/signup', { method: 'POST', body: payload }),
-	login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
-	logout: () => request('/auth/logout', { method: 'POST' }),
+	signup: (payload) => authRequest('/auth/signup', { method: 'POST', body: payload }),
+	login: (payload) => authRequest('/auth/login', { method: 'POST', body: payload }),
+	logout: () => authRequest('/auth/logout', { method: 'POST' }),
 	me: () => request('/auth/me'),
 }
