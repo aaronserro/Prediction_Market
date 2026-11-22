@@ -8,16 +8,21 @@ import { API_BASE } from '../lib/markets.js';
 export default function Login() {
   const nav = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '', mfaCode: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    const mfaCode = form.mfaCode.trim();
+    if (mfaCode && !/^\d{6}$/.test(mfaCode)) {
+      setError('Administrator MFA code must be exactly six digits.');
+      return;
+    }
     setLoading(true);
     try {
-      await login(form.username.trim(), form.password);
+      await login(form.username.trim(), form.password, mfaCode);
       const meRes = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' });
       if (meRes.ok) {
         const userData = await meRes.json();
@@ -55,6 +60,20 @@ export default function Login() {
             placeholder="••••••••"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Administrator MFA code (if required)" htmlFor="login-mfa">
+          <input
+            id="login-mfa"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            pattern="[0-9]{6}"
+            placeholder="6-digit code"
+            value={form.mfaCode}
+            onChange={(e) => setForm({ ...form, mfaCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
             className={inputCls}
           />
         </Field>

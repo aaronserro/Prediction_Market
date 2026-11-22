@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ErrorNote, LiveDot, Page, Segmented, Spinner, Tabs, card } from "../components/ui.jsx";
-import { API_BASE, errorFromResponse, getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { newIdempotencyKey, request } from "../lib/api.js";
+import { getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
 import { fixtureSource, useDataSource } from "../lib/dataSource.js";
 import SignupGate from "../components/SignupGate.jsx";
 import { buildHistory, toPath, xTicks } from "../lib/history.js";
@@ -12,6 +13,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 const COLORS = ["var(--pr)", "var(--am)", "oklch(0.62 0.12 195)", "var(--mu)", "oklch(0.6 0.14 15)", "var(--bd2)"];
 const RANGES = ["1D", "1W", "1M", "ALL"];
 const QTYS = [10, 50, 100];
+const MAX_TRADE_QUANTITY = 10_000;
 const CHART_H = 260;
 const WATCH_KEY = "pryzm-watch";
 
@@ -39,19 +41,17 @@ function tradeErrorMessage(err) {
   return msg || `Trade failed (${err.status ?? "network error"})`;
 }
 
-async function postTrade(side, body) {
-  const res = await fetch(`${API_BASE}/api/v1/trades/${side}`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await errorFromResponse(res);
-    throw new Error(tradeErrorMessage(err));
+async function postTrade(side, body, idempotencyKey) {
+  try {
+    return await request(`/api/v1/trades/${side}`, {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body,
+    });
+  } catch (err) {
+    err.message = tradeErrorMessage(err);
+    throw err;
   }
-  const text = await res.text();
-  try { return text ? JSON.parse(text) : {}; } catch { return {}; }
 }
 
 function PriceChart({ outcomes, history, range, setRange, binary, weekChange }) {
@@ -113,12 +113,14 @@ function PriceChart({ outcomes, history, range, setRange, binary, weekChange }) 
   );
 }
 
-function ConfirmModal({ market, outcome, action, qty, setQty, held, onCancel, onConfirm, busy }) {
+function ConfirmModal({ market, outcome, action, qty, setQty, held, error, onCancel, onConfirm, busy }) {
   const isBuy = action === "BUY";
   const price = isBuy ? outcome.buy : outcome.sell;
   const [quote, setQuote] = useState(null);
-  // Sells are limited to shares held; offer smaller presets plus "All".
-  const qtys = isBuy ? QTYS : [...QTYS.filter((n) => n < held), held];
+  const maxSellQuantity = Math.min(Math.floor(held), MAX_TRADE_QUANTITY);
+  // Sells are limited by both shares held and the backend's per-trade maximum.
+  const qtys = isBuy ? QTYS : [...new Set([...QTYS.filter((n) => n < maxSellQuantity), maxSellQuantity])];
+  const invalidQuantity = !Number.isInteger(qty) || qty < 1 || qty > MAX_TRADE_QUANTITY;
   const overHeld = !isBuy && qty > held;
 
   useEffect(() => {
@@ -171,7 +173,7 @@ function ConfirmModal({ market, outcome, action, qty, setQty, held, onCancel, on
                   }`}
                 >
                   <span className="font-mono text-xl font-semibold tracking-[-0.03em]">{n}</span>
-                  <span className="text-[11px]">{all ? "all shares" : "shares"}</span>
+                  <span className="text-[11px]">{all && held <= MAX_TRADE_QUANTITY ? "all shares" : "shares"}</span>
                 </button>
               );
             })}
@@ -196,7 +198,9 @@ function ConfirmModal({ market, outcome, action, qty, setQty, held, onCancel, on
                 <span className={`font-mono ${overHeld ? "text-no font-semibold" : ""}`}>{fmt(held)} shares</span>
               </div>
             )}
+            <div className="text-[12px] text-mu">Per-trade limit: {MAX_TRADE_QUANTITY.toLocaleString()} shares</div>
           </div>
+          {error && <div className="mt-3 rounded-xl px-4 py-3 text-[13.5px] bg-nos text-no">{error}</div>}
         </div>
         <div className="grid grid-cols-[1fr_1.4fr] gap-2 px-[22px] pt-[18px] pb-[22px]">
           <button onClick={onCancel} className="h-[46px] rounded-[11px] border border-bd2 bg-sf text-tx2 text-[14.5px] font-[550] cursor-pointer hover:bg-sf2">
@@ -204,7 +208,7 @@ function ConfirmModal({ market, outcome, action, qty, setQty, held, onCancel, on
           </button>
           <button
             onClick={onConfirm}
-            disabled={busy || overHeld}
+            disabled={busy || overHeld || invalidQuantity}
             className="h-[46px] border-0 rounded-[11px] bg-pr enabled:hover:bg-prh text-white text-[14.5px] font-semibold cursor-pointer disabled:opacity-60"
           >
             {busy ? "Placing…" : `Confirm ${isBuy ? "Buy" : "Sell"}`}
@@ -235,6 +239,8 @@ export default function MarketDetail() {
   const [modal, setModal] = useState(null); // { outcomeIndex, action }
   const [qty, setQty] = useState(10);
   const [busy, setBusy] = useState(false);
+  const [tradeError, setTradeError] = useState("");
+  const tradeIntentRef = useRef(null);
   const [toast, setToast] = useState(null); // { kind, text }
   const [watched, setWatched] = useState(() => readWatch().includes(marketId));
   const [shared, setShared] = useState(false);
@@ -364,20 +370,50 @@ export default function MarketDetail() {
     }
     const held = heldOf(o.id);
     if (action === "SELL" && held <= 0) return;
+    tradeIntentRef.current = null;
+    setTradeError("");
     setSel(outcomeIndex);
-    setQty(action === "SELL" ? Math.min(QTYS[0], held) : QTYS[0]);
+    setQty(action === "SELL" ? Math.min(QTYS[0], held, MAX_TRADE_QUANTITY) : QTYS[0]);
     setModal({ outcomeIndex, action });
+  };
+
+  const changeTradeQuantity = (nextQuantity) => {
+    tradeIntentRef.current = null;
+    setTradeError("");
+    setQty(nextQuantity);
+  };
+
+  const closeTradeModal = () => {
+    tradeIntentRef.current = null;
+    setTradeError("");
+    setModal(null);
   };
 
   const confirm = async () => {
     const o = outcomes[modal.outcomeIndex];
     const isBuy = modal.action === "BUY";
+    const held = heldOf(o.id);
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_TRADE_QUANTITY || (!isBuy && qty > held)) {
+      setTradeError(`Quantity must be between 1 and ${MAX_TRADE_QUANTITY.toLocaleString()} and cannot exceed your holdings.`);
+      return;
+    }
+    const side = isBuy ? "buy" : "sell";
+    const signature = `${side}:${market.id}:${o.id}:${qty}`;
+    if (tradeIntentRef.current?.signature !== signature) {
+      tradeIntentRef.current = { signature, key: newIdempotencyKey() };
+    }
     setBusy(true);
+    setTradeError("");
     try {
-      const res = await postTrade(isBuy ? "buy" : "sell", { marketId: market.id, outcomeId: o.id, quantity: qty });
+      const res = await postTrade(
+        side,
+        { marketId: market.id, outcomeId: o.id, quantity: qty },
+        tradeIntentRef.current.key
+      );
       const n = res.quantity ?? res.filledQuantity ?? qty;
       const at = res.pricePerShare ?? res.pricePerShareCents ?? (isBuy ? o.buy : o.sell);
       setToast({ kind: "ok", text: `${isBuy ? "Bought" : "Sold"} ${n} shares of ${o.label} at ${at} PZC` });
+      tradeIntentRef.current = null;
       setModal(null);
       const [p, t] = await Promise.all([src.loadPrices(market, { force: true }), src.loadTrades(market.id, { force: true })]);
       setPrices(p);
@@ -385,8 +421,8 @@ export default function MarketDetail() {
       loadPositions();
       refreshWallet();
     } catch (e) {
-      setModal(null);
-      setToast({ kind: "err", text: e.message || "Trade failed" });
+      // Keep the modal and idempotency key so an exact retry cannot duplicate the trade.
+      setTradeError(e.message || "Trade failed");
     } finally {
       setBusy(false);
     }
@@ -723,10 +759,11 @@ export default function MarketDetail() {
           outcome={outcomes[modal.outcomeIndex]}
           action={modal.action}
           qty={qty}
-          setQty={setQty}
+          setQty={changeTradeQuantity}
           held={heldOf(outcomes[modal.outcomeIndex].id)}
+          error={tradeError}
           busy={busy}
-          onCancel={() => !busy && setModal(null)}
+          onCancel={() => !busy && closeTradeModal()}
           onConfirm={confirm}
         />
       )}

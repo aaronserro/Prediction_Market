@@ -14,7 +14,7 @@ const refresh = useCallback(async () => {
 try {
 const me = await api.me()
 setUser(me?.username ? me : null)
-} catch (err) {
+} catch {
 setUser(null)
 } finally {
 setLoading(false)
@@ -28,8 +28,8 @@ useEffect(() => { refresh() }, [refresh])
 const value = {
 user,
 loading,
-login: async (username, password) => {
-const res = await api.login({ username, password })
+login: async (username, password, mfaCode) => {
+const res = await api.login({ username, password, ...(mfaCode ? { mfaCode } : {}) })
 await refresh()
 return res
 },

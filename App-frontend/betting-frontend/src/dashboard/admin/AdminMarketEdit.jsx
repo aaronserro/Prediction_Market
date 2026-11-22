@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
 import { ErrorNote, Field, Notice, Page, Spinner, StatusPill, btnAmber, btnPrimary, btnSecondary, card, inputCls, tdCls, textareaCls, thCls } from "../../components/ui.jsx";
+import { request } from "../../lib/api.js";
 import { catLabel, fmt, fmtDate, fmtDateTime, fromLocalInput, toLocalInput } from "../../lib/format.js";
 import { errorFromResponse, loadPrices } from "../../lib/markets.js";
 
@@ -118,13 +119,9 @@ export default function AdminMarketEdit() {
     setError("");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/markets/${marketId}`, {
+      const updatedMarket = await request(`/api/v1/admin/markets/${marketId}`, {
         method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+        body: {
           title,
           description,
           category,
@@ -132,12 +129,8 @@ export default function AdminMarketEdit() {
           ...(status !== market.status ? { status } : {}),
           endDate: fromLocalInput(closeTime),
           resolutionSource: resolutionSource || null,
-        }),
+        },
       });
-
-      if (!res.ok) throw await errorFromResponse(res);
-
-      const updatedMarket = await res.json();
       setMarket(updatedMarket);
       setStatus(updatedMarket.status || status);
       setSaveSuccess("Market updated successfully!");
@@ -162,23 +155,10 @@ export default function AdminMarketEdit() {
     setResolveSuccess("");
 
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/admin/markets/${marketId}/resolve?winningOutcomeId=${selectedWinningOutcome}`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
+      await request(
+        `/api/v1/admin/markets/${marketId}/resolve?winningOutcomeId=${encodeURIComponent(selectedWinningOutcome)}`,
+        { method: "POST" }
       );
-
-      if (!res.ok) {
-        const err = await errorFromResponse(res);
-        if (err.status === 409 && /could not be settled/i.test(err.message)) {
-          // Winner is recorded; some payouts failed. Keep the panel open so the admin can retry.
-          setMarket((m) => ({ ...m, winningOutcomeId: selectedWinningOutcome }));
-          throw new Error(`${err.message}. Click “Confirm resolve” again to retry.`);
-        }
-        throw err;
-      }
 
       // 204 No Content on success
       setMarket((m) => ({ ...m, status: "RESOLVED", winningOutcomeId: selectedWinningOutcome }));
@@ -189,6 +169,12 @@ export default function AdminMarketEdit() {
 
       setTimeout(() => setResolveSuccess(""), 5000);
     } catch (err) {
+      if (err.status === 409 && /could not be settled/i.test(err.message)) {
+        // Winner is recorded; some payouts failed. Keep the panel open so the admin can retry.
+        setMarket((m) => ({ ...m, winningOutcomeId: selectedWinningOutcome }));
+        setResolveError(`${err.message}. Click “Confirm resolve” again to retry.`);
+        return;
+      }
       setResolveError(err.message || "Failed to resolve market");
     } finally {
       setResolveLoading(false);

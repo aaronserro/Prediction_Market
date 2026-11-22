@@ -1,36 +1,70 @@
 const PROD_API_URL = import.meta.env.VITE_API_URL_PROD || 'https://api.pryzm.ca'
 const DEV_API_URL = import.meta.env.VITE_API_URL_DEV || 'http://localhost:8080'
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PROD_API_URL : DEV_API_URL)
+export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PROD_API_URL : DEV_API_URL)
 
+let csrfPromise
 
-async function request(path, { method = 'GET', body, headers } = {}) {
-const res = await fetch(`${API_URL}${path}`, {
-method,
-credentials: 'include', // send/receive HTTP-only cookie
-headers: {
-'Content-Type': 'application/json',
-...(headers || {})
-},
-body: body ? JSON.stringify(body) : undefined,
-})
-
-
-const text = await res.text()
-let data
-try { data = text ? JSON.parse(text) : null } catch { data = text }
-
-
-if (!res.ok) {
-const msg = (data && (data.message || data.error)) || (typeof data === 'string' ? data : 'Request failed')
-throw new Error(msg)
+export async function csrfHeaders() {
+	if (!csrfPromise) {
+		csrfPromise = fetch(`${API_URL}/auth/csrf`, { credentials: 'include' })
+			.then(async (res) => {
+				if (!res.ok) throw await responseError(res)
+				const data = await res.json()
+				if (!data?.headerName || !data?.token) throw new Error('Invalid CSRF response')
+				return { [data.headerName]: data.token }
+			})
+			.catch((error) => {
+				csrfPromise = undefined
+				throw error
+			})
+	}
+	return csrfPromise
 }
-return data
+
+async function parseResponse(res) {
+	if (res.status === 204) return null
+	const text = await res.text()
+	if (!text) return null
+	try { return JSON.parse(text) } catch { return text }
+}
+
+async function responseError(res) {
+	const data = await parseResponse(res)
+	const message = (data && typeof data === 'object' && (data.message || data.error))
+		|| (typeof data === 'string' ? data : 'Request failed')
+	const error = new Error(message)
+	error.status = res.status
+	error.code = data && typeof data === 'object' ? data.code ?? null : null
+	return error
+}
+
+export async function request(path, { method = 'GET', body, headers = {} } = {}) {
+	const normalizedMethod = method.toUpperCase()
+	const mutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod)
+	const mutationHeaders = mutation ? await csrfHeaders() : {}
+	const res = await fetch(`${API_URL}${path}`, {
+		method: normalizedMethod,
+		credentials: 'include',
+		headers: {
+			...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+			...mutationHeaders,
+			...headers,
+		},
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+	})
+
+	if (!res.ok) throw await responseError(res)
+	return parseResponse(res)
+}
+
+export function newIdempotencyKey() {
+	return crypto.randomUUID()
 }
 
 
 export const api = {
-signup: (payload) => request('/auth/signup', { method: 'POST', body: payload }),
-login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
-logout: () => request('/auth/logout', { method: 'POST' }),
-me: () => request('/auth/me'),
+	signup: (payload) => request('/auth/signup', { method: 'POST', body: payload }),
+	login: (payload) => request('/auth/login', { method: 'POST', body: payload }),
+	logout: () => request('/auth/logout', { method: 'POST' }),
+	me: () => request('/auth/me'),
 }

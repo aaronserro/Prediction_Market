@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminNavbar from "./AdminNavbar.jsx";
 import { Field, Modal, Notice, Page, PageHeader, Spinner, StatusPill, btnDanger, btnPrimary, btnSecondary, btnSmall, card, inputCls, tdCls, thCls } from "../../components/ui.jsx";
+import { request } from "../../lib/api.js";
 import { fmt, fmtDate, fmtDateTime } from "../../lib/format.js";
 
 const roleOf = (u) => u?.role ?? (u?.roles?.includes("ROLE_ADMIN") || u?.roles?.includes("ADMIN") ? "ADMIN" : "USER");
+const accountStatusOf = (u) => u?.accountEnabled === false ? "DEACTIVATED" : "ACTIVE";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
-const ROLES = ["USER", "ADMIN"];
+const ROLES = [
+  { value: "ROLE_USER", label: "User" },
+  { value: "ROLE_ADMIN", label: "Administrator" },
+];
 
-const EMPTY_FORM = { username: "", email: "", password: "", confirmPassword: "", role: "USER" };
+const EMPTY_FORM = { username: "", email: "", password: "", confirmPassword: "", role: "ROLE_USER", mfaCode: "" };
 
 export default function AdminCreateUser() {
   // --- Create form state ---
@@ -22,8 +27,8 @@ export default function AdminCreateUser() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState("");
   const [search, setSearch] = useState("");
-  const [deletingId, setDeletingId] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null); // user object awaiting confirmation
+  const [deactivatingId, setDeactivatingId] = useState(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(null); // user object awaiting confirmation
   const [viewUser, setViewUser] = useState(null);   // full user detail object
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState("");
@@ -62,39 +67,50 @@ export default function AdminCreateUser() {
     setCreateError("");
     setCreateSuccess("");
 
-    if (!form.username.trim() || !form.email.trim() || !form.password) {
+    const username = form.username.trim();
+    const email = form.email.trim();
+    const mfaCode = form.mfaCode.trim();
+
+    if (!username || !email || !form.password) {
       setCreateError("Username, email, and password are required.");
+      return;
+    }
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(username)) {
+      setCreateError("Username must be 3–30 characters and contain only letters, numbers, and underscores.");
+      return;
+    }
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setCreateError("Enter a valid email address no longer than 254 characters.");
       return;
     }
     if (form.password !== form.confirmPassword) {
       setCreateError("Passwords do not match.");
       return;
     }
-    if (form.password.length < 6) {
-      setCreateError("Password must be at least 6 characters.");
+    if (form.password.length < 10 || form.password.length > 72) {
+      setCreateError("Password must be between 10 and 72 characters.");
+      return;
+    }
+    if (form.role === "ROLE_ADMIN" && !/^\d{6}$/.test(mfaCode)) {
+      setCreateError("A six-digit MFA code is required to create an administrator.");
       return;
     }
 
     setCreating(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users`, {
+      await request("/api/v1/users", {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: form.username.trim(),
-          email: form.email.trim(),
+        body: {
+          username,
+          email,
           password: form.password,
-          role: form.role,
-        }),
+          roles: [form.role],
+          ...(form.role === "ROLE_ADMIN" ? { mfaCode } : {}),
+        },
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || `Failed to create user (${res.status})`);
-      }
-      setCreateSuccess(`User "${form.username.trim()}" created successfully.`);
+      setCreateSuccess(`User "${username}" created successfully.`);
       setForm(EMPTY_FORM);
-      fetchUsers();
+      await fetchUsers();
     } catch (err) {
       setCreateError(err.message || "Something went wrong.");
     } finally {
@@ -102,22 +118,21 @@ export default function AdminCreateUser() {
     }
   };
 
-  // --- Delete user ---
-  const handleDeleteConfirm = async () => {
-    if (!confirmDelete) return;
-    setDeletingId(confirmDelete.id);
-    setConfirmDelete(null);
+  // --- Deactivate user ---
+  const handleDeactivateConfirm = async () => {
+    if (!confirmDeactivate) return;
+    const userId = confirmDeactivate.id;
+    setDeactivatingId(userId);
+    setConfirmDeactivate(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/${confirmDelete.id}`, {
+      await request(`/api/v1/users/${userId}`, {
         method: "DELETE",
-        credentials: "include",
       });
-      if (!res.ok) throw new Error(`Failed to delete user (${res.status})`);
-      setUsers((prev) => prev.filter((u) => u.id !== confirmDelete.id));
+      await fetchUsers();
     } catch (err) {
-      setUsersError(err.message || "Could not delete user.");
+      setUsersError(err.message || "Could not deactivate user.");
     } finally {
-      setDeletingId(null);
+      setDeactivatingId(null);
     }
   };
 
@@ -147,7 +162,9 @@ export default function AdminCreateUser() {
       !q ||
       u.username?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.role?.toLowerCase().includes(q)
+      u.role?.toLowerCase().includes(q) ||
+      u.roles?.some((role) => role.toLowerCase().includes(q)) ||
+      accountStatusOf(u).toLowerCase().includes(q)
     );
   });
 
@@ -167,25 +184,45 @@ export default function AdminCreateUser() {
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Username" htmlFor="cu-username">
-                <input id="cu-username" name="username" type="text" value={form.username} onChange={handleChange} placeholder="e.g. john_doe" className={inputCls} />
+                <input id="cu-username" name="username" type="text" minLength={3} maxLength={30} pattern="[A-Za-z0-9_]+" required value={form.username} onChange={handleChange} placeholder="e.g. john_doe" className={inputCls} />
               </Field>
               <Field label="Email" htmlFor="cu-email">
-                <input id="cu-email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g. john@example.com" className={inputCls} />
+                <input id="cu-email" name="email" type="email" maxLength={254} required value={form.email} onChange={handleChange} placeholder="e.g. john@example.com" className={inputCls} />
               </Field>
               <Field label="Password" htmlFor="cu-password">
-                <input id="cu-password" name="password" type="password" value={form.password} onChange={handleChange} placeholder="Min. 6 characters" className={inputCls} />
+                <input id="cu-password" name="password" type="password" minLength={10} maxLength={72} required value={form.password} onChange={handleChange} placeholder="10–72 characters" className={inputCls} />
               </Field>
               <Field label="Confirm password" htmlFor="cu-confirm">
-                <input id="cu-confirm" name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} placeholder="Repeat password" className={inputCls} />
+                <input id="cu-confirm" name="confirmPassword" type="password" minLength={10} maxLength={72} required value={form.confirmPassword} onChange={handleChange} placeholder="Repeat password" className={inputCls} />
               </Field>
             </div>
             <div className="sm:max-w-[calc(50%-8px)]">
               <Field label="Role" htmlFor="cu-role">
                 <select id="cu-role" name="role" value={form.role} onChange={handleChange} className={`${inputCls} cursor-pointer`}>
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
                 </select>
               </Field>
             </div>
+            {form.role === "ROLE_ADMIN" && (
+              <div className="sm:max-w-[calc(50%-8px)]">
+                <Field label="Administrator MFA code" htmlFor="cu-mfa" hint="Enter your current six-digit TOTP to authorize administrator creation.">
+                  <input
+                    id="cu-mfa"
+                    name="mfaCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    required
+                    value={form.mfaCode}
+                    onChange={handleChange}
+                    placeholder="6-digit code"
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+            )}
 
             {createError && <Notice kind="err">{createError}</Notice>}
             {createSuccess && <Notice kind="ok">{createSuccess}</Notice>}
@@ -233,6 +270,7 @@ export default function AdminCreateUser() {
                     <th className={thCls}>Username</th>
                     <th className={`${thCls} hidden sm:table-cell`}>Email</th>
                     <th className={thCls}>Role</th>
+                    <th className={thCls}>Status</th>
                     <th className={`${thCls} hidden md:table-cell`}>Joined</th>
                     <th className={thCls} />
                   </tr>
@@ -243,16 +281,17 @@ export default function AdminCreateUser() {
                       <td className={`${tdCls} font-[550]`}>{u.username}</td>
                       <td className={`${tdCls} text-tx2 hidden sm:table-cell`}>{u.email || "—"}</td>
                       <td className={tdCls}><StatusPill status={roleOf(u)} /></td>
+                      <td className={tdCls}><StatusPill status={accountStatusOf(u)} /></td>
                       <td className={`${tdCls} text-mu hidden md:table-cell`}>{u.createdAt ? fmtDate(u.createdAt) : "—"}</td>
                       <td className={`${tdCls} text-right`}>
                         <div className="inline-flex gap-2">
                           <button onClick={() => handleView(u.id)} className={`${btnSecondary} ${btnSmall}`}>View</button>
                           <button
-                            onClick={() => setConfirmDelete(u)}
-                            disabled={deletingId === u.id}
+                            onClick={() => setConfirmDeactivate(u)}
+                            disabled={deactivatingId === u.id || u.accountEnabled === false}
                             className="h-8 px-3 rounded-lg border-0 bg-nos text-no text-[13px] font-semibold cursor-pointer disabled:opacity-50"
                           >
-                            {deletingId === u.id ? "Deleting…" : "Delete"}
+                            {deactivatingId === u.id ? "Deactivating…" : u.accountEnabled === false ? "Deactivated" : "Deactivate"}
                           </button>
                         </div>
                       </td>
@@ -283,6 +322,8 @@ export default function AdminCreateUser() {
                 ["Username", viewUser.username],
                 ["Email", viewUser.email],
                 ["Role", roleOf(viewUser)],
+                ["Account status", accountStatusOf(viewUser)],
+                ["Deactivated", viewUser.deactivatedAt ? fmtDateTime(viewUser.deactivatedAt) : "—"],
                 ["Joined", viewUser.createdAt ? fmtDateTime(viewUser.createdAt) : "—"],
                 ["Balance", viewUser.balanceCents != null ? `${fmt(viewUser.balanceCents)} PZC` : "—", true],
               ].map(([label, value, mono]) => (
@@ -299,16 +340,16 @@ export default function AdminCreateUser() {
         </Modal>
       )}
 
-      {/* ── Delete confirmation modal ── */}
-      {confirmDelete && (
-        <Modal onClose={() => setConfirmDelete(null)} maxWidth={400}>
-          <h3 className="m-0 mb-2 text-[19px] font-[650] tracking-[-0.025em]">Delete user?</h3>
+      {/* ── Deactivation confirmation modal ── */}
+      {confirmDeactivate && (
+        <Modal onClose={() => setConfirmDeactivate(null)} maxWidth={400}>
+          <h3 className="m-0 mb-2 text-[19px] font-[650] tracking-[-0.025em]">Deactivate user?</h3>
           <p className="m-0 mb-5 text-[14px] leading-[1.6] text-tx2">
-            This will permanently delete <span className="text-tx font-semibold">{confirmDelete.username}</span>. This action cannot be undone.
+            This will revoke access for <span className="text-tx font-semibold">{confirmDeactivate.username}</span> and anonymize their identity. Financial history will be retained.
           </p>
           <div className="grid grid-cols-[1fr_1.4fr] gap-2">
-            <button onClick={() => setConfirmDelete(null)} className={`${btnSecondary} !h-[46px]`}>Cancel</button>
-            <button onClick={handleDeleteConfirm} className={`${btnDanger} !h-[46px]`}>Delete</button>
+            <button onClick={() => setConfirmDeactivate(null)} className={`${btnSecondary} !h-[46px]`}>Cancel</button>
+            <button onClick={handleDeactivateConfirm} className={`${btnDanger} !h-[46px]`}>Deactivate</button>
           </div>
         </Modal>
       )}

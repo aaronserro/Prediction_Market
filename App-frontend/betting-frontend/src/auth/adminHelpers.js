@@ -1,40 +1,11 @@
 // src/admin/adminHelpers.js
-import { errorFromResponse } from "../lib/markets.js";
-
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
+import { request } from "../lib/api.js";
 
 async function http(path, opts = {}) {
-  const res = await fetch(`${API_BASE}${path}`.replace(/\n/g, ""), {
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts.headers || {}),
-    },
-    credentials: "include",
-    ...opts,
-  });
-
-  if (res.status === 401 || res.status === 403) {
-    const err = new Error("unauthorized");
-    err.status = res.status;
-    throw err;
-  }
-
-  if (!res.ok) throw await errorFromResponse(res);
-
-  if (res.status === 204) return null;
-
-  return res.json();
+  return request(path.replace(/\n/g, ""), opts);
 }
 export async function fetchMe() {
-  const res = await fetch(`${API_BASE}/auth/me`, {
-    credentials: "include", // send the JWT cookie
-  });
-
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
-  }
-
-  return res.json(); // { username, roles }
+  return request("/auth/me");
 }
 // Generic by-status fetch
 export async function fetchFundRequestsByStatus(status) {

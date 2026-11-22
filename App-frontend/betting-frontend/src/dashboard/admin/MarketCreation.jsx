@@ -1,10 +1,8 @@
 // src/admin/MarketCreation.jsx
 import { useState } from "react";
 import { Field, Notice, btnPrimary, btnSecondary, btnSmall, inputCls, textareaCls } from "../../components/ui.jsx";
+import { request } from "../../lib/api.js";
 import { fromLocalInput } from "../../lib/format.js";
-import { errorFromResponse } from "../../lib/markets.js";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
 const CATEGORY_OPTIONS = [
   "SPORTS",
@@ -89,20 +87,10 @@ export default function MarketCreation({ onMarketCreated }) {
     try {
       setIsSubmitting(true);
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/admin/markets`, {
+      const data = await request("/api/v1/admin/markets", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // If you use Authorization header instead of cookies, add it here
-          // "Authorization": `Bearer ${token}`,
-        },
-        credentials: "include", // send cookies/JWT if using httpOnly cookie auth
-        body: JSON.stringify(payload),
+        body: payload,
       });
-
-      if (!res.ok) throw await errorFromResponse(res);
-
-      const data = await res.json();
       setSuccessMessage(`Market "${data.title}" created successfully.`);
       resetForm();
 

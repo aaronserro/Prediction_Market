@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useWallet, userIdOf } from "../lib/wallet.jsx";
+import { request } from "../lib/api.js";
 import { fetchMarkets, getJSON } from "../lib/markets.js";
 import { fmt, fmtDate, fmtDateTime } from "../lib/format.js";
 import { Coin, ErrorNote, Page, PageHeader, Segmented, card } from "../components/ui.jsx";
@@ -160,10 +161,10 @@ export default function Wallet() {
     const optimistic = { id: `tmp-${Date.now()}`, amountCents, reason, status: "PENDING", createdAt: new Date().toISOString() };
     setRequests((r) => [optimistic, ...r]);
     try {
-      await getJSON(`/api/v1/users/${userId}/wallet/fund-requests`, {
+      await request(`/api/v1/users/${userId}/wallet/fund-requests`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": intentRef.current.key },
-        body: JSON.stringify({ amountCents, reason }),
+        headers: { "Idempotency-Key": intentRef.current.key },
+        body: { amountCents, reason },
       });
       intentRef.current = null;
       setAmount("");
