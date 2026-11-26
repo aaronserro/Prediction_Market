@@ -28,8 +28,13 @@ export async function getJSON(path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-export function fetchMarkets(category) {
-  return getJSON(category && category !== "ALL" ? `/api/v1/markets/category/${category}` : "/api/v1/markets");
+export function pageItems(data) {
+  return Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+}
+
+export async function fetchMarkets(category) {
+  const data = await getJSON(category && category !== "ALL" ? `/api/v1/markets/category/${category}` : "/api/v1/markets");
+  return pageItems(data);
 }
 
 export const isOpenListing = (m) => m.status === "ACTIVE" || m.status === "UPCOMING";
@@ -76,8 +81,7 @@ export function loadPrices(market, { force = false } = {}) {
 export function loadTrades(marketId, { force = false } = {}) {
   return cached(tradeCache, marketId, async () => {
     try {
-      const list = await getJSON(`/api/v1/trades/${marketId}`);
-      return Array.isArray(list) ? list : [];
+      return pageItems(await getJSON(`/api/v1/trades/${marketId}`));
     } catch {
       return null;
     }

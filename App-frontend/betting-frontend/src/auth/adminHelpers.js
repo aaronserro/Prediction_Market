@@ -1,5 +1,6 @@
 // src/admin/adminHelpers.js
 import { request } from "../lib/api.js";
+import { pageItems } from "../lib/markets.js";
 
 async function http(path, opts = {}) {
   return request(path.replace(/\n/g, ""), opts);
@@ -9,7 +10,7 @@ export async function fetchMe() {
 }
 // Generic by-status fetch
 export async function fetchFundRequestsByStatus(status) {
-  return http(`/api/v1/admin/fund-requests?status=${encodeURIComponent(status)}`);
+  return pageItems(await http(`/api/v1/admin/fund-requests?status=${encodeURIComponent(status)}`));
 }
 
 export async function approveFundRequest(id) {

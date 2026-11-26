@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ErrorNote, Page, PageHeader, Spinner, Tabs, card, tdCls, thCls } from "../components/ui.jsx";
 import PositionsTable from "../components/PositionsTable.jsx";
 import { isOpenPosition, realizedTotal, totals } from "../lib/positions.js";
-import { fetchMarkets, getJSON } from "../lib/markets.js";
+import { fetchMarkets, getJSON, pageItems } from "../lib/markets.js";
 import { fmt, signed, signedPct } from "../lib/format.js";
 
 function Cell({ label, children, sub, color = "", last = false }) {
@@ -27,7 +27,7 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     getJSON("/api/v1/positions/me")
-      .then((d) => setPositions(Array.isArray(d) ? d : []))
+      .then((d) => setPositions(pageItems(d)))
       .catch((e) => setError(e.message || "Failed to load positions"))
       .finally(() => setLoading(false));
     fetchMarkets().then((d) => setMarkets(Array.isArray(d) ? d : [])).catch(() => {});

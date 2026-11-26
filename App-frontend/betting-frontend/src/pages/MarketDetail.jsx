@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ErrorNote, LiveDot, Page, Segmented, Spinner, Tabs, card } from "../components/ui.jsx";
 import { newIdempotencyKey, request } from "../lib/api.js";
-import { getJSON, isBinary, outcomeLabel, summarize, useMarketData, volumeOf } from "../lib/markets.js";
+import { getJSON, isBinary, outcomeLabel, pageItems, summarize, useMarketData, volumeOf } from "../lib/markets.js";
 import { fixtureSource, useDataSource } from "../lib/dataSource.js";
 import SignupGate from "../components/SignupGate.jsx";
 import { buildHistory, toPath, xTicks } from "../lib/history.js";
@@ -255,7 +255,7 @@ export default function MarketDetail() {
   const canTrade = Boolean(user) && !preview;
 
   const loadPositions = useCallback(
-    () => getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => {}),
+    () => getJSON("/api/v1/positions/me").then((d) => setPositions(pageItems(d))).catch(() => {}),
     []
   );
 

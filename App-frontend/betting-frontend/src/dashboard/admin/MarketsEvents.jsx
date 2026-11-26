@@ -5,6 +5,7 @@ import AdminNavbar from "./AdminNavbar";
 import MarketCreation from "./MarketCreation";
 import { Chips, ErrorNote, Page, PageHeader, Segmented, Spinner, StatusPill, Tabs, card, tdCls, thCls } from "../../components/ui.jsx";
 import { catLabel, fmtShortDate } from "../../lib/format.js";
+import { pageItems } from "../../lib/markets.js";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
@@ -55,7 +56,7 @@ export default function MarketsEvents() {
         throw new Error(`Failed to fetch markets: ${res.status}`);
       }
 
-      let data = await res.json();
+      let data = pageItems(await res.json());
 
       // Apply additional filtering if needed
       if (categoryFilter !== "ALL" && statusFilter !== "ALL") {

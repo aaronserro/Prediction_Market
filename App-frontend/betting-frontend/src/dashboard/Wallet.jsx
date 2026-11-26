@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useWallet, userIdOf } from "../lib/wallet.jsx";
 import { request } from "../lib/api.js";
-import { fetchMarkets, getJSON } from "../lib/markets.js";
+import { fetchMarkets, getJSON, pageItems } from "../lib/markets.js";
 import { fmt, fmtDate, fmtDateTime } from "../lib/format.js";
 import { Coin, ErrorNote, Page, PageHeader, Segmented, card } from "../components/ui.jsx";
 import { totals } from "../lib/positions.js";
@@ -129,7 +129,7 @@ export default function Wallet() {
     try {
       const list = await getJSON(`/api/v1/users/${userId}/wallet/fund-requests`);
       setRequests(
-        (Array.isArray(list) ? list : []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        pageItems(list).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       );
     } catch (e) {
       setError(e.message || String(e));
@@ -139,7 +139,7 @@ export default function Wallet() {
   useEffect(() => { refreshRequests(); }, [refreshRequests]);
   useEffect(() => { loadLedger(0); }, [loadLedger]);
   useEffect(() => {
-    getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => {});
+    getJSON("/api/v1/positions/me").then((d) => setPositions(pageItems(d))).catch(() => {});
     fetchMarkets()
       .then((list) => setMarketTitles(Object.fromEntries((Array.isArray(list) ? list : []).map((m) => [m.id, m.title]))))
       .catch(() => {});

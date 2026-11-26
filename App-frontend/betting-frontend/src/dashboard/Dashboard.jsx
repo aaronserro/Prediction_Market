@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useWallet, userIdOf } from "../lib/wallet.jsx";
-import { fetchMarkets, getJSON, summarize, useMarketData } from "../lib/markets.js";
+import { fetchMarkets, getJSON, pageItems, summarize, useMarketData } from "../lib/markets.js";
 import { fmt, signed } from "../lib/format.js";
 import rankImages, { RANK_KEYS, computeRank, formatRank, rankProgress } from "../lib/rankImages.js";
 import { Chips, LineChart, LiveDot, MarketCard, MarketGrid, Page, Segmented, card } from "../components/ui.jsx";
@@ -112,7 +112,7 @@ export default function Dashboard() {
   const open = useMemo(() => positions.filter(isOpenPosition), [positions]);
 
   useEffect(() => {
-    getJSON("/api/v1/positions/me").then((d) => setPositions(Array.isArray(d) ? d : [])).catch(() => setPositions([]));
+    getJSON("/api/v1/positions/me").then((d) => setPositions(pageItems(d))).catch(() => setPositions([]));
     fetchMarkets().then((d) => setMarkets((Array.isArray(d) ? d : []).filter((m) => m.status === "ACTIVE"))).catch(() => {});
   }, []);
 

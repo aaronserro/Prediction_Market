@@ -5,7 +5,7 @@ import AdminNavbar from "./AdminNavbar";
 import { ErrorNote, Field, Notice, Page, Spinner, StatusPill, btnAmber, btnPrimary, btnSecondary, card, inputCls, tdCls, textareaCls, thCls } from "../../components/ui.jsx";
 import { request } from "../../lib/api.js";
 import { catLabel, fmt, fmtDate, fmtDateTime, fromLocalInput, toLocalInput } from "../../lib/format.js";
-import { errorFromResponse, loadPrices } from "../../lib/markets.js";
+import { errorFromResponse, loadPrices, pageItems } from "../../lib/markets.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 
@@ -95,7 +95,7 @@ export default function AdminMarketEdit() {
 
         if (res.ok) {
           const data = await res.json();
-          setTrades((Array.isArray(data) ? data : []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+          setTrades(pageItems(data).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         } else {
           setTrades([]);
         }
