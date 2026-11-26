@@ -7,7 +7,6 @@ import { fmt, fmtDate, fmtDateTime } from "../../lib/format.js";
 const roleOf = (u) => u?.role ?? (u?.roles?.includes("ROLE_ADMIN") || u?.roles?.includes("ADMIN") ? "ADMIN" : "USER");
 const accountStatusOf = (u) => u?.accountEnabled === false ? "DEACTIVATED" : "ACTIVE";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api.pryzm.ca" : "http://localhost:8080");
 const ROLES = [
   { value: "ROLE_USER", label: "User" },
   { value: "ROLE_ADMIN", label: "Administrator" },
@@ -38,12 +37,8 @@ export default function AdminCreateUser() {
     setUsersLoading(true);
     setUsersError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Failed to fetch users (${res.status})`);
-      const data = await res.json();
-      setUsers(Array.isArray(data) ? data : data.content ?? []);
+      const data = await request("/api/v1/users");
+      setUsers(Array.isArray(data) ? data : data?.items ?? []);
     } catch (err) {
       setUsersError(err.message || "Could not load users.");
     } finally {
@@ -142,11 +137,7 @@ export default function AdminCreateUser() {
     setViewError("");
     setViewLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Failed to load user (${res.status})`);
-      setViewUser(await res.json());
+      setViewUser(await request(`/api/v1/users/${userId}`));
     } catch (err) {
       setViewError(err.message || "Could not load user.");
       setViewUser({});
