@@ -73,6 +73,14 @@ public class AdminMfaService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isEnabled(User admin) {
+        requireAdministrator(admin);
+        return credentials.findById(admin.getId())
+                .filter(AdminMfaCredential::isEnabled)
+                .isPresent();
+    }
+
+    @Transactional(readOnly = true)
     public void requireEnabled(User admin) {
         requireAdministrator(admin);
         if (credentials.findById(admin.getId()).filter(AdminMfaCredential::isEnabled).isEmpty()) {

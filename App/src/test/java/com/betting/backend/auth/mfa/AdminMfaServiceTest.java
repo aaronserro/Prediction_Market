@@ -72,6 +72,20 @@ class AdminMfaServiceTest {
                 .isInstanceOf(BadCredentialsException.class);
     }
 
+    @Test
+    void reportsWhetherAdministratorEnrollmentIsEnabled() {
+        AdminMfaCredentialRepository repository = mock(AdminMfaCredentialRepository.class);
+        AdminMfaService service = new AdminMfaService(repository, ENCRYPTION_KEY);
+        AdminMfaCredential credential = new AdminMfaCredential(99L, "encrypted");
+        when(repository.findById(99L)).thenReturn(Optional.of(credential));
+
+        assertThat(service.isEnabled(admin())).isFalse();
+
+        credential.confirm();
+
+        assertThat(service.isEnabled(admin())).isTrue();
+    }
+
     private User admin() {
         User user = new User();
         user.setId(99L);
